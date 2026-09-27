@@ -1,6 +1,6 @@
 'use strict';
 
-const { logoPath } = require('../assets');
+const { logoPath, assetUrl, resolveLogoName } = require('../assets');
 const { getCategory } = require('../categories');
 
 function esc(value) {
@@ -170,11 +170,11 @@ ${canonical ? `<link rel="canonical" href="${attr(canonical)}" />` : ''}
 <meta property="og:description" content="${attr(desc)}" />
 ${canonical ? `<meta property="og:url" content="${attr(canonical)}" />` : ''}
 <meta name="twitter:card" content="summary" />
-<link rel="icon" href="${attr(logoPath())}" />
-<link rel="apple-touch-icon" href="${attr(logoPath())}" />
+<link rel="icon" href="${attr(assetUrl(resolveLogoName()))}" />
+<link rel="apple-touch-icon" href="${attr(assetUrl(resolveLogoName()))}" />
 ${site.domain ? `<meta property="og:image" content="${attr(site.domain + logoPath())}" />` : ''}
-<script src="/assets/theme.js"></script>
-<link rel="stylesheet" href="/assets/style.css" />
+<script src="${attr(assetUrl('theme.js'))}"></script>
+<link rel="stylesheet" href="${attr(assetUrl('style.css'))}" />
 ${site.adsenseReady ? `<meta name="google-adsense-account" content="${attr(site.adsense.client)}" />
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${attr(site.adsense.client)}" crossorigin="anonymous"></script>` : ''}
 ${site.analytics?.ga4 ? `<script async src="https://www.googletagmanager.com/gtag/js?id=${attr(site.analytics.ga4)}"></script>
@@ -188,7 +188,7 @@ ${graphs.length ? `<script type="application/ld+json">${safeJson(graphs.length =
     <a class="brand" href="/">${brandLogo()}<span class="brand-text">${esc(site.name)}</span></a>
     <nav class="site-nav" aria-label="주요 메뉴">
       ${navItems.map((item) => `<a href="${attr(item.href)}"${nav === item.key ? ' class="active" aria-current="page"' : ''}>${esc(item.label)}</a>`).join('')}
-      ${site.hideAdmin ? '' : '<a class="nav-admin" href="/admin.html">관리자</a>'}
+      ${site.hideAdmin ? '' : `<a class="nav-admin" href="${attr(site.adminUrl || '/admin.html')}"${site.adminUrl && !site.adminUrl.startsWith('/') ? ' target="_blank" rel="noopener"' : ''}>관리자</a>`}
       ${themeToggle()}
     </nav>
   </div>

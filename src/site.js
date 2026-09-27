@@ -21,6 +21,7 @@ const DEFAULTS = {
   email: '', // AdSense 심사 전 반드시 실제 연락 가능한 주소로 채우세요
   domain: '', // 예: https://myhome.example.com (비우면 요청 도메인 사용)
   locale: 'ko',
+  adminUrl: 'http://localhost:3000/admin.html', // 공개 사이트의 "관리자" 링크가 가리킬 주소 (터널·도메인 주소로 바꿔 쓰세요)
   adsense: {
     client: '', // 예: ca-pub-0000000000000000
     slotInline: '', // 본문 중간 광고 단위 ID (숫자)

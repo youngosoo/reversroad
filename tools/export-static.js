@@ -32,6 +32,8 @@ function arg(name, fallback = null) {
 }
 
 const OUT = path.resolve(ROOT, arg('out', 'dist'));
+// 정적 사이트에서 관리자 화면은 이 PC(로컬 서버)에서 씁니다.
+const SITE_ADMIN_FALLBACK = process.env.ADMIN_URL || 'http://localhost:3000/admin.html';
 
 function log(msg) {
   process.stdout.write(`${msg}\n`);
@@ -102,13 +104,13 @@ function injectAppHead(html, { app, site }) {
   Permissions-Policy: geolocation=(), camera=(), microphone=()
   Strict-Transport-Security: max-age=31536000
 
-# 정적 자산은 오래 캐시
+# 정적 자산: 주소에 내용 해시(?v=)가 붙으므로 길게 캐시해도 안전합니다.
 /assets/*
-  Cache-Control: public, max-age=604800, immutable
+  Cache-Control: public, max-age=86400
 
-# 앱 파일은 오래 캐시
+# 앱 파일은 자주 바뀌므로 짧게 캐시
 /apps/*
-  Cache-Control: public, max-age=604800
+  Cache-Control: public, max-age=600
 
 # 문서는 짧게 캐시 (업데이트 반영)
 /*.html
@@ -124,7 +126,11 @@ function injectAppHead(html, { app, site }) {
     process.exit(1);
   }
   const site = siteStore.publicSite({ ...siteRaw, domain: fallbackBase.replace(/\/+$/, '') });
-  site.hideAdmin = true; // 정적 사이트에는 관리자 화면이 없습니다
+  // 관리자 링크는 사이트 설정의 adminUrl 을 그대로 씁니다 (로컬 서버·터널 주소 등).
+  // 정적 사이트에는 /admin.html 이 없으므로, 상대 경로면 /apps/ 목록으로 보냅니다.
+  if (!site.adminUrl || site.adminUrl.startsWith('/')) {
+    site.adminUrl = SITE_ADMIN_FALLBACK;
+  }
 
   const apps = await manifest.readApps();
 

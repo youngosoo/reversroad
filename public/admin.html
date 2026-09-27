@@ -164,6 +164,11 @@
           <input id="s_domain" type="text" maxlength="120" placeholder="https://myhome.example.com" />
         </div>
         <div class="field full">
+          <label for="s_admin">관리자 링크 주소 <span class="muted">(공개 사이트의 “관리자” 버튼이 가리킬 곳)</span></label>
+          <input id="s_admin" type="text" maxlength="200" placeholder="http://localhost:3000/admin.html" />
+          <span class="muted small">이 PC에서만 쓰려면 그대로 두세요. 외부에서도 관리하려면 터널·도메인 주소를 넣으세요.</span>
+        </div>
+        <div class="field full">
           <label for="s_tagline">한 줄 소개</label>
           <input id="s_tagline" type="text" maxlength="80" />
         </div>
@@ -611,6 +616,7 @@ const S = {
   domain: document.getElementById('s_domain'),
   tagline: document.getElementById('s_tagline'),
   description: document.getElementById('s_description'),
+  admin: document.getElementById('s_admin'),
   adsense: document.getElementById('s_adsense'),
   slot: document.getElementById('s_slot'),
   ga4: document.getElementById('s_ga4'),
@@ -630,6 +636,7 @@ function fillSite(site) {
   S.adsense.value = (site.adsense && site.adsense.client) || '';
   S.slot.value = (site.adsense && site.adsense.slotInline) || '';
   S.ga4.value = (site.analytics && site.analytics.ga4) || '';
+  S.admin.value = site.adminUrl || '';
 }
 
 async function loadSite() {
@@ -706,6 +713,7 @@ document.getElementById('siteForm').addEventListener('submit', async (e) => {
         owner: S.owner.value,
         email: S.email.value,
         domain: S.domain.value,
+        adminUrl: S.admin.value,
         tagline: S.tagline.value,
         description: S.description.value,
         adsense: { client: S.adsense.value, slotInline: S.slot.value },

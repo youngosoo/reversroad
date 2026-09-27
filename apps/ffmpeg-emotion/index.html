@@ -1,0 +1,1358 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FFmpeg & Emotion Motion Video Generator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM CDN -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Emotion (CSS-in-JS CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/@emotion/css@11.11.2/dist/emotion-css.umd.min.js"></script>
+    <!-- Google Fonts & Paperlogy Font CDN -->
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/fonts-archive/Paperlogy/Paperlogy.css" type="text/css" />
+    
+    <style>
+        body {
+            font-family: 'Paperlogy', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            background-color: #0b0d14;
+            color: #f3f4f6;
+        }
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111420;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2b3147;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3e4766;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col overflow-x-hidden selection:bg-purple-500 selection:text-white">
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+        const { css, cx } = emotion;
+
+        // Glassmorphism Card Style
+        const glassCardStyle = css`
+            background: rgba(20, 24, 38, 0.8);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+        `;
+
+        const gradientBtnStyle = css`
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background-size: 200% 200%;
+            background-position: 0% 0%;
+            &:hover {
+                background-position: 100% 100%;
+                box-shadow: 0 10px 25px -5px rgba(168, 85, 247, 0.5);
+                transform: translateY(-2px);
+            }
+            &:active {
+                transform: translateY(0);
+            }
+        `;
+
+        const pulseGlowStyle = css`
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
+            animation: glowPulse 2s infinite alternate;
+            @keyframes glowPulse {
+                0% { box-shadow: 0 0 10px rgba(168, 85, 247, 0.3); }
+                100% { box-shadow: 0 0 25px rgba(168, 85, 247, 0.7); }
+            }
+        `;
+
+        // Aspect Ratios
+        const ASPECT_RATIOS = {
+            '9:16': { label: '📱 9:16 (쇼츠/릴스/틱톡)', width: 1080, height: 1920, aspectClass: 'aspect-[9/16]' },
+            '16:9': { label: '🖥️ 16:9 (유튜브 일반)', width: 1920, height: 1080, aspectClass: 'aspect-[16/9]' },
+            '1:1': { label: '🟦 1:1 (정사각형 피드)', width: 1080, height: 1080, aspectClass: 'aspect-square' }
+        };
+
+        // Motion Effects
+        const getMotionEffects = (w, h) => [
+            { id: 'zoomIn', name: '🔍 Zoom In (피사체 확대)', ffmpeg: `zoompan=z='min(zoom+0.0015,1.25)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=120:s=${w}x${h}:fps=30` },
+            { id: 'zoomOut', name: '🔎 Zoom Out (피사체 축소)', ffmpeg: `zoompan=z='max(1.25-zoom*0.0015,1.0)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=120:s=${w}x${h}:fps=30` },
+            { id: 'panLeft', name: '⬅️ Pan Left (좌측 모션)', ffmpeg: `zoompan=z='1.18':x='if(lte(on,1),iw*0.1,x-1.5)':y='ih/2-(ih/zoom/2)':d=120:s=${w}x${h}:fps=30` },
+            { id: 'panRight', name: '➡️ Pan Right (우측 모션)', ffmpeg: `zoompan=z='1.18':x='if(lte(on,1),0,x+1.5)':y='ih/2-(ih/zoom/2)':d=120:s=${w}x${h}:fps=30` },
+            { id: 'kenBurns', name: '🎬 Ken Burns (대각 모션)', ffmpeg: `zoompan=z='min(zoom+0.0018,1.25)':x='if(lte(on,1),0,x+1)':y='if(lte(on,1),0,y+1)':d=120:s=${w}x${h}:fps=30` },
+            { id: 'rotateZoom', name: '🔄 Rotate & Zoom (부드러운 회전)', ffmpeg: `zoompan=z='min(zoom+0.0015,1.20)':d=120:s=${w}x${h}:fps=30` }
+        ];
+
+        const generateSampleImage = (title, color1, color2, icon) => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1080;
+            canvas.height = 1920;
+            const ctx = canvas.getContext('2d');
+
+            const grad = ctx.createLinearGradient(0, 0, 1080, 1920);
+            grad.addColorStop(0, color1);
+            grad.addColorStop(1, color2);
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 1080, 1920);
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.beginPath();
+            ctx.arc(540, 960, 320, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 120px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(icon, 540, 880);
+
+            ctx.font = 'bold 52px Paperlogy, sans-serif';
+            ctx.fillText(title, 540, 1080);
+
+            ctx.font = '36px Paperlogy, sans-serif';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.fillText('Subject / Product Auto Focus', 540, 1160);
+
+            return canvas.toDataURL('image/png');
+        };
+
+        const INITIAL_SAMPLE_IMAGES = [
+            { title: '인물 스냅샷 A', color1: '#4f46e5', color2: '#7c3aed', icon: '👤' },
+            { title: '신상 패션 아이템', color1: '#059669', color2: '#10b981', icon: '🛍️' },
+            { title: '트렌드 인플루언서', color1: '#d97706', color2: '#f59e0b', icon: '✨' },
+            { title: '스마트 라이프스타일', color1: '#dc2626', color2: '#ef4444', icon: '📱' },
+            { title: '프리미엄 뷰티 스토어', color1: '#db2777', color2: '#ec4899', icon: '💄' }
+        ];
+
+        const getDefaultSlides = () => INITIAL_SAMPLE_IMAGES.map((sample, idx) => ({
+            id: 'slide_' + Date.now() + '_' + idx,
+            url: generateSampleImage(sample.title, sample.color1, sample.color2, sample.icon),
+            title: sample.title,
+            effect: ['zoomIn', 'zoomOut', 'panLeft', 'kenBurns', 'rotateZoom'][idx % 5],
+            focalPoint: { x: 0.5, y: 0.48 }
+        }));
+
+        const easeInOutCubic = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        const smoothstep = (t) => {
+            const clampT = Math.max(0, Math.min(1, t));
+            return clampT * clampT * (3 - 2 * clampT);
+        };
+
+        class WebAudioBGMGenerator {
+            constructor() {
+                this.audioCtx = null;
+                this.destination = null;
+                this.isPlaying = false;
+                this.timer = null;
+                this.volume = 0.4;
+                this.mood = 'upbeat';
+            }
+
+            init() {
+                if (!this.audioCtx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.audioCtx = new AudioContext();
+                    this.destination = this.audioCtx.createMediaStreamDestination();
+                }
+                if (this.audioCtx.state === 'suspended') {
+                    this.audioCtx.resume();
+                }
+            }
+
+            setVolume(val) {
+                this.volume = val;
+            }
+
+            setMood(mood) {
+                this.mood = mood;
+            }
+
+            start() {
+                this.init();
+                this.isPlaying = true;
+                let step = 0;
+
+                const freqsMap = {
+                    upbeat: [261.63, 329.63, 392.00, 523.25, 440.00, 349.23],
+                    lofi: [220.00, 261.63, 329.63, 392.00, 349.23],
+                    cinematic: [130.81, 164.81, 196.00, 261.63, 293.66],
+                    corporate: [293.66, 369.99, 440.00, 587.33]
+                };
+
+                this.timer = setInterval(() => {
+                    if (!this.isPlaying || !this.audioCtx) return;
+
+                    const freqs = freqsMap[this.mood] || freqsMap.upbeat;
+                    const freq = freqs[step % freqs.length];
+
+                    const osc = this.audioCtx.createOscillator();
+                    const gain = this.audioCtx.createGain();
+
+                    osc.type = this.mood === 'lofi' ? 'sine' : this.mood === 'cinematic' ? 'sawtooth' : 'triangle';
+                    osc.frequency.setValueAtTime(freq, this.audioCtx.currentTime);
+
+                    gain.gain.setValueAtTime(0.01, this.audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.15 * this.volume, this.audioCtx.currentTime + 0.05);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + 0.4);
+
+                    osc.connect(gain);
+                    gain.connect(this.audioCtx.destination);
+                    gain.connect(this.destination);
+
+                    osc.start();
+                    osc.stop(this.audioCtx.currentTime + 0.45);
+
+                    if (step % 2 === 0) {
+                        const bassOsc = this.audioCtx.createOscillator();
+                        const bassGain = this.audioCtx.createGain();
+                        bassOsc.type = 'sine';
+                        bassOsc.frequency.setValueAtTime(freq / 2, this.audioCtx.currentTime);
+
+                        bassGain.gain.setValueAtTime(0.12 * this.volume, this.audioCtx.currentTime);
+                        bassGain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + 0.35);
+
+                        bassOsc.connect(bassGain);
+                        bassGain.connect(this.audioCtx.destination);
+                        bassGain.connect(this.destination);
+
+                        bassOsc.start();
+                        bassOsc.stop(this.audioCtx.currentTime + 0.4);
+                    }
+
+                    step++;
+                }, 300);
+            }
+
+            stop() {
+                this.isPlaying = false;
+                if (this.timer) {
+                    clearInterval(this.timer);
+                    this.timer = null;
+                }
+            }
+        }
+
+        const bgmEngine = new WebAudioBGMGenerator();
+
+        function App() {
+            const [selectedRatioKey, setSelectedRatioKey] = useState('9:16');
+            const [hasMargin, setHasMargin] = useState(true); // 9:16 여백 설정 (true: 상단여백 20%, false: 여백 없게 0%)
+            const currentRatio = ASPECT_RATIOS[selectedRatioKey];
+            const motionEffects = getMotionEffects(currentRatio.width, currentRatio.height);
+
+            const [slides, setSlides] = useState(getDefaultSlides);
+            const [isPlaying, setIsPlaying] = useState(false);
+            const [currentTime, setCurrentTime] = useState(0);
+            const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+
+            // BGM States
+            const [bgmEnabled, setBgmEnabled] = useState(true);
+            const [bgmMood, setBgmMood] = useState('upbeat');
+            const [bgmVolume, setBgmVolume] = useState(0.5);
+            const [isBgmPreviewing, setIsBgmPreviewing] = useState(false);
+
+            // 상단 텍스트 레이어 States (페이퍼로지 볼드체 기본적용 & 개별 크기/간격 조절 지원)
+            const [textEnabled, setTextEnabled] = useState(true);
+            const [textLines, setTextLines] = useState([
+                { id: 1, text: '트렌디 숏폼 비디오', color: '#ffffff', size: 52, letterSpacing: 2 },
+                { id: 2, text: '스마트 모션 스튜디오', color: '#c084fc', size: 44, letterSpacing: 2 }
+            ]);
+            const [textLineHeight, setTextLineHeight] = useState(1.2);
+            const [textYOffset, setTextYOffset] = useState(10);
+
+            // Export States
+            const [isRendering, setIsRendering] = useState(false);
+            const [renderProgress, setRenderProgress] = useState(0);
+            const [renderedVideoUrl, setRenderedVideoUrl] = useState(null);
+            const [showFFmpegModal, setShowFFmpegModal] = useState(false);
+            const [toastMessage, setToastMessage] = useState(null);
+
+            const canvasRef = useRef(null);
+            const loadedImagesRef = useRef([]);
+            const animationFrameRef = useRef(null);
+            const mediaRecorderRef = useRef(null);
+            const recordedChunksRef = useRef([]);
+
+            const SLIDE_DURATION = 4;
+            const TOTAL_DURATION = Math.max(1, slides.length) * SLIDE_DURATION;
+
+            const showToast = (msg) => {
+                setToastMessage(msg);
+                setTimeout(() => setToastMessage(null), 3500);
+            };
+
+            useEffect(() => {
+                let isMounted = true;
+                const loadPromises = slides.map(slide => {
+                    return new Promise((resolve) => {
+                        const img = new Image();
+                        img.crossOrigin = "anonymous";
+                        img.onload = () => resolve(img);
+                        img.onerror = () => {
+                            const fallbackData = generateSampleImage(slide.title || 'Slide Image', '#1e293b', '#0f172a', '📷');
+                            const fallbackImg = new Image();
+                            fallbackImg.onload = () => resolve(fallbackImg);
+                            fallbackImg.src = fallbackData;
+                        };
+                        img.src = slide.url;
+                    });
+                });
+
+                Promise.all(loadPromises).then(images => {
+                    if (isMounted) {
+                        loadedImagesRef.current = images;
+                        drawCanvasFrame(currentTime);
+                    }
+                });
+
+                return () => { isMounted = false; };
+            }, [slides, selectedRatioKey]);
+
+            // Transform calculations
+            const calculateTransform = (effect, progress, canvasW, viewportH, focalPoint) => {
+                const easedP = easeInOutCubic(progress);
+                let scale = 1.0;
+                let offsetX = 0;
+                let offsetY = 0;
+                let rotateAngle = 0;
+
+                const fx = (focalPoint?.x ?? 0.5) - 0.5;
+                const fy = (focalPoint?.y ?? 0.5) - 0.5;
+
+                if (effect === 'zoomIn') {
+                    scale = 1.0 + (easedP * 0.20);
+                    offsetX = -fx * (scale - 1) * canvasW;
+                    offsetY = -fy * (scale - 1) * viewportH;
+                } else if (effect === 'zoomOut') {
+                    scale = 1.20 - (easedP * 0.20);
+                    offsetX = -fx * (scale - 1) * canvasW;
+                    offsetY = -fy * (scale - 1) * viewportH;
+                } else if (effect === 'panLeft') {
+                    scale = 1.15;
+                    offsetX = (0.5 - easedP) * (canvasW * 0.10);
+                } else if (effect === 'panRight') {
+                    scale = 1.15;
+                    offsetX = (easedP - 0.5) * (canvasW * 0.10);
+                } else if (effect === 'kenBurns') {
+                    scale = 1.05 + (easedP * 0.15);
+                    offsetX = (easedP - 0.5) * (canvasW * 0.06);
+                    offsetY = (easedP - 0.5) * (viewportH * 0.06);
+                } else if (effect === 'rotateZoom') {
+                    scale = 1.05 + (easedP * 0.12);
+                    rotateAngle = (easedP - 0.5) * 0.03;
+                }
+
+                return { scale, offsetX, offsetY, rotateAngle };
+            };
+
+            const drawImageCover = (ctx, img, canvasW, canvasH, topMarginRatio, transform, alpha = 1.0) => {
+                if (!img || !img.complete) return;
+
+                ctx.save();
+                ctx.filter = 'none';
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+                ctx.imageSmoothingEnabled = true;
+                ctx.imageSmoothingQuality = 'high';
+
+                const topMarginHeight = canvasH * topMarginRatio;
+                const viewportHeight = canvasH - topMarginHeight;
+
+                ctx.beginPath();
+                ctx.rect(0, topMarginHeight, canvasW, viewportHeight);
+                ctx.clip();
+
+                const centerX = canvasW / 2;
+                const centerY = topMarginHeight + (viewportHeight / 2);
+
+                ctx.translate(centerX, centerY);
+                if (transform.rotateAngle) {
+                    ctx.rotate(transform.rotateAngle);
+                }
+                ctx.scale(transform.scale, transform.scale);
+                ctx.translate(transform.offsetX, transform.offsetY);
+
+                const imgRatio = img.width / img.height;
+                const vpRatio = canvasW / viewportHeight;
+                let drawW, drawH;
+
+                if (imgRatio > vpRatio) {
+                    drawH = viewportHeight;
+                    drawW = viewportHeight * imgRatio;
+                } else {
+                    drawW = canvasW;
+                    drawH = canvasW / imgRatio;
+                }
+
+                ctx.drawImage(img, -drawW / 2, -drawH / 2, drawW, drawH);
+                ctx.restore();
+            };
+
+            const drawCanvasFrame = useCallback((timeSec) => {
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                ctx.filter = 'none';
+                const images = loadedImagesRef.current;
+
+                const width = currentRatio.width;
+                const height = currentRatio.height;
+                const topMarginRatio = (selectedRatioKey === '9:16' && hasMargin) ? 0.2 : 0.0;
+
+                canvas.width = width;
+                canvas.height = height;
+
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(0, 0, width, height);
+
+                if (!images || images.length === 0) return;
+
+                let slideIdx = Math.floor(timeSec / SLIDE_DURATION);
+                if (slideIdx >= slides.length) slideIdx = slides.length - 1;
+                if (slideIdx < 0) slideIdx = 0;
+                setActiveSlideIndex(slideIdx);
+
+                const currentSlide = slides[slideIdx];
+                const img = images[slideIdx];
+
+                if (!img || !img.complete) return;
+
+                const slideTime = timeSec % SLIDE_DURATION;
+                const progress = slideTime / SLIDE_DURATION;
+                const viewportH = height * (1 - topMarginRatio);
+
+                const mainTransform = calculateTransform(currentSlide.effect, progress, width, viewportH, currentSlide.focalPoint);
+                const FADE_WINDOW = 0.8;
+
+                drawImageCover(ctx, img, width, height, topMarginRatio, mainTransform, 1.0);
+
+                if (slideTime > (SLIDE_DURATION - FADE_WINDOW) && slideIdx < slides.length - 1) {
+                    const rawFadeProgress = (slideTime - (SLIDE_DURATION - FADE_WINDOW)) / FADE_WINDOW;
+                    const fadeAlpha = smoothstep(rawFadeProgress);
+
+                    const nextSlide = slides[slideIdx + 1];
+                    const nextImg = images[slideIdx + 1];
+
+                    if (nextImg && nextImg.complete) {
+                        const nextTransform = calculateTransform(nextSlide.effect, rawFadeProgress * 0.05, width, viewportH, nextSlide.focalPoint);
+                        drawImageCover(ctx, nextImg, width, height, nextTransform, fadeAlpha);
+                    }
+                }
+
+                // Render Top Black Margin
+                if (topMarginRatio > 0) {
+                    const topMarginH = height * topMarginRatio;
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(0, 0, width, topMarginH);
+                }
+
+                // Render Top Text Layer with Paperlogy Bold
+                if (textEnabled && textLines.length > 0) {
+                    ctx.save();
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+
+                    const lineHeights = textLines.map(l => (l.size || 52) * textLineHeight);
+                    const totalTextBlockH = lineHeights.reduce((a, b) => a + b, 0);
+
+                    let currentY = 0;
+                    if (selectedRatioKey === '9:16' && hasMargin) {
+                        const topMarginPixelH = height * 0.20;
+                        currentY = (topMarginPixelH / 2) - (totalTextBlockH / 2);
+                    } else {
+                        currentY = height * (textYOffset / 100);
+                    }
+
+                    textLines.forEach((lineObj, lineIdx) => {
+                        if (!lineObj.text) return;
+                        const lSize = lineObj.size || 52;
+                        const lSpacing = lineObj.letterSpacing ?? 2;
+                        const lHeight = lSize * textLineHeight;
+
+                        ctx.font = `700 ${lSize}px 'Paperlogy', sans-serif`;
+                        if ('letterSpacing' in ctx) {
+                            ctx.letterSpacing = `${lSpacing}px`;
+                        }
+
+                        ctx.fillStyle = lineObj.color || '#ffffff';
+                        ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+                        ctx.shadowBlur = 8;
+                        ctx.shadowOffsetX = 2;
+                        ctx.shadowOffsetY = 2;
+
+                        const lineCenterY = currentY + (lHeight / 2);
+                        ctx.fillText(lineObj.text, width / 2, lineCenterY);
+
+                        currentY += lHeight;
+                    });
+
+                    ctx.restore();
+                }
+
+            }, [slides, SLIDE_DURATION, selectedRatioKey, hasMargin, textEnabled, textLines, textLineHeight, textYOffset]);
+
+            useEffect(() => {
+                let lastTime = performance.now();
+
+                const loop = (now) => {
+                    const dt = (now - lastTime) / 1000;
+                    lastTime = now;
+
+                    if (isPlaying) {
+                        setCurrentTime((prev) => {
+                            const next = prev + dt;
+                            if (next >= TOTAL_DURATION) {
+                                return 0;
+                            }
+                            return next;
+                        });
+                    }
+                    animationFrameRef.current = requestAnimationFrame(loop);
+                };
+
+                animationFrameRef.current = requestAnimationFrame(loop);
+                return () => cancelAnimationFrame(animationFrameRef.current);
+            }, [isPlaying, TOTAL_DURATION]);
+
+            useEffect(() => {
+                drawCanvasFrame(currentTime);
+            }, [currentTime, drawCanvasFrame]);
+
+            // Reset Function
+            const handleResetAll = () => {
+                setIsPlaying(false);
+                setCurrentTime(0);
+                setSelectedRatioKey('9:16');
+                setHasMargin(true);
+                setSlides(getDefaultSlides());
+                setTextEnabled(true);
+                setTextLines([
+                    { id: 1, text: '트렌디 숏폼 비디오', color: '#ffffff', size: 52, letterSpacing: 2 },
+                    { id: 2, text: '스마트 모션 스튜디오', color: '#c084fc', size: 44, letterSpacing: 2 }
+                ]);
+                setTextLineHeight(1.2);
+                setBgmEnabled(true);
+                setBgmMood('upbeat');
+                setBgmVolume(0.5);
+                setRenderedVideoUrl(null);
+                showToast('🔄 모든 설정이 초기화되었습니다.');
+            };
+
+            const handleBatchFileUpload = (e) => {
+                const files = Array.from(e.target.files || []);
+                if (files.length === 0) return;
+
+                const imageFiles = files.filter(f => f.type.startsWith('image/'));
+                if (imageFiles.length === 0) {
+                    showToast('⚠️ 이미지 파일만 선택해주세요.');
+                    return;
+                }
+
+                const loadPromises = imageFiles.map((file, idx) => {
+                    return new Promise((resolve) => {
+                        const reader = new FileReader();
+                        reader.onload = (ev) => {
+                            resolve({
+                                id: 'slide_' + Date.now() + '_' + idx + '_' + Math.random(),
+                                url: ev.target.result,
+                                title: file.name,
+                                effect: ['zoomIn', 'zoomOut', 'panLeft', 'panRight', 'kenBurns', 'rotateZoom'][idx % 6],
+                                focalPoint: { x: 0.5, y: 0.48 }
+                            });
+                        };
+                        reader.readAsDataURL(file);
+                    });
+                });
+
+                Promise.all(loadPromises).then(newUploadedSlides => {
+                    setSlides(newUploadedSlides);
+                    setCurrentTime(0);
+                    showToast(`✅ ${newUploadedSlides.length}장의 이미지가 업로드되었습니다.`);
+                });
+            };
+
+            const handleSingleFileUpload = (slideIndex, file) => {
+                if (!file || !file.type.startsWith('image/')) return;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const updated = [...slides];
+                    updated[slideIndex] = {
+                        ...updated[slideIndex],
+                        url: e.target.result,
+                        title: file.name
+                    };
+                    setSlides(updated);
+                    showToast(`✅ 이미지 ${slideIndex + 1} 변경 완료`);
+                };
+                reader.readAsDataURL(file);
+            };
+
+            const handleAddSlide = () => {
+                const sample = INITIAL_SAMPLE_IMAGES[slides.length % INITIAL_SAMPLE_IMAGES.length];
+                const newSlide = {
+                    id: 'slide_' + Date.now() + '_' + slides.length,
+                    url: generateSampleImage(`새 슬라이드 ${slides.length + 1}`, sample.color1, sample.color2, '📷'),
+                    title: `슬라이드 ${slides.length + 1}`,
+                    effect: 'zoomIn',
+                    focalPoint: { x: 0.5, y: 0.48 }
+                };
+                setSlides([...slides, newSlide]);
+                showToast(`➕ 슬라이드가 추가되었습니다. (총 ${slides.length + 1}장)`);
+            };
+
+            const handleDeleteSlide = (idx) => {
+                if (slides.length <= 1) {
+                    showToast('⚠️ 최소 1장 이상의 슬라이드가 필요합니다.');
+                    return;
+                }
+                const updated = slides.filter((_, i) => i !== idx);
+                setSlides(updated);
+                showToast(`🗑️ 슬라이드 ${idx + 1} 삭제 완료`);
+            };
+
+            const toggleBgmPreview = () => {
+                if (isBgmPreviewing) {
+                    bgmEngine.stop();
+                    setIsBgmPreviewing(false);
+                } else {
+                    bgmEngine.setMood(bgmMood);
+                    bgmEngine.setVolume(bgmVolume);
+                    bgmEngine.start();
+                    setIsBgmPreviewing(true);
+                }
+            };
+
+            useEffect(() => {
+                bgmEngine.setMood(bgmMood);
+                bgmEngine.setVolume(bgmVolume);
+            }, [bgmMood, bgmVolume]);
+
+            const handleExportMP4 = async () => {
+                setIsPlaying(false);
+                setCurrentTime(0);
+                setIsRendering(true);
+                setRenderProgress(0);
+
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+
+                if (bgmEnabled) {
+                    bgmEngine.setMood(bgmMood);
+                    bgmEngine.setVolume(bgmVolume);
+                    bgmEngine.start();
+                }
+
+                const canvasStream = canvas.captureStream(30);
+                let combinedStream = canvasStream;
+
+                if (bgmEnabled && bgmEngine.destination) {
+                    const audioTrack = bgmEngine.destination.stream.getAudioTracks()[0];
+                    if (audioTrack) {
+                        combinedStream = new MediaStream([
+                            ...canvasStream.getVideoTracks(),
+                            audioTrack
+                        ]);
+                    }
+                }
+
+                recordedChunksRef.current = [];
+
+                let options = { mimeType: 'video/mp4;codecs=avc1,mp4a.40.2' };
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                    options = { mimeType: 'video/mp4' };
+                }
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                    options = { mimeType: 'video/webm;codecs=vp9' };
+                }
+
+                try {
+                    const recorder = new MediaRecorder(combinedStream, options);
+                    mediaRecorderRef.current = recorder;
+
+                    recorder.ondataavailable = (e) => {
+                        if (e.data && e.data.size > 0) {
+                            recordedChunksRef.current.push(e.data);
+                        }
+                    };
+
+                    recorder.onstop = () => {
+                        if (bgmEnabled) bgmEngine.stop();
+                        const blob = new Blob(recordedChunksRef.current, { type: options.mimeType.includes('mp4') ? 'video/mp4' : 'video/webm' });
+                        const url = URL.createObjectURL(blob);
+                        setRenderedVideoUrl(url);
+                        setIsRendering(false);
+                        showToast(`🎉 MP4 동영상이 성공적으로 생성되었습니다!`);
+                    };
+
+                    recorder.start(100);
+
+                    const fps = 30;
+                    const totalFrames = TOTAL_DURATION * fps;
+                    let currentFrame = 0;
+
+                    const renderInterval = setInterval(() => {
+                        currentFrame++;
+                        const frameTime = currentFrame / fps;
+                        setCurrentTime(frameTime);
+                        drawCanvasFrame(frameTime);
+                        setRenderProgress(Math.min(100, Math.round((currentFrame / totalFrames) * 100)));
+
+                        if (currentFrame >= totalFrames) {
+                            clearInterval(renderInterval);
+                            setTimeout(() => {
+                                recorder.stop();
+                            }, 300);
+                        }
+                    }, 1000 / fps);
+
+                } catch (err) {
+                    console.error("Export Error:", err);
+                    if (bgmEnabled) bgmEngine.stop();
+                    setIsRendering(false);
+                    showToast('❌ 동영상 생성 중 오류가 발생했습니다.');
+                }
+            };
+
+            const generateFFmpegCommand = () => {
+                const w = currentRatio.width;
+                const h = currentRatio.height;
+                const topMarginRatio = (selectedRatioKey === '9:16' && hasMargin) ? 0.2 : 0.0;
+                const vpH = Math.round(h * (1 - topMarginRatio));
+
+                let cmd = `# [FFmpeg ${slides.length}개 이미지 숏폼 MP4 비디오 합성 스크립트]\n`;
+                slides.forEach((_, idx) => {
+                    cmd += `ffmpeg -loop 1 -t 4 -i image_${idx + 1}.jpg \\\n`;
+                });
+
+                if (bgmEnabled) {
+                    cmd += `-i bgm_audio.mp3 \\\n`;
+                }
+
+                cmd += `-filter_complex "\\\n`;
+                slides.forEach((slide, idx) => {
+                    const eff = motionEffects.find(m => m.id === slide.effect)?.ffmpeg || `zoompan=z='1.1':d=120:s=${w}x${vpH}:fps=30`;
+                    if (topMarginRatio > 0) {
+                        cmd += `[${idx}:v]${eff},pad=${w}:${h}:0:${Math.round(h * topMarginRatio)}:black,settb=AVTB[v${idx}]; \\\n`;
+                    } else {
+                        cmd += `[${idx}:v]${eff},settb=AVTB[v${idx}]; \\\n`;
+                    }
+                });
+
+                let lastLabel = 'v0';
+                for (let i = 0; i < slides.length - 1; i++) {
+                    const nextLabel = i === slides.length - 2 ? 'v_out' : `x${i}`;
+                    const offset = (i + 1) * 3.2;
+                    cmd += `[${lastLabel}][v${i + 1}]xfade=transition=fade:duration=0.8:offset=${offset.toFixed(1)}[${nextLabel}]; \\\n`;
+                    lastLabel = nextLabel;
+                }
+
+                cmd += `" -map "[v_out]" ${bgmEnabled ? `-map ${slides.length}:a -c:a aac -shortest` : ''} -c:v libx264 -pix_fmt yuv420p -r 30 output_${selectedRatioKey.replace(':', '_')}.mp4`;
+                return cmd;
+            };
+
+            return (
+                <div className="flex-1 flex flex-col max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+                    
+                    {/* Header */}
+                    <header className={cx(glassCardStyle, "rounded-2xl p-5 sm:p-6 flex flex-col md:flex-row items-center justify-between gap-4 border-l-4 border-l-purple-500")}>
+                        <div className="flex items-center space-x-4">
+                            <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-purple-600 via-pink-500 to-red-500 flex items-center justify-center text-2xl shadow-lg shadow-purple-500/30">
+                                🎬
+                            </div>
+                            <div>
+                                <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
+                                    FFmpeg & Emotion <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-red-400">Motion Generator</span>
+                                </h1>
+                                <p className="text-xs sm:text-sm text-gray-400 mt-0.5">
+                                    N장의 이미지 모션, 상단 텍스트 레이어, BGM이 통합된 숏폼 MP4 제작
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2.5 w-full md:w-auto justify-end flex-wrap">
+                            <button 
+                                onClick={handleResetAll}
+                                className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-gray-300 text-xs sm:text-sm font-semibold border border-slate-700 transition flex items-center gap-1.5"
+                            >
+                                🔄 초기화
+                            </button>
+
+                            <button 
+                                onClick={() => setShowFFmpegModal(true)}
+                                className="px-3.5 py-2 rounded-xl bg-purple-950/60 hover:bg-purple-900/80 text-purple-200 text-xs sm:text-sm font-semibold border border-purple-500/30 transition flex items-center gap-1.5"
+                            >
+                                💻 FFmpeg Script
+                            </button>
+
+                            <button 
+                                onClick={handleExportMP4}
+                                disabled={isRendering}
+                                className={cx(gradientBtnStyle, "px-4 py-2 rounded-xl text-white text-xs sm:text-sm font-bold shadow-lg flex items-center gap-1.5 disabled:opacity-50")}
+                            >
+                                {isRendering ? '⏳ MP4 제작 중...' : '⚡ MP4 동영상 추출'}
+                            </button>
+                        </div>
+                    </header>
+
+                    {/* Aspect Ratio & Margin Toolbar */}
+                    <div className={cx(glassCardStyle, "p-4 rounded-xl flex flex-wrap items-center justify-between gap-4 border border-slate-800")}>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-purple-300 font-bold uppercase tracking-wider">비율 선택:</span>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                {Object.keys(ASPECT_RATIOS).map((key) => (
+                                    <button
+                                        key={key}
+                                        onClick={() => {
+                                            setSelectedRatioKey(key);
+                                            showToast(`📐 화면 비율이 ${key} 로 변경되었습니다.`);
+                                        }}
+                                        className={cx(
+                                            "px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border",
+                                            selectedRatioKey === key
+                                                ? "bg-purple-600 text-white border-purple-400 shadow-md shadow-purple-500/30"
+                                                : "bg-slate-900 text-gray-400 border-slate-700 hover:bg-slate-800 hover:text-gray-200"
+                                        )}
+                                    >
+                                        {ASPECT_RATIOS[key].label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Restored 9:16 Margin Toggle Options */}
+                        {selectedRatioKey === '9:16' && (
+                            <div className="flex items-center gap-2 bg-slate-900/80 p-1 rounded-lg border border-purple-500/30">
+                                <span className="text-[11px] text-gray-400 px-2 font-medium">9:16 여백 옵션:</span>
+                                <button
+                                    onClick={() => {
+                                        setHasMargin(true);
+                                        showToast('🔳 상단 여백 20%가 적용되었습니다.');
+                                    }}
+                                    className={cx(
+                                        "px-2.5 py-1 rounded-md text-xs font-semibold transition",
+                                        hasMargin ? "bg-purple-600 text-white" : "text-gray-400 hover:text-white"
+                                    )}
+                                >
+                                    여백 있게 (상단 20%)
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setHasMargin(false);
+                                        showToast('🖼️ 전체 화면 (여백 0%)이 적용되었습니다.');
+                                    }}
+                                    className={cx(
+                                        "px-2.5 py-1 rounded-md text-xs font-semibold transition",
+                                        !hasMargin ? "bg-purple-600 text-white" : "text-gray-400 hover:text-white"
+                                    )}
+                                >
+                                    여백 없게 (0%)
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Top Text Layer Controls (Positioned directly below Aspect Ratio Selection) */}
+                    <div className={cx(glassCardStyle, "p-4 rounded-xl border border-pink-500/30 space-y-3 bg-pink-950/10")}>
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <span className="text-lg">✍️</span>
+                                <div>
+                                    <h3 className="text-xs font-bold text-white uppercase tracking-wider">상단 텍스트 레이어</h3>
+                                    <span className="text-[10px] text-pink-400 font-semibold">(페이퍼로지 볼드체 적용)</span>
+                                </div>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input 
+                                    type="checkbox" 
+                                    checked={textEnabled} 
+                                    onChange={(e) => setTextEnabled(e.target.checked)}
+                                    className="sr-only peer" 
+                                />
+                                <div className="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-600"></div>
+                            </label>
+                        </div>
+
+                        {textEnabled && (
+                            <div className="space-y-3 pt-2 border-t border-slate-800/80">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-[11px] font-bold text-gray-300">줄간 간격:</span>
+                                        <input 
+                                            type="range" 
+                                            min="0.8" 
+                                            max="2.5" 
+                                            step="0.1"
+                                            value={textLineHeight}
+                                            onChange={(e) => setTextLineHeight(parseFloat(e.target.value))}
+                                            className="w-24 h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                                        />
+                                        <span className="font-mono text-xs text-purple-300">{textLineHeight.toFixed(1)}x</span>
+                                    </div>
+                                    <button 
+                                        onClick={() => {
+                                            setTextLines([...textLines, { id: Date.now(), text: '새로운 문구 입력', color: '#ffffff', size: 48, letterSpacing: 2 }]);
+                                        }}
+                                        className="px-2.5 py-1 rounded bg-pink-900/50 hover:bg-pink-800 text-pink-200 text-xs font-semibold border border-pink-500/30 transition"
+                                    >
+                                        ➕ 줄 추가
+                                    </button>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                                    {textLines.map((lineObj, lIdx) => (
+                                        <div key={lineObj.id} className="bg-slate-900/90 p-3 rounded-xl border border-slate-800 space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs font-bold text-pink-300">
+                                                    {lIdx + 1}번 텍스트 설정
+                                                </span>
+                                                <div className="flex items-center gap-2">
+                                                    <input 
+                                                        type="color" 
+                                                        value={lineObj.color}
+                                                        onChange={(e) => {
+                                                            const updated = [...textLines];
+                                                            updated[lIdx].color = e.target.value;
+                                                            setTextLines(updated);
+                                                        }}
+                                                        className="w-7 h-6 rounded bg-transparent cursor-pointer border border-slate-700 p-0.5"
+                                                        title="개별 글자 색상 선택"
+                                                    />
+                                                    {textLines.length > 1 && (
+                                                        <button 
+                                                            onClick={() => {
+                                                                setTextLines(textLines.filter((_, i) => i !== lIdx));
+                                                            }}
+                                                            className="p-1 text-red-400 hover:text-red-300 text-xs font-bold"
+                                                            title="줄 삭제"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <input 
+                                                type="text" 
+                                                value={lineObj.text}
+                                                onChange={(e) => {
+                                                    const updated = [...textLines];
+                                                    updated[lIdx].text = e.target.value;
+                                                    setTextLines(updated);
+                                                }}
+                                                placeholder="텍스트 입력"
+                                                className="w-full bg-slate-950 text-white text-xs px-2.5 py-1.5 rounded-lg border border-slate-700 focus:outline-none focus:border-pink-500 font-sans"
+                                            />
+
+                                            <div className="grid grid-cols-2 gap-2 pt-1">
+                                                <div>
+                                                    <div className="flex justify-between text-[10px] text-gray-300 mb-1">
+                                                        <span>글자 크기</span>
+                                                        <span className="font-mono text-purple-300">{lineObj.size || 52}px</span>
+                                                    </div>
+                                                    <input 
+                                                        type="range" 
+                                                        min="20" 
+                                                        max="110" 
+                                                        value={lineObj.size || 52}
+                                                        onChange={(e) => {
+                                                            const updated = [...textLines];
+                                                            updated[lIdx].size = parseInt(e.target.value);
+                                                            setTextLines(updated);
+                                                        }}
+                                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <div className="flex justify-between text-[10px] text-gray-300 mb-1">
+                                                        <span>글자 간격</span>
+                                                        <span className="font-mono text-purple-300">{lineObj.letterSpacing ?? 2}px</span>
+                                                    </div>
+                                                    <input 
+                                                        type="range" 
+                                                        min="-5" 
+                                                        max="30" 
+                                                        value={lineObj.letterSpacing ?? 2}
+                                                        onChange={(e) => {
+                                                            const updated = [...textLines];
+                                                            updated[lIdx].letterSpacing = parseInt(e.target.value);
+                                                            setTextLines(updated);
+                                                        }}
+                                                        className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Main Content Grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                        
+                        {/* Left Column: Image Management Controls & BGM */}
+                        <div className="lg:col-span-6 space-y-4">
+                            
+                            {/* Slide Toolbar */}
+                            <div className="flex items-center justify-between px-1 flex-wrap gap-2">
+                                <h2 className="text-base sm:text-lg font-bold text-gray-200 flex items-center gap-2">
+                                    🖼️ 슬라이드 이미지 ({slides.length}장)
+                                </h2>
+                                <div className="flex items-center gap-2">
+                                    <label className="px-3 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition cursor-pointer shadow-md shadow-purple-500/20">
+                                        📁 {slides.length}장 일괄 업로드
+                                        <input 
+                                            type="file" 
+                                            multiple 
+                                            accept="image/*" 
+                                            className="hidden" 
+                                            onChange={handleBatchFileUpload}
+                                        />
+                                    </label>
+                                    <button 
+                                        onClick={handleAddSlide}
+                                        className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-purple-300 text-xs font-bold border border-slate-700 transition"
+                                    >
+                                        ➕ 추가
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Slide Cards List */}
+                            <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+                                {slides.map((slide, idx) => (
+                                    <div 
+                                        key={slide.id} 
+                                        className={cx(
+                                            glassCardStyle, 
+                                            "p-3 rounded-xl border transition-all duration-200 flex items-center gap-3 relative group",
+                                            activeSlideIndex === idx && isPlaying 
+                                                ? "border-purple-500 bg-purple-950/20 shadow-md" 
+                                                : "border-slate-800 hover:border-slate-700"
+                                        )}
+                                    >
+                                        <div className="flex flex-col items-center justify-center gap-1">
+                                            <span className="w-5 h-5 rounded-full bg-slate-800 text-purple-400 font-bold text-[11px] flex items-center justify-center border border-purple-500/30">
+                                                {idx + 1}
+                                            </span>
+                                        </div>
+
+                                        <div className="relative group/img w-14 h-20 rounded-lg overflow-hidden bg-slate-900 border border-slate-700 shrink-0">
+                                            <img src={slide.url} alt={slide.title} className="w-full h-full object-cover" />
+                                            <label className="absolute inset-0 bg-black/60 opacity-0 group-hover/img:opacity-100 transition flex items-center justify-center cursor-pointer text-[10px] text-white font-bold">
+                                                변경
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*" 
+                                                    className="hidden" 
+                                                    onChange={(e) => handleSingleFileUpload(idx, e.target.files[0])} 
+                                                />
+                                            </label>
+                                        </div>
+
+                                        <div className="flex-1 min-w-0 space-y-1">
+                                            <div className="flex items-center justify-between text-xs">
+                                                <span className="font-semibold text-gray-300 truncate max-w-[150px]">
+                                                    {slide.title}
+                                                </span>
+                                                <span className="text-gray-400 font-mono text-[10px]">
+                                                    {idx * 4}s ~ {(idx + 1) * 4}s
+                                                </span>
+                                            </div>
+
+                                            <select 
+                                                value={slide.effect}
+                                                onChange={(e) => {
+                                                    const updated = [...slides];
+                                                    updated[idx].effect = e.target.value;
+                                                    setSlides(updated);
+                                                }}
+                                                className="w-full bg-slate-900 text-gray-200 text-xs rounded-lg px-2 py-1 border border-slate-700 focus:outline-none focus:border-purple-500"
+                                            >
+                                                {motionEffects.map(eff => (
+                                                    <option key={eff.id} value={eff.id}>
+                                                        {eff.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <button 
+                                            onClick={() => handleDeleteSlide(idx)}
+                                            className="p-1.5 text-gray-500 hover:text-red-400 text-xs transition"
+                                            title="슬라이드 삭제"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* BGM Generator Control Card */}
+                            <div className={cx(glassCardStyle, "p-4 rounded-xl border border-purple-500/30 space-y-3 bg-purple-950/10")}>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-lg">🎵</span>
+                                        <h3 className="text-xs font-bold text-white uppercase tracking-wider">배경음악 (BGM) 생성기</h3>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={bgmEnabled} 
+                                            onChange={(e) => setBgmEnabled(e.target.checked)}
+                                            className="sr-only peer" 
+                                        />
+                                        <div className="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                                    </label>
+                                </div>
+
+                                {bgmEnabled && (
+                                    <div className="space-y-3 pt-1 border-t border-slate-800/80">
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <label className="block text-[10px] text-gray-400 mb-1">음악 분위기 (무드)</label>
+                                                <select 
+                                                    value={bgmMood}
+                                                    onChange={(e) => setBgmMood(e.target.value)}
+                                                    className="w-full bg-slate-900 text-gray-200 text-xs rounded-lg px-2 py-1.5 border border-slate-700"
+                                                >
+                                                    <option value="upbeat">🚀 Upbeat Pop (신남)</option>
+                                                    <option value="lofi">🎷 Lo-Fi Chill (차분함)</option>
+                                                    <option value="cinematic">🎬 Cinematic (감성적)</option>
+                                                    <option value="corporate">💼 Corporate (모던)</option>
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-[10px] text-gray-400 mb-1">음량 ({Math.round(bgmVolume * 100)}%)</label>
+                                                <input 
+                                                    type="range" 
+                                                    min="0" 
+                                                    max="1" 
+                                                    step="0.05"
+                                                    value={bgmVolume}
+                                                    onChange={(e) => setBgmVolume(parseFloat(e.target.value))}
+                                                    className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500 mt-2"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between pt-1">
+                                            <button 
+                                                onClick={toggleBgmPreview}
+                                                className="px-3 py-1.5 rounded-lg bg-purple-900/60 hover:bg-purple-800 text-purple-200 text-xs font-semibold border border-purple-500/30 transition flex items-center gap-1.5"
+                                            >
+                                                {isBgmPreviewing ? '⏸️ BGM 멈추기' : '▶️ BGM 미리듣기'}
+                                            </button>
+
+                                            <span className="text-[10px] text-gray-400">
+                                                💡 비디오 추출 시 오디오 스트림이 합성된 MP4 파일로 저장됩니다.
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Right Column: Dynamic Player Preview */}
+                        <div className="lg:col-span-6 space-y-4">
+                            <div className="flex items-center justify-between px-1">
+                                <h2 className="text-base sm:text-lg font-bold text-gray-200 flex items-center gap-2">
+                                    📱 라이브 플레이어
+                                </h2>
+                                <span className="text-xs font-mono text-pink-400 bg-pink-950/40 px-2.5 py-1 rounded-full border border-pink-500/30">
+                                    {currentTime.toFixed(1)}s / {TOTAL_DURATION}.0s
+                                </span>
+                            </div>
+
+                            <div className={cx(glassCardStyle, "rounded-2xl p-4 relative overflow-hidden border border-slate-800 flex flex-col items-center justify-center")}>
+                                <div className={cx("relative w-full max-w-[320px] rounded-2xl overflow-hidden bg-black shadow-2xl flex items-center justify-center border-2 border-slate-800/80", currentRatio.aspectClass, "max-h-[560px]")}>
+                                    <canvas 
+                                        ref={canvasRef} 
+                                        className="w-full h-full object-contain"
+                                    />
+
+                                    {!isPlaying && (
+                                        <button 
+                                            onClick={() => setIsPlaying(true)}
+                                            className="absolute inset-0 m-auto w-16 h-16 rounded-full bg-purple-600/80 hover:bg-purple-500 text-white flex items-center justify-center text-2xl shadow-xl transition transform hover:scale-110 backdrop-blur-sm border border-purple-300/30"
+                                        >
+                                            ▶
+                                        </button>
+                                    )}
+
+                                    {selectedRatioKey === '9:16' && hasMargin && (
+                                        <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-md text-[10px] text-purple-300 px-2 py-0.5 rounded-full font-bold border border-purple-500/30">
+                                            Top 20% Black
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Timeline Controls */}
+                                <div className="w-full mt-4 space-y-3 px-2">
+                                    <input 
+                                        type="range" 
+                                        min="0" 
+                                        max={TOTAL_DURATION} 
+                                        step="0.05"
+                                        value={currentTime}
+                                        onChange={(e) => {
+                                            setIsPlaying(false);
+                                            setCurrentTime(parseFloat(e.target.value));
+                                        }}
+                                        className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500 focus:outline-none"
+                                    />
+
+                                    <div className="flex items-center justify-between pt-1">
+                                        <div className="flex items-center gap-3">
+                                            <button 
+                                                onClick={() => setIsPlaying(!isPlaying)}
+                                                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs sm:text-sm font-semibold transition flex items-center gap-1.5"
+                                            >
+                                                {isPlaying ? '⏸️ 일시정지' : '▶️ 재생하기'}
+                                            </button>
+                                            <button 
+                                                onClick={() => {
+                                                    setIsPlaying(false);
+                                                    setCurrentTime(0);
+                                                }}
+                                                className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-gray-300 text-xs sm:text-sm transition"
+                                            >
+                                                🔄 처음으로
+                                            </button>
+                                        </div>
+
+                                        <div className="text-[11px] text-gray-400 font-mono">
+                                            {currentRatio.width}x{currentRatio.height} ({selectedRatioKey})
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Export Download Card */}
+                            {renderedVideoUrl && (
+                                <div className={cx(glassCardStyle, pulseGlowStyle, "p-4 rounded-xl border border-purple-500/40 flex flex-col sm:flex-row items-center justify-between gap-4 bg-purple-950/20 shadow-xl")}>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-lg bg-pink-500/20 text-pink-400 flex items-center justify-center text-xl shrink-0">
+                                            🎥
+                                        </div>
+                                        <div>
+                                            <h4 className="text-sm font-bold text-white">{TOTAL_DURATION}초 고화질 MP4 동영상 완성!</h4>
+                                            <p className="text-xs text-gray-300">원본 색감 그대로 제작된 MP4 비디오를 다운로드하세요.</p>
+                                        </div>
+                                    </div>
+                                    <a 
+                                        href={renderedVideoUrl} 
+                                        download={`motion_video_${selectedRatioKey.replace(':','_')}.mp4`}
+                                        className={cx(gradientBtnStyle, "px-4 py-2 rounded-xl text-white text-xs font-bold shrink-0")}
+                                    >
+                                        ⬇️ MP4 비디오 다운로드
+                                    </a>
+                                </div>
+                            )}
+
+                        </div>
+                    </div>
+
+                    {/* FFmpeg Command Modal */}
+                    {showFFmpegModal && (
+                        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+                            <div className={cx(glassCardStyle, "max-w-2xl w-full rounded-2xl p-6 space-y-4 border border-purple-500/30 max-h-[90vh] flex flex-col")}>
+                                <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                        💻 FFmpeg 명령어 스크립트 ({slides.length}개 슬라이드)
+                                    </h3>
+                                    <button 
+                                        onClick={() => setShowFFmpegModal(false)}
+                                        className="text-gray-400 hover:text-white text-xl font-bold"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+
+                                <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 overflow-x-auto flex-1 font-mono text-xs text-purple-300">
+                                    <pre className="whitespace-pre">{generateFFmpegCommand()}</pre>
+                                </div>
+
+                                <div className="flex justify-end gap-3 pt-2">
+                                    <button 
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(generateFFmpegCommand());
+                                            showToast('📋 FFmpeg 명령어가 클립보드에 복사되었습니다.');
+                                        }}
+                                        className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition"
+                                    >
+                                        📋 클립보드 복사
+                                    </button>
+                                    <button 
+                                        onClick={() => setShowFFmpegModal(false)}
+                                        className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-gray-300 text-xs transition"
+                                    >
+                                        닫기
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Render Progress Overlay */}
+                    {isRendering && (
+                        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-4">
+                            <div className={cx(glassCardStyle, "max-w-md w-full rounded-2xl p-6 text-center space-y-4 border border-purple-500/40")}>
+                                <div className="w-16 h-16 rounded-2xl bg-purple-600/30 text-purple-400 mx-auto flex items-center justify-center text-3xl animate-bounce">
+                                    ⚙️
+                                </div>
+                                <h3 className="text-lg font-bold text-white">MP4 동영상 렌더링 중</h3>
+                                <p className="text-xs text-gray-400">
+                                    {slides.length}장의 원본 이미지 모션 및 배경음악 오디오를 인코딩하고 있습니다...
+                                </p>
+
+                                <div className="space-y-1">
+                                    <div className="w-full h-3 bg-slate-900 rounded-full overflow-hidden p-0.5 border border-slate-800">
+                                        <div 
+                                            className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-150"
+                                            style={{ width: `${renderProgress}%` }}
+                                        />
+                                    </div>
+                                    <div className="flex justify-between text-xs font-mono text-gray-400">
+                                        <span>{renderProgress}%</span>
+                                        <span>{((renderProgress / 100) * TOTAL_DURATION).toFixed(1)}s / {TOTAL_DURATION}.0s</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Toast Notification */}
+                    {toastMessage && (
+                        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 border border-purple-500 text-purple-200 px-4 py-3 rounded-xl shadow-2xl text-xs font-semibold animate-fade-in flex items-center gap-2">
+                            <span>{toastMessage}</span>
+                        </div>
+                    )}
+
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

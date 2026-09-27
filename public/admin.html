@@ -105,7 +105,7 @@
     <div style="overflow-x:auto">
       <table>
         <thead>
-          <tr><th></th><th>이름</th><th>분야</th><th>ID</th><th>태그</th><th>사용방법</th><th>등록일</th><th></th></tr>
+          <tr><th></th><th>이름</th><th>상태</th><th>분야</th><th>ID</th><th>태그</th><th>사용방법</th><th>등록일</th><th></th></tr>
         </thead>
         <tbody id="rows"></tbody>
       </table>
@@ -223,6 +223,12 @@
           <input id="e_tags" type="text" />
         </div>
         <div class="field full">
+          <label class="row" style="gap:8px;cursor:pointer">
+            <input type="checkbox" id="e_hidden" style="width:auto" />
+            <span>비노출 (사이트 목록·분야·sitemap 에서 숨김)</span>
+          </label>
+        </div>
+        <div class="field full">
           <label for="e_desc">설명</label>
           <input id="e_desc" type="text" maxlength="300" />
         </div>
@@ -276,6 +282,7 @@ const E = {
   name: document.getElementById('e_name'),
   icon: document.getElementById('e_icon'),
   id: document.getElementById('e_id'),
+  hidden: document.getElementById('e_hidden'),
   tags: document.getElementById('e_tags'),
   desc: document.getElementById('e_desc'),
   howto: document.getElementById('e_howto'),
@@ -469,17 +476,18 @@ addForm.addEventListener('submit', async (e) => {
 // ---------------------------------------------------------------- app list
 
 async function loadApps() {
-  const { apps } = await api('/api/apps');
+  const { apps } = await api('/api/apps?all=1');
   appsCache = apps;
   document.getElementById('count').textContent = apps.length ? `(${apps.length})` : '(0)';
   renderChecklist();
   if (!apps.length) {
-    rows.innerHTML = '<tr><td colspan="8" class="muted">아직 앱이 없습니다.</td></tr>';
+    rows.innerHTML = '<tr><td colspan="9" class="muted">아직 앱이 없습니다.</td></tr>';
     return;
   }
   rows.innerHTML = apps.map((a) => `
-    <tr>
+    <tr${a.hidden ? ' style="opacity:.55"' : ''}>
       <td style="width:34px;font-size:20px">${esc(a.icon || '📦')}</td>
+      <td><button class="btn small" data-act="toggle" data-id="${esc(a.id)}" title="${a.hidden ? '목록에 다시 노출합니다' : '목록에서 숨깁니다'}">${a.hidden ? '비노출' : '노출중'}</button></td>
       <td><a href="/category/${esc(a.category || 'etc')}" target="_blank" rel="noopener" style="font-size:13px">${esc(categoryLabel(a.category || 'etc'))}</a></td>
       <td><a href="/${esc(a.path || `apps/${a.id}/`)}" target="_blank" rel="noopener">${esc(a.name)}</a><div class="muted" style="font-size:12.5px">${esc(a.desc || '')}</div></td>
       <td class="mono">${esc(a.id)}</td>
@@ -519,6 +527,7 @@ rows.addEventListener('click', async (e) => {
     editing = app;
     document.getElementById('editTitle').textContent = '앱 수정';
     document.getElementById('editId').textContent = `/${app.path || `apps/${app.id}/`}`;
+    E.hidden.checked = Boolean(app.hidden);
     E.category.value = app.category || 'etc';
     E.name.value = app.name || '';
     E.icon.value = app.icon || '';
@@ -532,6 +541,17 @@ rows.addEventListener('click', async (e) => {
   }
 
   try {
+    if (act === 'toggle') {
+      const next = !app.hidden;
+      await api('/api/apps/' + id, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ hidden: next }),
+      });
+      say(`"${app.name}" 을(를) ${next ? '비노출' : '노출'}로 바꿨습니다${next ? ' — 목록·분야·sitemap에서 빠집니다' : ''}`);
+      await loadApps();
+      return;
+    }
     if (act === 'trash') {
       if (!confirm(`"${app.name}" 을(를) .trash 폴더로 이동할까요?`)) return;
       await api('/api/apps/' + id, { method: 'DELETE' });
@@ -586,6 +606,7 @@ document.getElementById('editSave').addEventListener('click', async () => {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        hidden: E.hidden.checked,
         category: E.category.value,
         name: E.name.value,
         icon: E.icon.value,
@@ -741,17 +762,19 @@ function renderChecklist() {
   const domain = String(siteData.domain || '');
   const email = String(siteData.email || '');
   const client = String((siteData.adsense && siteData.adsense.client) || '');
-  const withDesc = apps.filter((a) => (a.desc || '').length >= 20).length;
-  const withHowto = apps.filter((a) => (a.howto || '').length >= 20).length;
+  const visible = apps.filter((a) => !a.hidden);
+  const hiddenCount = apps.length - visible.length;
+  const withDesc = visible.filter((a) => (a.desc || '').length >= 20).length;
+  const withHowto = visible.filter((a) => (a.howto || '').length >= 20).length;
 
   const rows = [
     ['도메인 연결 (https, localhost 아님)', /^https:\/\//.test(domain) && !/localhost|127\.0\.0\.1/.test(domain), 'AdSense 심사는 실제 도메인에서만 가능합니다. 도메인을 연결하고 사이트 설정에 입력하세요.'],
     ['문의 이메일 입력', /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email), '개인정보처리방침·문의 페이지에 표시됩니다. 심사 시 필수 항목입니다.'],
     ['운영자 이름 입력', Boolean(siteData.owner && siteData.owner !== '운영자'), '푸터와 정책 페이지에 표시됩니다.'],
     ['AdSense 게시자 ID 입력', /^ca-pub-\d{10,}$/.test(client), 'AdSense에서 사이트를 추가하고 받은 ca-pub-… 값을 넣으면 모든 페이지에 광고 스크립트가 삽입됩니다.'],
-    ['앱 5개 이상 등록', apps.length >= 5, `현재 ${apps.length}개. 앱(콘텐츠)이 너무 적으면 "가치가 낮은 콘텐츠"로 거절될 수 있습니다.`],
-    ['모든 앱에 설명 등록', apps.length > 0 && withDesc === apps.length, `${withDesc}/${apps.length}개 완료. 설명이 없으면 페이지가 빈약해 보입니다.`],
-    ['모든 앱에 사용법 등록', apps.length > 0 && withHowto === apps.length, `${withHowto}/${apps.length}개 완료. 사용법은 심사에서 "유용한 콘텐츠"로 평가됩니다.`],
+    ['앱 5개 이상 등록', visible.length >= 5, `노출 ${visible.length}개${hiddenCount ? ` (비노출 ${hiddenCount}개 제외)` : ''}. 앱(콘텐츠)이 너무 적으면 "가치가 낮은 콘텐츠"로 거절될 수 있습니다.`],
+    ['모든 앱에 설명 등록', visible.length > 0 && withDesc === visible.length, `${withDesc}/${visible.length}개 완료. 설명이 없으면 페이지가 빈약해 보입니다.`],
+    ['모든 앱에 사용법 등록', visible.length > 0 && withHowto === visible.length, `${withHowto}/${visible.length}개 완료. 사용법은 심사에서 "유용한 콘텐츠"로 평가됩니다.`],
     ['필수 페이지 준비 (소개·문의·개인정보·약관)', true, '자동으로 제공됩니다. 실제 이메일만 채우면 됩니다.'],
     ['robots.txt · sitemap.xml 제공', true, '/robots.txt, /sitemap.xml 로 접근 가능합니다. AdSense 승인 후 Search Console에 제출하세요.'],
     ['관리자 비밀번호 설정', Boolean(siteSecurity && siteSecurity.passwordSet), siteSecurity && siteSecurity.passwordSet ? '비밀번호 로그인을 쓸 수 있습니다.' : '위의 “관리자 비밀번호”에서 새 비밀번호를 설정하세요.'],

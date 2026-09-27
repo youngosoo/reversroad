@@ -82,6 +82,19 @@ const STARTER_HTML = (name) => `<!doctype html>
 </html>
 `;
 
+/** 공개 목록에 보일 앱만 (관리자에서 '비노출'로 둔 앱은 제외) */
+function filterVisible(apps) {
+  return (apps || []).filter((app) => !app.hidden && !app.trashed);
+}
+
+/** 비노출 상태를 반영해 메타를 갱신합니다 */
+function normalizeHidden(value, fallback = false) {
+  if (value === undefined || value === null || value === '') return Boolean(fallback);
+  if (typeof value === 'boolean') return value;
+  const text = String(value).trim().toLowerCase();
+  return text === 'true' || text === '1' || text === 'on' || text === 'yes';
+}
+
 module.exports = {
   STARTER_HTML,
   safeAnalyze,
@@ -89,5 +102,7 @@ module.exports = {
   isValidSlug,
   parseTags,
   normalizeMeta,
+  filterVisible,
+  normalizeHidden,
   HttpError,
 };

@@ -7,7 +7,7 @@ const meta = require('../src/meta');
 const { extractZipFiles, createZip } = require('./zip');
 const store = require('./store');
 
-const { HttpError, isValidSlug, normalizeMeta, STARTER_HTML } = meta;
+const { HttpError, isValidSlug, normalizeMeta, normalizeHidden, STARTER_HTML } = meta;
 const MAX_UPLOAD = 20 * 1024 * 1024;
 
 function looksLikeZip(buffer) {
@@ -71,6 +71,7 @@ async function addApp(env, { slug, name, desc, icon, tags, howto, category, file
   const app = {
     id: finalSlug,
     ...meta,
+    hidden: normalizeHidden(file && file.hidden, false),
     ...(online ? { online: true } : {}),
     path: `apps/${finalSlug}/`,
     entry: 'index.html',
@@ -96,7 +97,8 @@ async function updateApp(env, id, patch) {
     howto: patch.howto ?? app.howto,
     category: patch.category || app.category,
   });
-  Object.assign(app, meta, { tips: app.tips, updatedAt: new Date().toISOString() });
+  const hidden = normalizeHidden(patch.hidden, app.hidden);
+  Object.assign(app, meta, { hidden, updatedAt: new Date().toISOString() });
   await store.writeApps(env, apps);
   await store.rebuild(env);
   return app;

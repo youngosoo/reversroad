@@ -14,7 +14,7 @@ const MANIFEST = path.join(ROOT, 'data', 'apps.json');
 
 const meta = require('./meta');
 
-const { HOWTO_MAX, isValidSlug, parseTags, normalizeMeta, HttpError, safeAnalyze } = meta;
+const { HOWTO_MAX, isValidSlug, parseTags, normalizeMeta, normalizeHidden, HttpError, safeAnalyze } = meta;
 
 async function ensureDirs() {
   await fsp.mkdir(APPS_DIR, { recursive: true });
@@ -203,6 +203,7 @@ async function addApp(input) {
     const app = {
       id: finalSlug,
       ...meta,
+      hidden: normalizeHidden(input.hidden, false),
       ...(online ? { online: true } : {}),
       path: `apps/${finalSlug}/`,
       entry: 'index.html',
@@ -229,7 +230,8 @@ async function updateApp(id, patch) {
     howto: patch.howto ?? app.howto,
     category: patch.category || app.category, // 빈 값이면 기존 분야 유지
   });
-  Object.assign(app, meta, { updatedAt: new Date().toISOString() });
+  const hidden = normalizeHidden(patch.hidden, app.hidden);
+  Object.assign(app, meta, { hidden, updatedAt: new Date().toISOString() });
   await writeApps(apps);
   return app;
 }

@@ -90,8 +90,10 @@ async function handleApi(request, env, url) {
 
   /* -------------------------------------------- 공개 API */
   if (path === '/api/apps' && method === 'GET') {
-    const apps = await store.readApps(env);
-    return json({ apps: apps.filter((a) => !a.trashed) });
+    const all = (await store.readApps(env)).filter((a) => !a.trashed);
+    const viewer = await auth.currentUser(request, env);
+    const wantsAll = url.searchParams.get('all') === '1' && Boolean(viewer);
+    return json({ apps: wantsAll ? all : all.filter((a) => !a.hidden) });
   }
 
   if (path === '/api/categories' && method === 'GET') {
@@ -196,6 +198,10 @@ async function handleApi(request, env, url) {
     if (!action && method === 'GET') {
       const app = await store.getApp(env, id);
       if (!app) throw new HttpError(404, '앱을 찾을 수 없습니다');
+      if (app.hidden) {
+        const viewer = await auth.currentUser(request, env);
+        if (!viewer) throw new HttpError(404, '앱을 찾을 수 없습니다');
+      }
       return json({ app });
     }
     if (!action && method === 'PATCH') {

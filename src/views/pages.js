@@ -365,6 +365,7 @@ function appDetailPage({ site, app, apps }) {
           ${app.tags?.length ? `<div class="tags">${app.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
         </div>
       </header>
+      ${app.hidden ? '<p class="notice info" style="display:block">이 앱은 <b>비노출</b> 상태입니다. 목록·분야·sitemap에 나타나지 않으며, 주소를 아는 사람만 열 수 있습니다.</p>' : ''}
       <p class="lead">${esc(app.desc || '설명이 아직 등록되지 않았습니다.')}</p>
       <div class="actions">
         <a class="btn primary" href="${attr(openHref)}" target="_blank" rel="noopener">앱 열기</a>
@@ -457,6 +458,7 @@ function appDetailPage({ site, app, apps }) {
     path: `/app/${app.id}`,
     body,
     nav: 'apps',
+    noIndex: Boolean(app.hidden), // 비노출 앱은 검색엔진에 싣지 않습니다
     jsonLd: [
       crumbs.jsonLd,
       {

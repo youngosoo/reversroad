@@ -12,29 +12,32 @@ const pages = require('./views/pages');
 const seo = require('./seo');
 const { GUIDES } = require('./content/guides');
 const { CATEGORIES } = require('./categories');
+const { filterVisible } = require('./meta');
 
 function renderSite({ site, apps }) {
   const out = {};
+  // 목록·분야·sitemap 에는 '노출' 앱만 넣고, 상세 페이지는 비노출 앱도 만듭니다(검색엔진 noindex).
+  const listed = filterVisible(apps);
 
-  out['index.html'] = pages.homePage({ site, apps, guides: GUIDES });
-  out['apps/index.html'] = pages.appsPage({ site, apps });
+  out['index.html'] = pages.homePage({ site, apps: listed, guides: GUIDES });
+  out['apps/index.html'] = pages.appsPage({ site, apps: listed });
   for (const app of apps) {
     out[`app/${app.id}/index.html`] = pages.appDetailPage({ site, app, apps });
   }
 
-  out['categories/index.html'] = pages.categoriesPage({ site, apps });
-  const usedCategories = new Set(apps.map((a) => a.category).filter(Boolean));
+  out['categories/index.html'] = pages.categoriesPage({ site, apps: listed });
+  const usedCategories = new Set(listed.map((a) => a.category).filter(Boolean));
   for (const category of CATEGORIES) {
     if (!usedCategories.has(category.slug)) continue;
-    out[`category/${category.slug}/index.html`] = pages.categoryPage({ site, apps, category });
+    out[`category/${category.slug}/index.html`] = pages.categoryPage({ site, apps: listed, category });
   }
 
-  out['guide/index.html'] = pages.guideIndexPage({ site, apps, guides: GUIDES });
+  out['guide/index.html'] = pages.guideIndexPage({ site, apps: listed, guides: GUIDES });
   for (const guide of GUIDES) {
-    out[`guide/${guide.slug}/index.html`] = pages.guideDetailPage({ site, guide, apps });
+    out[`guide/${guide.slug}/index.html`] = pages.guideDetailPage({ site, guide, apps: listed });
   }
 
-  out['about/index.html'] = pages.aboutPage({ site, apps, guides: GUIDES });
+  out['about/index.html'] = pages.aboutPage({ site, apps: listed, guides: GUIDES });
   out['contact/index.html'] = pages.contactPage({ site });
   out['privacy/index.html'] = pages.policyPage({ site, doc: pages.privacyPolicy(site) });
   out['terms/index.html'] = pages.policyPage({ site, doc: pages.termsOfService(site) });
@@ -42,7 +45,7 @@ function renderSite({ site, apps }) {
   out['404.html'] = pages.notFoundPage({ site });
 
   out['robots.txt'] = seo.robots({ site });
-  out['sitemap.xml'] = seo.sitemap({ site, apps });
+  out['sitemap.xml'] = seo.sitemap({ site, apps: listed });
   const ads = seo.adsTxt({ site });
   if (ads) out['ads.txt'] = ads;
 

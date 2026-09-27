@@ -10,6 +10,7 @@ const multer = require('multer');
 const AdmZip = require('adm-zip');
 
 const manifest = require('./src/manifest');
+const meta = require('./src/meta');
 const analyze = require('./src/analyze');
 const auth = require('./src/auth');
 const siteStore = require('./src/site');
@@ -57,8 +58,10 @@ const upload = multer({
 
 app.get('/api/apps', async (req, res, next) => {
   try {
-    const apps = await manifest.readApps();
-    res.json({ apps });
+    const all = await manifest.readApps();
+    // 관리자(?all=1, 로그인 필요)만 비노출 앱까지 봅니다
+    const wantsAll = req.query.all === '1' && req.session && req.session.user;
+    res.json({ apps: wantsAll ? all : meta.filterVisible(all) });
   } catch (err) {
     next(err);
   }
@@ -67,7 +70,8 @@ app.get('/api/apps', async (req, res, next) => {
 app.get('/api/apps/:id', async (req, res, next) => {
   try {
     const found = await manifest.getApp(req.params.id);
-    if (!found) throw new HttpError(404, 'app not found');
+    const viewer = req.session && req.session.user;
+    if (!found || (found.hidden && !viewer)) throw new HttpError(404, 'app not found');
     res.json({ app: found });
   } catch (err) {
     next(err);
@@ -235,7 +239,7 @@ app.get('/robots.txt', async (req, res, next) => {
 app.get('/sitemap.xml', async (req, res, next) => {
   try {
     const site = await currentSite(req);
-    const apps = await manifest.readApps();
+    const apps = meta.filterVisible(await manifest.readApps());
     res.type('application/xml').send(seo.sitemap({ site, apps }));
   } catch (err) {
     next(err);
@@ -257,7 +261,7 @@ app.get('/ads.txt', async (req, res, next) => {
 app.get('/', async (req, res, next) => {
   try {
     const site = await currentSite(req);
-    const apps = await manifest.readApps();
+    const apps = meta.filterVisible(await manifest.readApps());
     res.send(pages.homePage({ site, apps, guides: GUIDES }));
   } catch (err) {
     next(err);
@@ -267,7 +271,7 @@ app.get('/', async (req, res, next) => {
 app.get('/apps', async (req, res, next) => {
   try {
     const site = await currentSite(req);
-    const apps = await manifest.readApps();
+    const apps = meta.filterVisible(await manifest.readApps());
     res.send(pages.appsPage({ site, apps }));
   } catch (err) {
     next(err);
@@ -277,7 +281,7 @@ app.get('/apps', async (req, res, next) => {
 app.get('/categories', async (req, res, next) => {
   try {
     const site = await currentSite(req);
-    const apps = await manifest.readApps();
+    const apps = meta.filterVisible(await manifest.readApps());
     res.send(pages.categoriesPage({ site, apps }));
   } catch (err) {
     next(err);
@@ -290,7 +294,7 @@ app.get('/category/:slug', async (req, res, next) => {
     const category = categories.getCategory(req.params.slug);
     if (!category) return res.status(404).send(pages.notFoundPage({ site }));
     const apps = await manifest.readApps();
-    const hasApps = apps.some((a) => (a.category || 'etc') === category.slug);
+    const hasApps = meta.filterVisible(apps).some((a) => (a.category || 'etc') === category.slug);
     if (!hasApps) return res.redirect(302, '/categories');
     res.send(pages.categoryPage({ site, apps, category }));
   } catch (err) {
@@ -300,7 +304,7 @@ app.get('/category/:slug', async (req, res, next) => {
 
 app.get('/api/categories', async (req, res, next) => {
   try {
-    const apps = await manifest.readApps();
+    const apps = meta.filterVisible(await manifest.readApps());
     const counted = pages.categoryCounts(apps);
     res.json({
       categories: categories.listCategories().map((c) => ({
@@ -328,7 +332,7 @@ app.get('/app/:id', async (req, res, next) => {
 app.get('/guide', async (req, res, next) => {
   try {
     const site = await currentSite(req);
-    const apps = await manifest.readApps();
+    const apps = meta.filterVisible(await manifest.readApps());
     res.send(pages.guideIndexPage({ site, apps, guides: GUIDES }));
   } catch (err) {
     next(err);
@@ -340,7 +344,7 @@ app.get('/guide/:slug', async (req, res, next) => {
     const site = await currentSite(req);
     const guide = findGuide(req.params.slug);
     if (!guide) return res.status(404).send(pages.notFoundPage({ site }));
-    const apps = await manifest.readApps();
+    const apps = meta.filterVisible(await manifest.readApps());
     res.send(pages.guideDetailPage({ site, guide, apps }));
   } catch (err) {
     next(err);
@@ -350,7 +354,7 @@ app.get('/guide/:slug', async (req, res, next) => {
 app.get('/about', async (req, res, next) => {
   try {
     const site = await currentSite(req);
-    const apps = await manifest.readApps();
+    const apps = meta.filterVisible(await manifest.readApps());
     res.send(pages.aboutPage({ site, apps, guides: GUIDES }));
   } catch (err) {
     next(err);

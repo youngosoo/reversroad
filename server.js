@@ -13,6 +13,7 @@ const manifest = require('./src/manifest');
 const analyze = require('./src/analyze');
 const auth = require('./src/auth');
 const siteStore = require('./src/site');
+const passwordStore = require('./src/password');
 const seo = require('./src/seo');
 const pages = require('./src/views/pages');
 const { GUIDES, findGuide } = require('./src/content/guides');
@@ -159,8 +160,47 @@ app.get('/api/apps/:id/download', auth.requireAuth, async (req, res, next) => {
 
 app.get('/api/site', async (req, res, next) => {
   try {
-    const site = await siteStore.readSite();
-    res.json({ site: siteStore.publicSite(site, `${req.protocol}://${req.get('host')}`) });
+    const raw = await siteStore.readSite();
+    const site = siteStore.publicSite(raw, `${req.protocol}://${req.get('host')}`);
+    let passwordStatus = { passwordSet: false, updatedAt: null, minLength: passwordStore.MIN_LENGTH };
+    try {
+      passwordStatus = await passwordStore.status();
+    } catch { /* 파일 문제 시 기본값 */ }
+    res.json({
+      site,
+      security: {
+        openOAuth: auth.adminLogins().includes('*'),
+        allowDevLogin: auth.allowDevLogin,
+        passwordSet: passwordStatus.passwordSet,
+        passwordFromEnv: Boolean(passwordStatus.envFallback),
+        passwordUpdatedAt: passwordStatus.updatedAt,
+        passwordMinLength: passwordStore.MIN_LENGTH,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------- 관리자 비밀번호 ----------------
+
+app.get('/api/admin/password', auth.requireAuth, async (req, res, next) => {
+  try {
+    const status = await passwordStore.status();
+    res.json({ status });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.put('/api/admin/password', auth.requireAuth, async (req, res, next) => {
+  try {
+    const { current, next: nextPassword } = req.body || {};
+    const result = await passwordStore.setPassword(nextPassword, {
+      currentPassword: current ?? null,
+      requireCurrent: true,
+    });
+    res.json({ ok: true, updatedAt: result.updatedAt });
   } catch (err) {
     next(err);
   }
@@ -322,7 +362,8 @@ app.use((err, req, res, _next) => {
   const status = err.status || (err.code === 'LIMIT_FILE_SIZE' ? 413 : 500);
   const message = err.message || 'internal error';
   if (status >= 500) console.error('[myhome]', err);
-  if (req.path.startsWith('/api/')) return res.status(status).json({ error: message });
+  const wantsJson = req.path.startsWith('/api/') || req.path.startsWith('/auth/') || req.xhr;
+  if (wantsJson) return res.status(status).json({ error: message, status });
   res.status(status).type('text/plain').send(`${status} ${message}\n\n뒤로 가서 다시 시도하세요.`);
 });
 

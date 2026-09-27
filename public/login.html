@@ -13,7 +13,20 @@
     <img class="brand-logo login-logo" src="/assets/logo.png" width="52" height="52" alt="" />
     <h1>관리자 로그인</h1>
     <p>앱을 추가하거나 삭제하려면 로그인하세요.</p>
+
+    <div id="notice" class="notice err" hidden></div>
+
+    <form id="pwForm" hidden autocomplete="on">
+      <div class="field" style="margin-bottom:12px">
+        <label for="pw">관리자 비밀번호</label>
+        <input id="pw" name="password" type="password" autocomplete="current-password" placeholder="비밀번호" />
+      </div>
+      <button class="btn primary" type="submit" id="pwBtn">로그인</button>
+    </form>
+
+    <div id="orDivider" class="divider" hidden>또는</div>
     <div id="providers"></div>
+
     <div id="dev" hidden>
       <div class="divider">개발용 로그인</div>
       <form id="devForm" class="row">
@@ -21,26 +34,71 @@
         <button class="btn" type="submit">개발 로그인</button>
       </form>
     </div>
-    <p class="muted" style="margin-top:18px"><a href="/">← 홈으로 돌아가기</a></p>
+
+    <p class="muted small" style="margin-top:16px">
+      비밀번호를 잊었다면 서버에서 <span class="mono">node tools/set-password.js</span> 를 실행해 재설정할 수 있습니다.
+    </p>
+    <p class="muted"><a href="/">← 홈으로 돌아가기</a></p>
   </div>
   <p style="text-align:center;margin-top:14px"><button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false" title="테마 전환" aria-label="테마 전환"></button></p>
 </div>
 <script>
 const next = new URLSearchParams(location.search).get('next') || '/admin.html';
 const box = document.getElementById('providers');
+const notice = document.getElementById('notice');
+const pwForm = document.getElementById('pwForm');
+const pwInput = document.getElementById('pw');
+const pwBtn = document.getElementById('pwBtn');
+
+function say(msg) {
+  notice.hidden = !msg;
+  notice.textContent = msg || '';
+}
 
 fetch('/api/site').then((r) => r.json()).then(({ site }) => {
   document.title = `로그인 · ${site.name || '사이트'}`;
 }).catch(() => {});
 
-fetch('/auth/me').then((r) => r.json()).then(({ providers, allowDevLogin, user }) => {
+fetch('/auth/me').then((r) => r.json()).then(({ providers, allowDevLogin, passwordEnabled, user }) => {
   if (user) { location.href = next; return; }
+
   const buttons = Object.entries(providers || {})
     .filter(([, p]) => p.enabled)
     .map(([key, p]) => `<a class="btn" href="/auth/${key}">${p.label}(으)로 로그인</a>`);
-  box.innerHTML = buttons.join('') ||
-    '<p class="notice err" style="display:block">설정된 로그인 제공자가 없습니다. <span class="mono">.env</span> 에 GITHUB_CLIENT_ID/SECRET 또는 GOOGLE_CLIENT_ID/SECRET 을 넣고 서버를 다시 시작하세요.</p>';
+
+  if (passwordEnabled) {
+    pwForm.hidden = false;
+    if (buttons.length) document.getElementById('orDivider').hidden = false;
+  } else if (!buttons.length) {
+    say('로그인 방법이 아직 설정되지 않았습니다. 서버에서 node tools/set-password.js 로 비밀번호를 설정하거나 .env 에 OAuth 키를 넣어 주세요.');
+  }
+
+  box.innerHTML = buttons.join('');
+  if (!pwForm.hidden) pwInput.focus();
   if (allowDevLogin) document.getElementById('dev').hidden = false;
+}).catch(() => say('로그인 상태를 확인하지 못했습니다. 새로고침해 주세요.'));
+
+pwForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const value = pwInput.value;
+  if (!value) { say('비밀번호를 입력하세요'); return; }
+  pwBtn.disabled = true;
+  say('');
+  try {
+    const res = await fetch('/auth/password', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ password: value }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `로그인에 실패했습니다 (HTTP ${res.status})`);
+    location.href = next;
+  } catch (err) {
+    say(err.message);
+    pwInput.select();
+  } finally {
+    pwBtn.disabled = false;
+  }
 });
 
 document.getElementById('devForm').addEventListener('submit', (e) => {

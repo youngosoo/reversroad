@@ -1,5 +1,7 @@
 node_modules/
 .env
+data/admin.json
+data/admin.json.tmp
 uploads/*
 !uploads/.gitkeep
 .trash/

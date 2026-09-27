@@ -9,7 +9,8 @@ myhome/
 ├─ server.js             # Express: 서버 렌더링 페이지 + REST API + OAuth 세션
 ├─ src/manifest.js       # apps.json 읽기/쓰기, 업로드(zip/html) 해제, 슬러그 검증
 ├─ src/analyze.js        # 업로드한 html/zip 을 읽어 이름·설명·태그·사용방법 생성
-├─ src/auth.js           # GitHub / Google OAuth 로그인 + 관리자 허용목록
+├─ src/auth.js           # 비밀번호·GitHub/Google OAuth 로그인 + 관리자 허용목록
+├─ src/password.js       # 관리자 비밀번호(scrypt 해시) 저장·검증
 ├─ src/site.js           # 사이트 설정(이름·운영자·이메일·도메인·AdSense ID)
 ├─ src/seo.js            # robots.txt · sitemap.xml · ads.txt 생성
 ├─ src/assets.js         # 로고 등 정적 자산 경로 결정
@@ -17,8 +18,10 @@ myhome/
 ├─ src/content/          # 안내 글(가이드)과 정책 문구
 ├─ tools/analyze-dump.js # 분석기 단독 실행 도구 (디버깅용)
 ├─ tools/render-logo.js  # logo.svg → logo.png 렌더링
+├─ tools/set-password.js # 관리자 비밀번호 설정/재설정 (서버용)
 ├─ data/apps.json        # 앱 매니페스트 (이 목록의 원본)
 ├─ data/site.json        # 사이트 설정 (관리자 화면에서 수정)
+├─ data/admin.json       # 관리자 비밀번호 해시 (git 제외)
 ├─ public/               # 관리자·로그인 화면
 │  └─ assets/            # style.css · theme.js · logo.png(원본 로고 자리) · logo.svg
 ├─ apps/<id>/index.html  # 각 웹앱 (진입점은 항상 index.html)
@@ -38,7 +41,49 @@ npm start                 # http://localhost:3000  /  관리자: /admin.html
 이 상태에서는 OAuth 키 없이 `/login.html` 의 "개발 로그인" 으로 들어갈 수 있습니다.
 **배포 전 반드시 `ALLOW_DEV_LOGIN=0`, `ADMIN_LOGINS=<본인 계정>` 으로 바꾸세요.**
 
-## 2. 로그인(OAuth) 설정
+## 2. 관리자 로그인
+
+두 가지 방법을 쓸 수 있습니다. **비밀번호 로그인**이 가장 간단하고, OAuth 는 필요할 때 추가하면 됩니다.
+
+### 2-1. 비밀번호 로그인 (기본)
+
+- 관리자 화면(/admin.html) → **관리자 비밀번호**에서 설정·변경합니다. 변경할 때는 현재 비밀번호를 한 번 더 확인합니다.
+- 평문은 어디에도 저장되지 않습니다. **scrypt 해시(+랜덤 salt)** 만 `data/admin.json` 에 남고, 이 파일은 `.gitignore` 로 제외되어 저장소에 올라가지 않습니다.
+- 서버에서 직접 재설정하거나 최초 배포 때 설정하려면:
+
+```bash
+node tools/set-password.js '새비밀번호'   # 인자를 생략하면 물어보고 입력받습니다(화면에 표시 안 됨)
+```
+
+- 로그인은 `/login.html` 의 비밀번호 입력칸에서 합니다. 잘못된 시도가 10분에 8회를 넘으면 10분간 잠깁니다(IP 기준).
+- 최초 부팅용 임시값으로만 `.env` 의 `ADMIN_PASSWORD` 를 쓸 수 있습니다. 한 번 설정한 뒤에는 비워 두세요.
+
+### 2-2. OAuth 로그인 (선택)
+
+`.env` 에 값을 채우면 `/login.html` 에 해당 버튼이 나타납니다.
+
+**GitHub** — https://github.com/settings/developers → New OAuth App
+- Homepage URL: `http://localhost:3000` (배포 시 실제 도메인)
+- Authorization callback URL: `http://localhost:3000/auth/github/callback`
+- 발급된 Client ID/Secret → `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`
+
+**Google** — https://console.cloud.google.com/apis/credentials → OAuth 클라이언트 ID(웹 애플리케이션)
+- 승인된 리디렉션 URI: `http://localhost:3000/auth/google/callback`
+- → `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+
+`ADMIN_LOGINS` 에 관리자 계정을 적습니다. GitHub 은 로그인 아이디, Google 은 이메일입니다.
+여러 명은 쉼표로 구분합니다.
+
+```
+ADMIN_LOGINS=my-github-login,me@gmail.com
+BASE_URL=https://myhome.example.com
+SESSION_SECRET=<node -e "console.log(require('crypto').randomBytes(32).toString('hex'))">
+ALLOW_DEV_LOGIN=0
+```
+
+> **주의할 두 가지** — `ADMIN_LOGINS=*` 는 *로그인한 모든 계정*을 관리자로 만들어 버립니다. 또 `ALLOW_DEV_LOGIN=1` 은 `/auth/dev-login` 으로 로그인을 건너뛰는 문입니다. 둘 다 로컬 테스트 전용이며, 관리자 화면의 "AdSense 준비 점검"이 켜져 있으면 경고합니다.
+
+## 3. 앱 추가 방법 (관리자 화면)
 
 `.env` 에 값을 채우면 `/login.html` 에 해당 버튼이 나타납니다.
 
@@ -173,6 +218,9 @@ cp ~/Downloads/my-app.html apps/my-app/index.html
 | PATCH | `/api/apps/:id` | 관리자 | 메타 수정 (JSON: name, desc, icon, tags, howto) |
 | DELETE | `/api/apps/:id` | 관리자 | 휴지통 이동 (`?permanent=1` 이면 완전 삭제) |
 | GET | `/api/apps/:id/download` | 관리자 | 앱 폴더를 zip 으로 백업 |
+| POST | `/auth/password` | 공개 | 관리자 비밀번호로 로그인 (JSON: `{ "password": "..." }`) |
+| GET | `/api/admin/password` | 관리자 | 비밀번호 설정 여부 확인 |
+| PUT | `/api/admin/password` | 관리자 | 비밀번호 변경 (JSON: `{ "current": "...", "next": "..." }`) |
 | GET | `/auth/me` | 공개 | 로그인 상태 + 사용 가능한 provider |
 | POST | `/auth/logout` | 공개 | 로그아웃 |
 
@@ -247,6 +295,7 @@ NODE_ENV=production SESSION_SECRET=... ADMIN_LOGINS=... BASE_URL=https://... npm
 - **광고 코드 자동 삽입** — 게시자 ID만 넣으면 모든 페이지 `<head>` 에 AdSense 스크립트가 들어가고, 홈·목록·상세·가이드에 광고 슬롯이 생깁니다(설정 전에는 아무것도 삽입되지 않습니다).
 - **쿠키 고지 배너** — 첫 방문 시 개인정보처리방침으로 안내합니다.
 - **라이트/다크 모드 전환 아이콘** — 헤더에 있으며 선택값이 저장됩니다.
+- **관리자 보안 점검** — 비밀번호 설정 여부, OAuth 허용목록이 `*` 로 열려 있는지, 개발용 로그인이 켜져 있는지까지 함께 확인합니다.
 
 ### 광고를 표시하는 두 가지 방법
 
@@ -259,7 +308,7 @@ NODE_ENV=production SESSION_SECRET=... ADMIN_LOGINS=... BASE_URL=https://... npm
 
 1. **도메인 연결 + HTTPS** — AdSense 심사는 `localhost` 에서 진행되지 않습니다. 도메인을 사이트에 연결하고 HTTPS 를 켜세요.
 2. **관리자 → 사이트 설정**에 값 입력: 사이트 이름(실제 이름), 운영자 이름, **문의 이메일**(실제 수신 가능한 주소), 도메인(`https://…`), 그리고 AdSense 게시자 ID(`ca-pub-…`).
-3. **앱 5개 이상 + 모든 앱에 설명·사용법** — 점검 카드에서 통과를 확인하세요(현재 7개 등록, 전부 통과 상태).
+3. **앱 5개 이상 + 모든 앱에 설명·사용법** — 점검 카드에서 통과를 확인하세요.
 4. **AdSense 가입 → 사이트 추가** — “사이트” 메뉴에서 도메인을 등록하면 게시자 ID가 나옵니다. 그 값을 2번에 넣으면 코드 삽입과 `ads.txt` 생성이 자동으로 됩니다.
 5. **Google Search Console 등록 → `/sitemap.xml` 제출** — 색인되면 심사에 유리합니다.
 6. **EEA·영국 대응** — AdSense의 “개인정보 보호 및 메시지”에서 Google 인증 CMP(동의 관리 메시지)를 켜세요. 유럽 이용자에게 맞춤 광고를 게재하려면 필수입니다.

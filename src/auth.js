@@ -2,6 +2,7 @@
 
 const crypto = require('crypto');
 const { HttpError } = require('./manifest');
+const password = require('./password');
 
 function env(name, fallback = '') {
   const v = process.env[name];
@@ -9,6 +10,33 @@ function env(name, fallback = '') {
 }
 
 const allowDevLogin = env('ALLOW_DEV_LOGIN') === '1';
+
+/* 비밀번호 로그인 시도 제한 (IP 기준, 메모리) */
+const ATTEMPT_WINDOW_MS = 10 * 60 * 1000;
+const ATTEMPT_MAX = 8;
+const attempts = new Map();
+
+function attemptState(ip) {
+  const now = Date.now();
+  const found = attempts.get(ip);
+  if (!found || now - found.first > ATTEMPT_WINDOW_MS) return { count: 0, first: now };
+  return found;
+}
+
+function noteFailure(ip) {
+  const state = attemptState(ip);
+  attempts.set(ip, { count: state.count + 1, first: state.first });
+  if (attempts.size > 500) attempts.clear();
+}
+
+function tooManyAttempts(ip) {
+  const state = attemptState(ip);
+  return state.count >= ATTEMPT_MAX;
+}
+
+function clientIp(req) {
+  return String(req.ip || req.socket?.remoteAddress || 'unknown');
+}
 
 function adminLogins() {
   return env('ADMIN_LOGINS')
@@ -86,10 +114,50 @@ async function fetchJson(url, options = {}) {
 }
 
 function mount(app) {
-  app.get('/auth/me', (req, res) => {
+  app.get('/auth/me', async (req, res) => {
     const user = (req.session && req.session.user) || null;
     const baseUrl = baseUrlOf(req);
-    res.json({ user, providers: providers(baseUrl), allowDevLogin });
+    let passwordStatus = { passwordSet: false };
+    try {
+      passwordStatus = await password.status();
+    } catch { /* 비밀번호 파일 문제 시 OAuth 만 노출 */ }
+    res.json({
+      user,
+      providers: providers(baseUrl),
+      allowDevLogin,
+      passwordEnabled: passwordStatus.passwordSet || passwordStatus.envFallback,
+      passwordFromEnv: Boolean(passwordStatus.envFallback),
+      openOAuth: adminLogins().includes('*'),
+    });
+  });
+
+  // 아이디 없이 비밀번호 하나로 로그인
+  app.post('/auth/password', async (req, res, next) => {
+    const ip = clientIp(req);
+    try {
+      if (tooManyAttempts(ip)) {
+        throw new HttpError(429, '시도가 너무 많습니다. 10분 뒤에 다시 시도하세요');
+      }
+      const value = String((req.body && req.body.password) || '');
+      const status = await password.status();
+      if (!status.passwordSet && !status.envFallback) {
+        throw new HttpError(503, '비밀번호 로그인이 설정되어 있지 않습니다. 관리자 화면에서 설정하세요');
+      }
+      if (!value || !(await password.verify(value))) {
+        noteFailure(ip);
+        throw new HttpError(401, '비밀번호가 올바르지 않습니다');
+      }
+      attempts.delete(ip);
+      req.session.user = {
+        provider: 'password',
+        login: 'admin',
+        name: '관리자',
+        avatar: null,
+      };
+      res.json({ user: req.session.user });
+    } catch (err) {
+      next(err);
+    }
   });
 
   app.post('/auth/logout', (req, res) => {
@@ -198,4 +266,13 @@ function mount(app) {
   });
 }
 
-module.exports = { mount, requireAuth, providers, baseUrlOf, isAllowed, adminLogins, allowDevLogin };
+module.exports = {
+  mount,
+  requireAuth,
+  providers,
+  baseUrlOf,
+  isAllowed,
+  adminLogins,
+  allowDevLogin,
+  attempts,
+};

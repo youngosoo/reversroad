@@ -107,6 +107,34 @@
   </section>
 
   <section class="card panel">
+    <h2>관리자 비밀번호</h2>
+    <p class="hint">
+      비밀번호 하나로 로그인할 수 있습니다. <b>평문은 저장되지 않고</b> scrypt 해시만 서버의 <span class="mono">data/admin.json</span> 에 남습니다(저장소에는 올라가지 않습니다).
+      현재 상태: <b id="pwStatus">확인 중…</b>
+    </p>
+    <form id="pwForm">
+      <div class="form-grid">
+        <div class="field">
+          <label for="pw_current">현재 비밀번호</label>
+          <input id="pw_current" type="password" autocomplete="current-password" />
+        </div>
+        <div class="field">
+          <label for="pw_next">새 비밀번호 <span class="muted">(8자 이상)</span></label>
+          <input id="pw_next" type="password" autocomplete="new-password" />
+        </div>
+        <div class="field">
+          <label for="pw_confirm">새 비밀번호 확인</label>
+          <input id="pw_confirm" type="password" autocomplete="new-password" />
+        </div>
+      </div>
+      <div class="form-footer">
+        <button class="btn primary" type="submit" id="pwSaveBtn">비밀번호 변경</button>
+        <span class="muted" id="pwFormStatus"></span>
+      </div>
+    </form>
+  </section>
+
+  <section class="card panel">
     <h2>사이트 설정</h2>
     <p class="hint">
       광고 심사에 필요한 사이트 이름·운영자·문의 이메일·도메인·AdSense 게시자 ID를 여기서 입력합니다. 저장하면 모든 공개 페이지에 바로 반영됩니다.
@@ -239,6 +267,7 @@ const E = {
 let editing = null;
 let lastAnalysis = null;
 let appsCache = [];
+let siteSecurity = null;
 
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -561,10 +590,63 @@ function fillSite(site) {
 }
 
 async function loadSite() {
-  const { site } = await api('/api/site');
+  const { site, security } = await api('/api/site');
   fillSite(site);
+  siteSecurity = security || null;
+  renderPasswordStatus();
   renderChecklist();
 }
+
+// -------------------------------------------------------- 관리자 비밀번호
+
+function renderPasswordStatus() {
+  const el = document.getElementById('pwStatus');
+  const s = siteSecurity || {};
+  const min = s.passwordMinLength || 8;
+  if (s.passwordSet) {
+    const when = s.passwordUpdatedAt ? new Date(s.passwordUpdatedAt).toLocaleString('ko-KR') : '';
+    el.textContent = `비밀번호 사용 중${when ? ` (마지막 변경 ${when})` : ''}`;
+    el.style.color = 'var(--ok)';
+  } else if (s.passwordFromEnv) {
+    el.textContent = '환경변수 ADMIN_PASSWORD 로만 동작 중 — 여기서 새 비밀번호를 설정하세요';
+    el.style.color = 'var(--danger)';
+  } else {
+    el.textContent = '아직 설정되지 않음 — 아래에서 설정하세요';
+    el.style.color = 'var(--danger)';
+  }
+  document.getElementById('pw_next').placeholder = `${min}자 이상`;
+}
+
+document.getElementById('pwForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const current = document.getElementById('pw_current').value;
+  const next = document.getElementById('pw_next').value;
+  const confirm = document.getElementById('pw_confirm').value;
+  const btn = document.getElementById('pwSaveBtn');
+  const status = document.getElementById('pwFormStatus');
+
+  if (next.length < 8) { say('새 비밀번호는 8자 이상이어야 합니다', 'err'); return; }
+  if (next !== confirm) { say('새 비밀번호 두 값이 다릅니다', 'err'); return; }
+
+  btn.disabled = true;
+  status.textContent = '변경 중...';
+  try {
+    await api('/api/admin/password', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ current, next }),
+    });
+    e.target.reset();
+    status.textContent = '';
+    say('관리자 비밀번호를 변경했습니다. 다음 로그인부터 새 비밀번호를 쓰세요.');
+    await loadSite();
+  } catch (err) {
+    status.textContent = '';
+    say(err.message, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+});
 
 document.getElementById('siteForm').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -621,6 +703,9 @@ function renderChecklist() {
     ['모든 앱에 사용법 등록', apps.length > 0 && withHowto === apps.length, `${withHowto}/${apps.length}개 완료. 사용법은 심사에서 "유용한 콘텐츠"로 평가됩니다.`],
     ['필수 페이지 준비 (소개·문의·개인정보·약관)', true, '자동으로 제공됩니다. 실제 이메일만 채우면 됩니다.'],
     ['robots.txt · sitemap.xml 제공', true, '/robots.txt, /sitemap.xml 로 접근 가능합니다. AdSense 승인 후 Search Console에 제출하세요.'],
+    ['관리자 비밀번호 설정', Boolean(siteSecurity && siteSecurity.passwordSet), siteSecurity && siteSecurity.passwordSet ? '비밀번호 로그인을 쓸 수 있습니다.' : '위의 “관리자 비밀번호”에서 새 비밀번호를 설정하세요.'],
+    ['OAuth 허용목록 제한', Boolean(siteSecurity) && !siteSecurity.openOAuth, siteSecurity && siteSecurity.openOAuth ? 'ADMIN_LOGINS 가 * 로 열려 있어 “로그인한 모든 계정”이 관리자가 될 수 있습니다. .env 에 본인 GitHub 아이디/이메일만 적으세요.' : '허용된 계정만 관리자로 로그인할 수 있습니다.'],
+    ['개발용 로그인 꺼짐', Boolean(siteSecurity) && !siteSecurity.allowDevLogin, siteSecurity && siteSecurity.allowDevLogin ? '.env 의 ALLOW_DEV_LOGIN=1 이 켜져 있습니다. 배포 전 0 으로 바꾸세요.' : '개발용 우회 로그인이 꺼져 있습니다.'],
   ];
 
   box.innerHTML = rows

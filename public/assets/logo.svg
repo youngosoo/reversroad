@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="리버스로드">
+  <title>리버스로드</title>
+  <!-- 원본 로고를 public/assets/logo.png 로 넣으면 그 파일이 우선 사용됩니다.
+       이 SVG 는 시안/대체용이며, tools/render-logo.js 로 PNG 를 다시 만들 수 있습니다. -->
+  <ellipse cx="256" cy="256" rx="253" ry="253" fill="#F19300" />
+  <text x="256" y="258" fill="#FFFFFF"
+        font-family="Didot, 'Bodoni 72', 'Playfair Display', Georgia, 'Times New Roman', serif"
+        font-size="596" font-weight="normal" text-anchor="middle" dominant-baseline="central">R</text>
+</svg>

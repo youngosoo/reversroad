@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>오늘 할 일 · 예시 앱</title>
+<style>
+  :root { color-scheme: light dark; --line: #dfe3e9; --muted: #6b7280; --accent: #3b6ef6; }
+  @media (prefers-color-scheme: dark) { :root { --line: #2c313b; --muted: #98a1b0; --accent: #7ba2ff; } }
+  body { margin: 0; background: canvas; color: canvasText;
+         font: 16px/1.6 system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif; }
+  main { max-width: 560px; margin: 0 auto; padding: 40px 20px 80px; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 14px; margin: 0 0 22px; }
+  form { display: flex; gap: 8px; margin-bottom: 18px; }
+  input { flex: 1; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px;
+          background: canvas; color: inherit; font: inherit; }
+  button { padding: 10px 14px; border-radius: 10px; border: 1px solid var(--accent);
+           background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  ul { list-style: none; padding: 0; margin: 0; }
+  li { display: flex; align-items: center; gap: 10px; padding: 11px 2px; border-bottom: 1px solid var(--line); }
+  li.done span.t { text-decoration: line-through; color: var(--muted); }
+  li span.t { flex: 1; }
+  li .del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; padding: 0 4px; }
+  .empty { color: var(--muted); padding: 24px 0; }
+  footer { margin-top: 30px; font-size: 13px; color: var(--muted); }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <h1>오늘 할 일</h1>
+  <p class="sub">이 페이지는 <code>apps/welcome/index.html</code> 하나로 완결된 독립 앱입니다. 서버 없이 파일을 더블클릭해도 동작합니다.</p>
+
+  <form id="f">
+    <input id="input" placeholder="할 일을 입력하고 Enter" autocomplete="off" />
+    <button type="submit">추가</button>
+  </form>
+
+  <ul id="list"></ul>
+  <p class="empty" id="empty">아직 할 일이 없습니다.</p>
+
+  <footer>
+    홈으로: <a href="/">/</a> · 데이터는 이 브라우저의 localStorage 에만 저장됩니다.
+  </footer>
+</main>
+
+<script>
+const KEY = 'welcome.todos';
+const list = document.getElementById('list');
+const empty = document.getElementById('empty');
+let todos = [];
+
+try { todos = JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { todos = []; }
+
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(todos)); } catch { /* private mode */ }
+}
+
+function render() {
+  list.innerHTML = todos.map((t) => `
+    <li class="${t.done ? 'done' : ''}">
+      <input type="checkbox" data-id="${t.id}" ${t.done ? 'checked' : ''} />
+      <span class="t">${t.text.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))}</span>
+      <button class="del" data-del="${t.id}" title="삭제">×</button>
+    </li>`).join('');
+  empty.style.display = todos.length ? 'none' : 'block';
+}
+
+document.getElementById('f').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const input = document.getElementById('input');
+  const text = input.value.trim();
+  if (!text) return;
+  todos.push({ id: Date.now().toString(36), text, done: false });
+  input.value = '';
+  save(); render();
+});
+
+list.addEventListener('change', (e) => {
+  const id = e.target.dataset.id;
+  if (!id) return;
+  const t = todos.find((x) => x.id === id);
+  if (t) { t.done = e.target.checked; save(); render(); }
+});
+
+list.addEventListener('click', (e) => {
+  const id = e.target.dataset.del;
+  if (!id) return;
+  todos = todos.filter((x) => x.id !== id);
+  save(); render();
+});
+
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,2052 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FFmpeg & Emotion Motion Video Generator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <!-- React & ReactDOM CDN -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Emotion (CSS-in-JS CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/@emotion/css@11.11.2/dist/emotion-css.umd.min.js"></script>
+    <!-- Google Fonts & Paperlogy Font CDN -->
+    <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/fonts-archive/Paperlogy/Paperlogy.css" type="text/css" />
+    
+    <style>
+        body {
+            font-family: 'Paperlogy', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(17, 20, 32, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3b4261;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #56618a;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col overflow-x-hidden selection:bg-purple-500 selection:text-white bg-slate-950 text-slate-100 dark:bg-[#0b0d14] dark:text-gray-100">
+
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+        const { css, cx } = emotion;
+
+        // Dynamic Glassmorphism Card Style
+        const getGlassCardStyle = (isDark) => css`
+            background: ${isDark ? 'rgba(20, 24, 38, 0.85)' : 'rgba(255, 255, 255, 0.85)'};
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'};
+            box-shadow: ${isDark ? '0 8px 32px 0 rgba(0, 0, 0, 0.4)' : '0 8px 32px 0 rgba(100, 116, 139, 0.12)'};
+            color: ${isDark ? '#f3f4f6' : '#1e293b'};
+            transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        `;
+
+        const gradientBtnStyle = css`
+            background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #ec4899 100%);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background-size: 200% 200%;
+            background-position: 0% 0%;
+            &:hover {
+                background-position: 100% 100%;
+                box-shadow: 0 10px 25px -5px rgba(168, 85, 247, 0.5);
+                transform: translateY(-2px);
+            }
+            &:active {
+                transform: translateY(0);
+            }
+        `;
+
+        const pulseGlowStyle = css`
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
+            animation: glowPulse 2s infinite alternate;
+            @keyframes glowPulse {
+                0% { box-shadow: 0 0 10px rgba(168, 85, 247, 0.3); }
+                100% { box-shadow: 0 0 25px rgba(168, 85, 247, 0.7); }
+            }
+        `;
+
+        const ASPECT_RATIOS = {
+            '9:16': { label: '📱 9:16 (쇼츠/릴스/틱톡)', width: 1080, height: 1920, aspectClass: 'aspect-[9/16]' },
+            '16:9': { label: '🖥️ 16:9 (유튜브 일반)', width: 1920, height: 1080, aspectClass: 'aspect-[16/9]' },
+            '1:1': { label: '🟦 1:1 (정사각형 피드)', width: 1080, height: 1080, aspectClass: 'aspect-square' }
+        };
+
+        const getMotionEffects = (w, h) => [
+            { id: 'zoomIn', name: '🔍 Zoom In (피사체 확대)', ffmpeg: `zoompan=z='min(zoom+0.0015,1.25)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=120:s=${w}x${h}:fps=30` },
+            { id: 'zoomOut', name: '🔎 Zoom Out (피사체 축소)', ffmpeg: `zoompan=z='max(1.25-zoom*0.0015,1.0)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=120:s=${w}x${h}:fps=30` },
+            { id: 'panLeft', name: '⬅️ Pan Left (좌측 모션)', ffmpeg: `zoompan=z='1.18':x='if(lte(on,1),iw*0.1,x-1.5)':y='ih/2-(ih/zoom/2)':d=120:s=${w}x${h}:fps=30` },
+            { id: 'panRight', name: '➡️ Pan Right (우측 모션)', ffmpeg: `zoompan=z='if(lte(on,1),0,x+1.5)':y='ih/2-(ih/zoom/2)':d=120:s=${w}x${h}:fps=30` },
+            { id: 'kenBurns', name: '🎬 Ken Burns (대각 모션)', ffmpeg: `zoompan=z='min(zoom+0.0018,1.25)':x='if(lte(on,1),0,x+1)':y='if(lte(on,1),0,y+1)':d=120:s=${w}x${h}:fps=30` },
+            { id: 'rotateZoom', name: '🔄 Rotate & Zoom (부드러운 회전)', ffmpeg: `zoompan=z='min(zoom+0.0015,1.20)':d=120:s=${w}x${h}:fps=30` }
+        ];
+
+        const generateSampleImage = (title, color1, color2, icon) => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1080;
+            canvas.height = 1920;
+            const ctx = canvas.getContext('2d');
+
+            const grad = ctx.createLinearGradient(0, 0, 1080, 1920);
+            grad.addColorStop(0, color1);
+            grad.addColorStop(1, color2);
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 1080, 1920);
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.beginPath();
+            ctx.arc(540, 960, 320, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 120px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(icon, 540, 880);
+
+            ctx.font = 'bold 52px Paperlogy, sans-serif';
+            ctx.fillText(title, 540, 1080);
+
+            ctx.font = '36px Paperlogy, sans-serif';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.fillText('Subject & Product Auto Fusion', 540, 1160);
+
+            return canvas.toDataURL('image/png');
+        };
+
+        const INITIAL_SAMPLE_IMAGES = [
+            { title: '캐릭터 X 신상품 A', color1: '#4f46e5', color2: '#7c3aed', icon: '👤', prompt: '브랜드 신제품 패키지를 손에 쥐고 포즈를 취하는 매력적인 캐릭터' },
+            { title: '프리미엄 제품 샷', color1: '#059669', color2: '#10b981', icon: '🛍️', prompt: '세련된 감성의 제품이 주인공으로 돋보이는 모던한 스튜디오 촬영 씬' },
+            { title: '라이프스타일 컬라보', color1: '#d97706', color2: '#f59e0b', icon: '✨', prompt: '캐릭터와 제품이 조화롭게 어우러진 도심 속 화려한 숏폼 장면' },
+            { title: '스마트 라이프스타일', color1: '#dc2626', color2: '#ef4444', icon: '📱', prompt: '미래지향적인 스마트 스페이스에서 제품을 시연하는 캐릭터' },
+            { title: '뷰티 & 트렌드', color1: '#db2777', color2: '#ec4899', icon: '💄', prompt: '감각적인 조명 아래 화장품 제품과 함께 미소짓는 캐릭터' }
+        ];
+
+        const getDefaultSlides = () => INITIAL_SAMPLE_IMAGES.map((sample, idx) => ({
+            id: 'slide_' + Date.now() + '_' + idx,
+            url: generateSampleImage(sample.title, sample.color1, sample.color2, sample.icon),
+            title: sample.title,
+            effect: ['zoomIn', 'zoomOut', 'panLeft', 'kenBurns', 'rotateZoom'][idx % 5],
+            duration: 4.0,
+            narration: `장면 ${idx + 1} 나레이션 내용`,
+            imagePrompt: sample.prompt || `장면 ${idx + 1}을 나타내는 감각적인 AI 이미지`
+        }));
+
+        const easeInOutCubic = (t) => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+
+        class WebAudioBGMGenerator {
+            constructor() {
+                this.audioCtx = null;
+                this.destination = null;
+                this.isPlaying = false;
+                this.timer = null;
+                this.volume = 0.4;
+                this.mood = 'upbeat';
+            }
+
+            init() {
+                if (!this.audioCtx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.audioCtx = new AudioContext();
+                    this.destination = this.audioCtx.createMediaStreamDestination();
+                }
+                if (this.audioCtx.state === 'suspended') {
+                    this.audioCtx.resume();
+                }
+            }
+
+            setVolume(val) {
+                this.volume = val;
+            }
+
+            setMood(mood) {
+                this.mood = mood;
+            }
+
+            start() {
+                this.init();
+                this.isPlaying = true;
+                let step = 0;
+
+                const freqsMap = {
+                    upbeat: [261.63, 329.63, 392.00, 523.25, 440.00, 349.23],
+                    lofi: [220.00, 261.63, 329.63, 392.00, 349.23],
+                    cinematic: [130.81, 164.81, 196.00, 261.63, 293.66],
+                    corporate: [293.66, 369.99, 440.00, 587.33]
+                };
+
+                this.timer = setInterval(() => {
+                    if (!this.isPlaying || !this.audioCtx) return;
+
+                    const freqs = freqsMap[this.mood] || freqsMap.upbeat;
+                    const freq = freqs[step % freqs.length];
+
+                    const osc = this.audioCtx.createOscillator();
+                    const gain = this.audioCtx.createGain();
+
+                    osc.type = this.mood === 'lofi' ? 'sine' : this.mood === 'cinematic' ? 'sawtooth' : 'triangle';
+                    osc.frequency.setValueAtTime(freq, this.audioCtx.currentTime);
+
+                    gain.gain.setValueAtTime(0.01, this.audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.15 * this.volume, this.audioCtx.currentTime + 0.05);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + 0.4);
+
+                    osc.connect(gain);
+                    gain.connect(this.audioCtx.destination);
+                    gain.connect(this.destination);
+
+                    osc.start();
+                    osc.stop(this.audioCtx.currentTime + 0.45);
+
+                    if (step % 2 === 0) {
+                        const bassOsc = this.audioCtx.createOscillator();
+                        const bassGain = this.audioCtx.createGain();
+                        bassOsc.type = 'sine';
+                        bassOsc.frequency.setValueAtTime(freq / 2, this.audioCtx.currentTime);
+
+                        bassGain.gain.setValueAtTime(0.12 * this.volume, this.audioCtx.currentTime);
+                        bassGain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + 0.35);
+
+                        bassOsc.connect(bassGain);
+                        bassGain.connect(this.audioCtx.destination);
+                        bassGain.connect(this.destination);
+
+                        bassOsc.start();
+                        bassOsc.stop(this.audioCtx.currentTime + 0.4);
+                    }
+
+                    step++;
+                }, 300);
+            }
+
+            stop() {
+                this.isPlaying = false;
+                if (this.timer) {
+                    clearInterval(this.timer);
+                    this.timer = null;
+                }
+            }
+        }
+
+        const bgmEngine = new WebAudioBGMGenerator();
+
+        function App() {
+            // Theme state (Light / Dark mode)
+            const [isDarkMode, setIsDarkMode] = useState(() => {
+                const savedTheme = localStorage.getItem('app_theme');
+                return savedTheme ? savedTheme === 'dark' : true;
+            });
+
+            useEffect(() => {
+                const rootEl = document.documentElement;
+                if (isDarkMode) {
+                    rootEl.classList.add('dark');
+                    localStorage.setItem('app_theme', 'dark');
+                } else {
+                    rootEl.classList.remove('dark');
+                    localStorage.setItem('app_theme', 'light');
+                }
+            }, [isDarkMode]);
+
+            const glassCardStyle = getGlassCardStyle(isDarkMode);
+
+            const [selectedRatioKey, setSelectedRatioKey] = useState('9:16');
+            const [hasMargin, setHasMargin] = useState(true);
+            const currentRatio = ASPECT_RATIOS[selectedRatioKey];
+            const motionEffects = getMotionEffects(currentRatio.width, currentRatio.height);
+
+            const [slides, setSlides] = useState(getDefaultSlides);
+            const [isPlaying, setIsPlaying] = useState(false);
+            const [currentTime, setCurrentTime] = useState(0);
+            const [activeSlideIndex, setActiveSlideIndex] = useState(0);
+
+            // BGM States
+            const [bgmEnabled, setBgmEnabled] = useState(true);
+            const [bgmMood, setBgmMood] = useState('upbeat');
+            const [bgmVolume, setBgmVolume] = useState(0.5);
+            const [isBgmPreviewing, setIsBgmPreviewing] = useState(false);
+
+            // Script & AI TTS States
+            const [scriptText, setScriptText] = useState(
+                '[화면: 메인 캐릭터가 매력적인 포즈로 신상품을 강조한다] 안녕하세요! 오늘 단 하루 50% OFF 29,900원 한정특가 이벤트를 진행합니다.\n' +
+                '[화면: 상품의 디테일한 포장과 디자인이 부각되는 선명한 클로즈업] 지금 안사면 평생 후회할 특가! 품절임박 전 서둘러 구매하세요.\n' +
+                '[화면: 캐릭터와 상품이 함께 등장하는 감각적인 라이프스타일 씬] 트렌디한 인스타그램 릴스와 숏폼으로 특별한 제품 경험을 만나보세요.'
+            );
+            const [isAnalyzingScript, setIsAnalyzingScript] = useState(false);
+            const [ttsVoice, setTtsVoice] = useState('Kore');
+
+            // AI Character & Product Reference Image States
+            const [characterRef, setCharacterRef] = useState(null);
+            const [productRef, setProductRef] = useState(null);
+
+            // Drag & Drop Highlight States for reference cards
+            const [isDraggingChar, setIsDraggingChar] = useState(false);
+            const [isDraggingProd, setIsDraggingProd] = useState(false);
+            const [isDraggingBatch, setIsDraggingBatch] = useState(false);
+
+            // AI Image Generation Loading Tracker
+            const [generatingSlideIds, setGeneratingSlideIds] = useState({});
+            const [isBatchGenerating, setIsBatchGenerating] = useState(false);
+
+            // Top Text Layer States
+            const [textEnabled, setTextEnabled] = useState(true);
+            const [textLines, setTextLines] = useState([
+                { id: 1, text: '지금 안사면 무조건 손해!', color: '#ffffff', size: 80, letterSpacing: 2 },
+                { id: 2, text: '🔥 50% OFF 29,900원 (한정특가)', color: '#facc15', size: 48, letterSpacing: 2 }
+            ]);
+            const [textLineHeight, setTextLineHeight] = useState(1.2);
+            const [textOffsetY, setTextOffsetY] = useState(0);
+
+            // Gemini API Key States
+            const [geminiApiKey, setGeminiApiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
+            const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+            const [tempApiKey, setTempApiKey] = useState('');
+
+            // Export States
+            const [isRendering, setIsRendering] = useState(false);
+            const [renderProgress, setRenderProgress] = useState(0);
+            const [renderedVideoUrl, setRenderedVideoUrl] = useState(null);
+            const [showFFmpegModal, setShowFFmpegModal] = useState(false);
+            const [toastMessage, setToastMessage] = useState(null);
+
+            const canvasRef = useRef(null);
+            const loadedImagesRef = useRef([]);
+            const animationFrameRef = useRef(null);
+            const mediaRecorderRef = useRef(null);
+            const recordedChunksRef = useRef([]);
+
+            // Slide durations
+            const getSlideDuration = useCallback((slide) => slide.duration || 4, []);
+            const TOTAL_DURATION = slides.reduce((acc, s) => acc + getSlideDuration(s), 0);
+
+            const showToast = (msg) => {
+                setToastMessage(msg);
+                setTimeout(() => setToastMessage(null), 3500);
+            };
+
+            const processRefFile = (file, type) => {
+                if (!file || !file.type.startsWith('image/')) {
+                    showToast('⚠️ 이미지 파일만 업로드할 수 있습니다.');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const result = e.target.result;
+                    const base64Data = result.split(',')[1];
+                    const refObj = {
+                        url: result,
+                        base64: base64Data,
+                        mimeType: file.type,
+                        name: file.name
+                    };
+
+                    if (type === 'character') {
+                        setCharacterRef(refObj);
+                        showToast('👤 캐릭터 참조 이미지가 등록되었습니다!');
+                    } else if (type === 'product') {
+                        setProductRef(refObj);
+                        showToast('🛍️ 상품(제품) 참조 이미지가 등록되었습니다!');
+                    }
+                };
+                reader.readAsDataURL(file);
+            };
+
+            // Drag and Drop event handlers
+            const handleDragOver = (e, setDragState) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (setDragState) setDragState(true);
+            };
+
+            const handleDragLeave = (e, setDragState) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (setDragState) setDragState(false);
+            };
+
+            const handleDropRef = (e, type, setDragState) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (setDragState) setDragState(false);
+
+                const files = e.dataTransfer.files;
+                if (files && files.length > 0) {
+                    processRefFile(files[0], type);
+                }
+            };
+
+            const handleDropBatch = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsDraggingBatch(false);
+
+                const files = e.dataTransfer.files;
+                if (files && files.length > 0) {
+                    handleBatchUpload(files);
+                }
+            };
+
+            const generateTextFromScript = useCallback((customScript) => {
+                const targetScript = customScript || scriptText || '';
+                const cleanFullText = targetScript.replace(/\[.*?\]/g, '').replace(/\s+/g, ' ').trim();
+                
+                let impulseText = "지금 안사면 무조건 손해!";
+                if (/마감|오늘|단\s*하루|서두르|품절|한정|수량/i.test(cleanFullText)) {
+                    impulseText = "오늘 마감! 안사면 큰 손해";
+                } else if (/특가|최저가|할인|반값|대박|이벤트/i.test(cleanFullText)) {
+                    impulseText = "역대급 특가! 안사면 손해";
+                } else if (/신상|패션|뷰티|아이템|인기/i.test(cleanFullText)) {
+                    impulseText = "품절 대란! 안사면 큰 손해";
+                } else if (/스마트|제작|숏폼|기능|솔루션|서비스/i.test(cleanFullText)) {
+                    impulseText = "단 하루 기회! 안사면 손해";
+                } else if (cleanFullText.length > 0) {
+                    impulseText = "지금 안사면 무조건 손해!";
+                }
+
+                if (impulseText.length > 15) {
+                    impulseText = impulseText.substring(0, 15);
+                } else if (impulseText.length < 12) {
+                    impulseText = (impulseText + " 안사면 손해").substring(0, 14);
+                }
+
+                const dateMatch = targetScript.match(/(\d{1,2}월\s*\d{1,2}일(?:\s*한정)?|오늘\s*단\s*하루|오늘만|단\s*\d+일간)/i);
+                const discountMatch = targetScript.match(/(\d+%\s*(?:OFF|할인|다운))/i);
+                const priceMatch = targetScript.match(/([\d,]+\s*(?:원|천원))/i);
+                const specialMatch = targetScript.match(/(한정특가|초특가|역대급\s*특가|파격\s*특가|단독\s*특가)/i);
+
+                let priceParts = [];
+                if (dateMatch) priceParts.push(dateMatch[0].trim());
+                if (specialMatch && !dateMatch) priceParts.push(specialMatch[0].trim());
+                if (discountMatch) priceParts.push(discountMatch[0].trim());
+                if (priceMatch) priceParts.push(priceMatch[0].trim());
+
+                let priceText = "";
+                if (priceParts.length > 0) {
+                    priceText = `🔥 ${priceParts.join(' ')}`;
+                } else {
+                    const fullPriceMatch = targetScript.match(/(\d+%\s*OFF\s*[\d,]*원?|[\d,]*원\s*\(\d+%\s*OFF\)|[\d,]*원|\d+%\s*OFF|한정특가\s*[\d,]*원?|\d+%\s*할인)/i);
+                    priceText = fullPriceMatch ? `🔥 ${fullPriceMatch[0]}` : '🔥 50% OFF 29,900원 (한정특가)';
+                }
+
+                return [
+                    { id: 1, text: impulseText, color: '#ffffff', size: 80, letterSpacing: 2 },
+                    { id: 2, text: priceText, color: '#facc15', size: 48, letterSpacing: 2 }
+                ];
+            }, [scriptText]);
+
+            const handleAnalyzeTextLines = () => {
+                const newLines = generateTextFromScript();
+                setTextLines(newLines);
+                showToast('✍️ 대본 분석 기반 [충동구매 유도 문구(80pt) & 가격할인] 텍스트가 생성되었습니다!');
+            };
+
+            const handleResetAll = () => {
+                setIsPlaying(false);
+                setCurrentTime(0);
+                setSlides(getDefaultSlides());
+                setCharacterRef(null);
+                setProductRef(null);
+                setRenderedVideoUrl(null);
+                showToast('🔄 모든 설정, 캐릭터, 상품 및 이미지가 초기화되었습니다.');
+            };
+
+            const toggleBgmPreview = () => {
+                if (isBgmPreviewing) {
+                    bgmEngine.stop();
+                    setIsBgmPreviewing(false);
+                } else {
+                    bgmEngine.setMood(bgmMood);
+                    bgmEngine.setVolume(bgmVolume);
+                    bgmEngine.start();
+                    setIsBgmPreviewing(true);
+                }
+            };
+
+            useEffect(() => {
+                let isMounted = true;
+                const loadPromises = slides.map(slide => {
+                    return new Promise((resolve) => {
+                        const img = new Image();
+                        img.crossOrigin = "anonymous";
+                        img.onload = () => resolve(img);
+                        img.onerror = () => resolve(img);
+                        img.src = slide.url;
+                    });
+                });
+
+                Promise.all(loadPromises).then(images => {
+                    if (isMounted) {
+                        loadedImagesRef.current = images;
+                        drawCanvasFrame(currentTime);
+                    }
+                });
+
+                return () => { isMounted = false; };
+            }, [slides, selectedRatioKey, hasMargin, textEnabled, textLines, textLineHeight, textOffsetY]);
+
+            const drawCanvasFrame = useCallback((timeSec) => {
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+                const ctx = canvas.getContext('2d');
+                const images = loadedImagesRef.current;
+
+                const w = currentRatio.width;
+                const h = currentRatio.height;
+
+                canvas.width = w;
+                canvas.height = h;
+
+                // Clear Background
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(0, 0, w, h);
+
+                if (images.length === 0) return;
+
+                let accumulatedTime = 0;
+                let activeIdx = 0;
+                let slideTimeSec = 0;
+
+                for (let i = 0; i < slides.length; i++) {
+                    const dur = getSlideDuration(slides[i]);
+                    if (timeSec >= accumulatedTime && timeSec < accumulatedTime + dur) {
+                        activeIdx = i;
+                        slideTimeSec = timeSec - accumulatedTime;
+                        break;
+                    }
+                    accumulatedTime += dur;
+                    if (i === slides.length - 1) {
+                        activeIdx = slides.length - 1;
+                        slideTimeSec = dur;
+                    }
+                }
+
+                setActiveSlideIndex(activeIdx);
+
+                const currentSlide = slides[activeIdx];
+                const currentImg = images[activeIdx];
+                const currentDur = getSlideDuration(currentSlide);
+
+                // Margin logic for 9:16
+                const topMarginRatio = (selectedRatioKey === '9:16' && hasMargin) ? 0.2 : 0.0;
+                const topMarginPx = Math.round(h * topMarginRatio);
+                const viewportH = h - topMarginPx;
+
+                if (topMarginRatio > 0) {
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(0, 0, w, topMarginPx);
+                }
+
+                // Render Image Motion inside Viewport
+                if (currentImg && currentImg.complete) {
+                    const progress = Math.min(1.0, Math.max(0, slideTimeSec / currentDur));
+                    const easedP = easeInOutCubic(progress);
+
+                    let scale = 1.0;
+                    let offsetX = 0;
+                    let offsetY = 0;
+
+                    if (currentSlide.effect === 'zoomIn') scale = 1.0 + easedP * 0.2;
+                    else if (currentSlide.effect === 'zoomOut') scale = 1.2 - easedP * 0.2;
+                    else if (currentSlide.effect === 'panLeft') { scale = 1.15; offsetX = (0.5 - easedP) * (w * 0.1); }
+                    else if (currentSlide.effect === 'panRight') { scale = 1.15; offsetX = (easedP - 0.5) * (w * 0.1); }
+                    else if (currentSlide.effect === 'kenBurns') { scale = 1.05 + easedP * 0.15; offsetX = (easedP - 0.5) * (w * 0.05); offsetY = (easedP - 0.5) * (viewportH * 0.05); }
+                    else if (currentSlide.effect === 'rotateZoom') { scale = 1.05 + easedP * 0.12; }
+
+                    ctx.save();
+                    ctx.filter = 'none';
+                    ctx.globalCompositeOperation = 'source-over';
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
+
+                    ctx.beginPath();
+                    ctx.rect(0, topMarginPx, w, viewportH);
+                    ctx.clip();
+
+                    ctx.translate(w / 2 + offsetX, topMarginPx + viewportH / 2 + offsetY);
+                    ctx.scale(scale, scale);
+
+                    const imgRatio = currentImg.width / currentImg.height;
+                    const vpRatio = w / viewportH;
+                    let drawW, drawH;
+
+                    if (imgRatio > vpRatio) {
+                        drawH = viewportH;
+                        drawW = viewportH * imgRatio;
+                    } else {
+                        drawW = w;
+                        drawH = w / imgRatio;
+                    }
+
+                    ctx.drawImage(currentImg, -drawW / 2, -drawH / 2, drawW, drawH);
+                    ctx.restore();
+                }
+
+                // Render Top Text Layer if enabled
+                if (textEnabled && textLines.length > 0) {
+                    ctx.save();
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+
+                    let totalTextHeight = 0;
+                    textLines.forEach(l => { totalTextHeight += (l.size || 50) * textLineHeight; });
+
+                    let startY = (topMarginRatio > 0 
+                        ? (topMarginPx / 2) - (totalTextHeight / 2) + ((textLines[0]?.size || 50) / 2)
+                        : (h * 0.1) - (totalTextHeight / 2)) + textOffsetY;
+
+                    textLines.forEach((lineObj) => {
+                        if (!lineObj.text) return;
+                        ctx.font = `bold ${lineObj.size || 50}px 'Paperlogy', sans-serif`;
+                        ctx.fillStyle = lineObj.color || '#ffffff';
+
+                        ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+                        ctx.lineWidth = Math.max(3, (lineObj.size || 50) * 0.08);
+
+                        const txt = lineObj.text;
+                        ctx.strokeText(txt, w / 2, startY);
+                        ctx.fillText(txt, w / 2, startY);
+
+                        startY += (lineObj.size || 50) * textLineHeight;
+                    });
+
+                    ctx.restore();
+                }
+
+            }, [slides, currentRatio, hasMargin, selectedRatioKey, textEnabled, textLines, textLineHeight, textOffsetY, getSlideDuration]);
+
+            useEffect(() => {
+                let lastTimestamp = null;
+                const step = (timestamp) => {
+                    if (!lastTimestamp) lastTimestamp = timestamp;
+                    const delta = (timestamp - lastTimestamp) / 1000;
+                    lastTimestamp = timestamp;
+
+                    if (isPlaying) {
+                        setCurrentTime((prev) => {
+                            const next = prev + delta;
+                            if (next >= TOTAL_DURATION) {
+                                setIsPlaying(false);
+                                return 0;
+                            }
+                            return next;
+                        });
+                    }
+                    animationFrameRef.current = requestAnimationFrame(step);
+                };
+
+                if (isPlaying) {
+                    animationFrameRef.current = requestAnimationFrame(step);
+                }
+
+                return () => {
+                    if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+                };
+            }, [isPlaying, TOTAL_DURATION]);
+
+            useEffect(() => {
+                drawCanvasFrame(currentTime);
+            }, [currentTime, drawCanvasFrame]);
+
+            const handleAnalyzeScript = async () => {
+                if (!scriptText.trim()) {
+                    showToast('⚠️ 분석할 대본 문장을 입력해주세요.');
+                    return;
+                }
+
+                setIsAnalyzingScript(true);
+                showToast('🤖 대본의 [화면] 텍스트를 추출하여 20초 분량 프롬프트를 생성 중입니다...');
+
+                setTimeout(() => {
+                    const lines = scriptText.split('\n').filter(l => l.trim().length > 0);
+                    const extractedVisuals = [];
+
+                    lines.forEach((line) => {
+                        const visualMatch = line.match(/\[?화면\s*:\s*([^\]\n]+)\]?/i);
+                        if (visualMatch) {
+                            extractedVisuals.push({
+                                visual: visualMatch[1].trim(),
+                                fullLine: line.replace(/\[?화면\s*:\s*([^\]\n]+)\]?/gi, '').trim() || visualMatch[1].trim()
+                            });
+                        }
+                    });
+
+                    if (extractedVisuals.length === 0) {
+                        lines.forEach((line) => {
+                            const cleanText = line.replace(/\[.*?\]/g, '').trim();
+                            if (cleanText) {
+                                extractedVisuals.push({
+                                    visual: `${cleanText} 비주얼 씬`,
+                                    fullLine: cleanText
+                                });
+                            }
+                        });
+                    }
+
+                    const totalVisuals = extractedVisuals.length || 1;
+                    const perSlideDuration = parseFloat((20.0 / totalVisuals).toFixed(1));
+
+                    const processedSlides = extractedVisuals.map((item, idx) => ({
+                        id: 'slide_' + Date.now() + '_' + idx,
+                        url: slides[idx]?.url || generateSampleImage(`장면 ${idx + 1}`, '#4f46e5', '#7c3aed', '✨'),
+                        title: `장면 ${idx + 1}`,
+                        effect: ['zoomIn', 'zoomOut', 'panLeft', 'panRight', 'kenBurns', 'rotateZoom'][idx % 6],
+                        duration: perSlideDuration,
+                        narration: item.fullLine,
+                        imagePrompt: item.visual
+                    }));
+
+                    if (processedSlides.length > 0) {
+                        setSlides(processedSlides);
+                    }
+
+                    setTextLines(generateTextFromScript(scriptText));
+
+                    setIsAnalyzingScript(false);
+                    showToast(`🎉 총 20초 분량 (${processedSlides.length}개 장면, 각 ${perSlideDuration}초) 대본 및 텍스트 레이어 추출 완료!`);
+                }, 800);
+            };
+
+            const generateAIImageForSlide = async (slideIndex, targetSlidesList = slides) => {
+                const slide = targetSlidesList[slideIndex];
+                if (!slide) return;
+
+                const slideId = slide.id;
+                setGeneratingSlideIds(prev => ({ ...prev, [slideId]: true }));
+
+                const promptText = slide.imagePrompt || slide.narration || slide.title || "trendy high quality video scene";
+                const apiKey = geminiApiKey || ""; 
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent?key=${apiKey}`;
+
+                let parts = [];
+                let instructions = [];
+
+                if (characterRef) {
+                    instructions.push("Maintain the facial features, hairstyle, clothing style, and identity of the person shown in the CHARACTER reference image.");
+                }
+
+                if (productRef) {
+                    instructions.push("Accurately feature and display the product design, shape, branding, and details as shown in the PRODUCT reference image.");
+                }
+
+                let fullPrompt = "";
+                if (instructions.length > 0) {
+                    fullPrompt = `[Multi-Reference Image Generation] Instructions: ${instructions.join(" ")} Scene description: ${promptText}. Create a cohesive, high-quality, professional image combining these elements.`;
+                } else {
+                    fullPrompt = `Scene description: ${promptText}. High quality, cinematic lighting, 8k resolution.`;
+                }
+
+                parts.push({ text: fullPrompt });
+
+                // Attach reference images
+                if (characterRef) {
+                    parts.push({
+                        inlineData: {
+                            mimeType: characterRef.mimeType,
+                            data: characterRef.base64
+                        }
+                    });
+                }
+
+                if (productRef) {
+                    parts.push({
+                        inlineData: {
+                            mimeType: productRef.mimeType,
+                            data: productRef.base64
+                        }
+                    });
+                }
+
+                const payload = {
+                    contents: [{
+                        role: "user",
+                        parts: parts
+                    }],
+                    generationConfig: {
+                        responseModalities: ['IMAGE'],
+                        imageConfig: { aspectRatio: selectedRatioKey === '9:16' ? "9:16" : selectedRatioKey === '16:9' ? "16:9" : "1:1" }
+                    }
+                };
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await response.json();
+                    const part = result?.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+
+                    if (part && part.inlineData) {
+                        const newImgUrl = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+                        setSlides(prev => prev.map((s, idx) => idx === slideIndex ? { ...s, url: newImgUrl } : s));
+                        showToast(`✨ 장면 ${slideIndex + 1} AI 이미지가 생성되었습니다!`);
+                    } else {
+                        throw new Error("API 응답에서 이미지 데이터를 찾을 수 없습니다.");
+                    }
+                } catch (err) {
+                    console.error("Image Generation Error:", err);
+                    showToast(`❌ 장면 ${slideIndex + 1} AI 이미지 생성 실패. API 키나 네트워크 설정을 확인하세요.`);
+                } finally {
+                    setGeneratingSlideIds(prev => ({ ...prev, [slideId]: false }));
+                }
+            };
+
+            const handleBatchGenerateImages = async () => {
+                if (isBatchGenerating) return;
+                setIsBatchGenerating(true);
+                showToast(`⚡ 전체 ${slides.length}개 장면 AI 이미지 순차 일괄 생성 시작...`);
+
+                for (let i = 0; i < slides.length; i++) {
+                    await generateAIImageForSlide(i);
+                }
+
+                setIsBatchGenerating(false);
+                showToast('🎉 전체 장면 AI 이미지 일괄 생성이 완료되었습니다!');
+            };
+
+            const handleBatchUpload = (files) => {
+                if (!files || files.length === 0) return;
+                const validFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
+                
+                if (validFiles.length === 0) {
+                    showToast('⚠️ 이미지 파일만 업로드할 수 있습니다.');
+                    return;
+                }
+
+                const newSlides = validFiles.map((file, idx) => ({
+                    id: 'slide_' + Date.now() + '_' + idx,
+                    url: URL.createObjectURL(file),
+                    title: file.name,
+                    effect: ['zoomIn', 'zoomOut', 'panLeft', 'panRight', 'kenBurns', 'rotateZoom'][idx % 6],
+                    duration: 4.0,
+                    narration: '',
+                    imagePrompt: file.name
+                }));
+
+                setSlides(newSlides);
+                setCurrentTime(0);
+                showToast(`🎉 ${newSlides.length}장의 이미지가 연속 업로드되었습니다.`);
+            };
+
+            const handleSingleFileUpload = (idx, file) => {
+                if (!file || !file.type.startsWith('image/')) return;
+                const updated = [...slides];
+                updated[idx] = {
+                    ...updated[idx],
+                    url: URL.createObjectURL(file),
+                    title: file.name
+                };
+                setSlides(updated);
+                showToast(`✅ ${idx + 1}번 이미지가 업데이트되었습니다.`);
+            };
+
+            const handleExportMP4 = async () => {
+                setIsPlaying(false);
+                setCurrentTime(0);
+                setIsRendering(true);
+                setRenderProgress(0);
+
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+
+                if (bgmEnabled) {
+                    bgmEngine.setMood(bgmMood);
+                    bgmEngine.setVolume(bgmVolume);
+                    bgmEngine.start();
+                }
+
+                const canvasStream = canvas.captureStream(30);
+                let combinedStream = canvasStream;
+
+                if (bgmEnabled && bgmEngine.destination) {
+                    const audioTrack = bgmEngine.destination.stream.getAudioTracks()[0];
+                    if (audioTrack) {
+                        combinedStream = new MediaStream([
+                            ...canvasStream.getVideoTracks(),
+                            audioTrack
+                        ]);
+                    }
+                }
+
+                recordedChunksRef.current = [];
+
+                let options = { mimeType: 'video/mp4;codecs=avc1,mp4a.40.2' };
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                    options = { mimeType: 'video/mp4' };
+                }
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                    options = { mimeType: 'video/webm;codecs=vp9' };
+                }
+
+                try {
+                    const recorder = new MediaRecorder(combinedStream, options);
+                    mediaRecorderRef.current = recorder;
+
+                    recorder.ondataavailable = (e) => {
+                        if (e.data && e.data.size > 0) {
+                            recordedChunksRef.current.push(e.data);
+                        }
+                    };
+
+                    recorder.onstop = () => {
+                        if (bgmEnabled) bgmEngine.stop();
+                        const blob = new Blob(recordedChunksRef.current, { type: options.mimeType.includes('mp4') ? 'video/mp4' : 'video/webm' });
+                        const url = URL.createObjectURL(blob);
+                        setRenderedVideoUrl(url);
+                        setIsRendering(false);
+                        showToast(`🎉 MP4 동영상이 성공적으로 생성되었습니다!`);
+                    };
+
+                    recorder.start(100);
+
+                    const fps = 30;
+                    const totalFrames = TOTAL_DURATION * fps;
+                    let currentFrame = 0;
+
+                    const renderInterval = setInterval(() => {
+                        currentFrame++;
+                        const frameTime = currentFrame / fps;
+                        setCurrentTime(frameTime);
+                        drawCanvasFrame(frameTime);
+                        setRenderProgress(Math.min(100, Math.round((currentFrame / totalFrames) * 100)));
+
+                        if (currentFrame >= totalFrames) {
+                            clearInterval(renderInterval);
+                            setTimeout(() => {
+                                recorder.stop();
+                            }, 300);
+                        }
+                    }, 1000 / fps);
+
+                } catch (err) {
+                    console.error("Export Error:", err);
+                    if (bgmEnabled) bgmEngine.stop();
+                    setIsRendering(false);
+                    showToast('❌ 동영상 생성 중 오류가 발생했습니다.');
+                }
+            };
+
+            const generateFFmpegCommand = () => {
+                const w = currentRatio.width;
+                const h = currentRatio.height;
+
+                let cmd = `# [1단계] 각 장면별 음성 파일(sceneX.wav) 길이 확인 명령 (초 단위)\n`;
+                slides.forEach((_, idx) => {
+                    cmd += `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 scene${idx + 1}.wav\n`;
+                });
+
+                cmd += `\n# [2단계] 이미지 + 음성 → 각 장면 개별 숏폼 클립(sceneX.mp4) 생성 (음성 길이만큼 인코딩)\n`;
+                slides.forEach((slide, idx) => {
+                    cmd += `ffmpeg -loop 1 -i scene${idx + 1}.jpg -i scene${idx + 1}.wav -c:v libx264 -tune stillimage -c:a aac -vf "scale=${w}:${h},format=yuv420p" -shortest scene${idx + 1}.mp4\n`;
+                });
+
+                cmd += `\n# [3단계] list.txt 파일 생성 및 합치기\n`;
+                cmd += `ffmpeg -f concat -safe 0 -i list.txt -c copy final.mp4`;
+
+                return cmd;
+            };
+
+            return (
+                <div className="flex-1 flex flex-col max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+                    
+                    {/* Header Controls */}
+                    <header className={cx(glassCardStyle, "rounded-2xl p-5 sm:p-6 flex flex-col md:flex-row items-center justify-between gap-4 border-l-4 border-l-purple-500")}>
+                        <div className="flex items-center space-x-4">
+                            <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-purple-600 via-pink-500 to-red-500 flex items-center justify-center text-2xl shadow-lg shadow-purple-500/30">
+                                🎬
+                            </div>
+                            <div>
+                                <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight flex items-center gap-2">
+                                    FFmpeg & Emotion <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-red-400">Motion Generator</span>
+                                </h1>
+                                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                                    캐릭터 & 상품 참조 AI 합성, N장 모션, 상단 텍스트, BGM이 통합된 숏폼 MP4 제작
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2.5 w-full md:w-auto justify-end flex-wrap">
+                            <button
+                                onClick={() => {
+                                    setIsDarkMode(!isDarkMode);
+                                    showToast(isDarkMode ? '☀️ 라이트 모드로 전환되었습니다.' : '🌙 다크 모드로 전환되었습니다.');
+                                }}
+                                className="px-3 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-gray-200 text-xs sm:text-sm font-semibold border border-slate-300 dark:border-slate-700 transition flex items-center gap-1.5"
+                                title="라이트/다크 모드 변경"
+                            >
+                                {isDarkMode ? '☀️ 라이트' : '🌙 다크'}
+                            </button>
+
+                            <button 
+                                onClick={() => {
+                                    setTempApiKey(geminiApiKey);
+                                    setShowApiKeyModal(true);
+                                }}
+                                className="px-3 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-gray-200 text-xs sm:text-sm font-semibold border border-slate-300 dark:border-slate-700 transition flex items-center gap-1.5 relative"
+                                title="Gemini API Key 설정"
+                            >
+                                ⚙️ <span className="hidden sm:inline">API 키 설정</span>
+                                {geminiApiKey && (
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                )}
+                            </button>
+
+                            <button 
+                                onClick={handleResetAll}
+                                className="px-3.5 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-gray-200 text-xs sm:text-sm font-semibold border border-slate-300 dark:border-slate-700 transition flex items-center gap-1.5"
+                            >
+                                🔄 초기화
+                            </button>
+
+                            <button 
+                                onClick={() => setShowFFmpegModal(true)}
+                                className="px-3.5 py-2 rounded-xl bg-purple-100 dark:bg-purple-950/60 hover:bg-purple-200 dark:hover:bg-purple-900/80 text-purple-900 dark:text-purple-200 text-xs sm:text-sm font-semibold border border-purple-300 dark:border-purple-500/30 transition flex items-center gap-1.5"
+                            >
+                                💻 FFmpeg Script
+                            </button>
+
+                            <button 
+                                onClick={handleExportMP4}
+                                disabled={isRendering}
+                                className={cx(gradientBtnStyle, "px-4 py-2 rounded-xl text-white text-xs sm:text-sm font-bold shadow-lg flex items-center gap-1.5 disabled:opacity-50")}
+                            >
+                                {isRendering ? '⏳ MP4 제작 중...' : '⚡ MP4 동영상 추출'}
+                            </button>
+                        </div>
+                    </header>
+
+                    {/* Aspect Ratio & Margin Controls */}
+                    <div className={cx(glassCardStyle, "p-4 rounded-xl flex flex-wrap items-center justify-between gap-4 border border-slate-200 dark:border-slate-800")}>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-purple-600 dark:text-purple-300 font-bold uppercase tracking-wider">비율 선택:</span>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                {Object.keys(ASPECT_RATIOS).map((key) => (
+                                    <button
+                                        key={key}
+                                        onClick={() => {
+                                            setSelectedRatioKey(key);
+                                            showToast(`📐 화면 비율이 ${key} 로 변경되었습니다.`);
+                                        }}
+                                        className={cx(
+                                            "px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border",
+                                            selectedRatioKey === key
+                                                ? "bg-purple-600 text-white border-purple-400 shadow-md shadow-purple-500/30"
+                                                : "bg-slate-100 dark:bg-slate-900 text-slate-700 dark:text-gray-400 border-slate-300 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-800"
+                                        )}
+                                    >
+                                        {ASPECT_RATIOS[key].label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {selectedRatioKey === '9:16' && (
+                            <div className="flex items-center gap-2 bg-slate-200/80 dark:bg-slate-900/80 p-1 rounded-lg border border-purple-300 dark:border-purple-500/30">
+                                <span className="text-[11px] text-gray-600 dark:text-gray-400 px-2 font-medium">9:16 여백 옵션:</span>
+                                <button
+                                    onClick={() => {
+                                        setHasMargin(true);
+                                        showToast('🔳 상단 여백 20%가 적용되었습니다.');
+                                    }}
+                                    className={cx(
+                                        "px-2.5 py-1 rounded-md text-xs font-semibold transition",
+                                        hasMargin ? "bg-purple-600 text-white" : "text-gray-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
+                                    )}
+                                >
+                                    여백 있게 (상단 20%)
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setHasMargin(false);
+                                        showToast('🖼️ 전체 화면 (여백 0%)이 적용되었습니다.');
+                                    }}
+                                    className={cx(
+                                        "px-2.5 py-1 rounded-md text-xs font-semibold transition",
+                                        !hasMargin ? "bg-purple-600 text-white" : "text-gray-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
+                                    )}
+                                >
+                                    여백 없게 (0%)
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className={cx(glassCardStyle, "p-4 rounded-xl border border-pink-300 dark:border-pink-500/30 space-y-3 bg-pink-50/50 dark:bg-pink-950/10")}>
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <span className="text-lg">✍️</span>
+                                <div>
+                                    <h3 className="text-xs font-bold uppercase tracking-wider">상단 텍스트 레이어</h3>
+                                    <span className="text-[10px] text-pink-600 dark:text-pink-400 font-semibold">(페이퍼로지 볼드체 적용)</span>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2.5">
+                                <span className={cx(
+                                    "text-xs font-bold px-2 py-0.5 rounded-md transition border",
+                                    textEnabled 
+                                        ? "bg-pink-100 dark:bg-pink-600/30 text-pink-700 dark:text-pink-300 border-pink-300 dark:border-pink-500/40" 
+                                        : "bg-slate-200 dark:bg-slate-900 text-gray-500 dark:text-gray-400 border-slate-300 dark:border-slate-700"
+                                )}>
+                                    {textEnabled ? '👁️ 보이기' : '🙈 안보이기'}
+                                </span>
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={textEnabled} 
+                                        onChange={(e) => {
+                                            setTextEnabled(e.target.checked);
+                                            showToast(e.target.checked ? '✍️ 상단 텍스트 레이어가 표시됩니다.' : '🙈 상단 텍스트 레이어가 숨겨졌습니다.');
+                                        }}
+                                        className="sr-only peer" 
+                                    />
+                                    <div className="w-9 h-5 bg-slate-300 dark:bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-pink-600"></div>
+                                </label>
+                            </div>
+                        </div>
+
+                        {textEnabled && (
+                            <div className="space-y-3 pt-2 border-t border-slate-200 dark:border-slate-800/80">
+                                <div className="flex items-center justify-between flex-wrap gap-2">
+                                    <div className="flex items-center gap-4 flex-wrap">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[11px] font-bold text-slate-700 dark:text-gray-300">줄간 간격:</span>
+                                            <input 
+                                                type="range" 
+                                                min="0.8" 
+                                                max="2.5" 
+                                                step="0.1"
+                                                value={textLineHeight}
+                                                onChange={(e) => setTextLineHeight(parseFloat(e.target.value))}
+                                                className="w-24 h-1.5 bg-slate-300 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                                            />
+                                            <span className="font-mono text-xs text-purple-600 dark:text-purple-300">{textLineHeight.toFixed(1)}x</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[11px] font-bold text-slate-700 dark:text-gray-300">상하 위치:</span>
+                                            <input 
+                                                type="range" 
+                                                min="-300" 
+                                                max="300" 
+                                                step="5"
+                                                value={textOffsetY}
+                                                onChange={(e) => setTextOffsetY(parseInt(e.target.value))}
+                                                className="w-24 h-1.5 bg-slate-300 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                                            />
+                                            <span className="font-mono text-xs text-purple-600 dark:text-purple-300">{textOffsetY > 0 ? `+${textOffsetY}` : textOffsetY}px</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button 
+                                            onClick={handleAnalyzeTextLines}
+                                            className="px-2.5 py-1 rounded bg-indigo-100 dark:bg-indigo-900/60 hover:bg-indigo-200 dark:hover:bg-indigo-800 text-indigo-900 dark:text-indigo-200 text-xs font-semibold border border-indigo-300 dark:border-indigo-500/30 transition flex items-center gap-1"
+                                        >
+                                            🤖 대본분석 텍스트 생성
+                                        </button>
+                                        <button 
+                                            onClick={() => {
+                                                setTextLines([...textLines, { id: Date.now(), text: '새로운 문구 입력', color: '#ffffff', size: 48, letterSpacing: 2 }]);
+                                            }}
+                                            className="px-2.5 py-1 rounded bg-pink-100 dark:bg-pink-900/50 hover:bg-pink-200 dark:hover:bg-pink-800 text-pink-900 dark:text-pink-200 text-xs font-semibold border border-pink-300 dark:border-pink-500/30 transition"
+                                        >
+                                            ➕ 줄 추가
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                                    {textLines.map((lineObj, lIdx) => (
+                                        <div key={lineObj.id} className="bg-white/80 dark:bg-slate-900/90 p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2 shadow-sm">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-xs font-bold text-pink-600 dark:text-pink-300">
+                                                    {lIdx + 1}번 텍스트 설정 {lIdx === 0 ? '(구매유도 문구)' : lIdx === 1 ? '(가격정보)' : ''}
+                                                </span>
+                                                <div className="flex items-center gap-2">
+                                                    <input 
+                                                        type="color" 
+                                                        value={lineObj.color}
+                                                        onChange={(e) => {
+                                                            const updated = [...textLines];
+                                                            updated[lIdx].color = e.target.value;
+                                                            setTextLines(updated);
+                                                        }}
+                                                        className="w-7 h-6 rounded bg-transparent cursor-pointer border border-slate-300 dark:border-slate-700 p-0.5"
+                                                        title="개별 글자 색상 선택"
+                                                    />
+                                                    {textLines.length > 1 && (
+                                                        <button 
+                                                            onClick={() => {
+                                                                setTextLines(textLines.filter((_, i) => i !== lIdx));
+                                                            }}
+                                                            className="p-1 text-red-500 hover:text-red-600 text-xs font-bold"
+                                                            title="줄 삭제"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <input 
+                                                type="text" 
+                                                value={lineObj.text}
+                                                onChange={(e) => {
+                                                    const updated = [...textLines];
+                                                    updated[lIdx].text = e.target.value;
+                                                    setTextLines(updated);
+                                                }}
+                                                placeholder="텍스트 입력"
+                                                className="w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white text-xs px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 focus:outline-none focus:border-pink-500 font-sans"
+                                            />
+
+                                            <div className="grid grid-cols-2 gap-2 pt-1">
+                                                <div>
+                                                    <div className="flex justify-between text-[10px] text-gray-600 dark:text-gray-300 mb-1">
+                                                        <span>글자 크기</span>
+                                                        <span className="font-mono text-purple-600 dark:text-purple-300">{lineObj.size || 52}px</span>
+                                                    </div>
+                                                    <input 
+                                                        type="range" 
+                                                        min="20" 
+                                                        max="110" 
+                                                        value={lineObj.size || 52}
+                                                        onChange={(e) => {
+                                                            const updated = [...textLines];
+                                                            updated[lIdx].size = parseInt(e.target.value);
+                                                            setTextLines(updated);
+                                                        }}
+                                                        className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <div className="flex justify-between text-[10px] text-gray-600 dark:text-gray-300 mb-1">
+                                                        <span>글자 간격</span>
+                                                        <span className="font-mono text-purple-600 dark:text-purple-300">{lineObj.letterSpacing ?? 2}px</span>
+                                                    </div>
+                                                    <input 
+                                                        type="range" 
+                                                        min="-5" 
+                                                        max="30" 
+                                                        value={lineObj.letterSpacing ?? 2}
+                                                        onChange={(e) => {
+                                                            const updated = [...textLines];
+                                                            updated[lIdx].letterSpacing = parseInt(e.target.value);
+                                                            setTextLines(updated);
+                                                        }}
+                                                        className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-pink-500"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className={cx(glassCardStyle, "p-4 sm:p-5 rounded-xl border border-indigo-300 dark:border-indigo-500/30 space-y-4 bg-indigo-50/50 dark:bg-indigo-950/20")}>
+                        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+                            <div className="flex items-center gap-2.5">
+                                <span className="text-2xl">📜</span>
+                                <div>
+                                    <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider">
+                                        대본 분석 & 캐릭터/상품 기반 AI 이미지 생성
+                                    </h3>
+                                    <p className="text-[11px] text-indigo-700 dark:text-indigo-300">
+                                        대본 내 <code className="bg-indigo-200 dark:bg-indigo-900/80 px-1 py-0.5 rounded text-pink-700 dark:text-pink-300 font-mono">[화면: 설명]</code> 문구와 업로드한 캐릭터/상품 참조 이미지를 조합하여 합성합니다.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <select 
+                                    value={ttsVoice}
+                                    onChange={(e) => setTtsVoice(e.target.value)}
+                                    className="bg-white dark:bg-slate-900 text-indigo-900 dark:text-indigo-200 text-xs rounded-lg px-2.5 py-1.5 border border-indigo-300 dark:border-indigo-500/30 focus:outline-none"
+                                >
+                                    <option value="Kore">🗣️ Kore (차분한 한국어)</option>
+                                    <option value="Puck">🗣️ Puck (밝은 톤)</option>
+                                    <option value="Zephyr">🗣️ Zephyr (신나는 톤)</option>
+                                    <option value="Charon">🗣️ Charon (정보 전달)</option>
+                                </select>
+
+                                <button
+                                    onClick={handleAnalyzeScript}
+                                    disabled={isAnalyzingScript}
+                                    className="px-3.5 py-1.5 rounded-lg bg-indigo-600 dark:bg-indigo-800 hover:bg-indigo-700 text-white text-xs font-bold transition shadow"
+                                >
+                                    {isAnalyzingScript ? '⚙️ 대본 분석 중...' : '🔍 대본 [화면] 추출'}
+                                </button>
+
+                                <button
+                                    onClick={handleBatchGenerateImages}
+                                    disabled={isBatchGenerating}
+                                    className={cx(gradientBtnStyle, "px-4 py-1.5 rounded-lg text-white text-xs font-bold shadow-md flex items-center gap-1.5 disabled:opacity-50")}
+                                >
+                                    {isBatchGenerating ? '⏳ 전체 AI 이미지 순차 생성 중...' : '⚡ 전체 이미지 일괄 생성'}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Separate Drag and Drop Reference Cards: Character & Product */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            
+                            {/* 1. Character Reference Card with Drag & Drop */}
+                            <div 
+                                onDragOver={(e) => handleDragOver(e, setIsDraggingChar)}
+                                onDragLeave={(e) => handleDragLeave(e, setIsDraggingChar)}
+                                onDrop={(e) => handleDropRef(e, 'character', setIsDraggingChar)}
+                                className={cx(
+                                    "p-3.5 rounded-xl border transition-all flex flex-col justify-between space-y-3 relative overflow-hidden",
+                                    isDraggingChar 
+                                        ? "border-purple-500 bg-purple-100/80 dark:bg-purple-950/60 ring-2 ring-purple-500 scale-[1.01]" 
+                                        : "bg-white/80 dark:bg-slate-900/80 border-indigo-200 dark:border-indigo-500/20 hover:border-purple-400"
+                                )}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-base">👤</span>
+                                        <div>
+                                            <h4 className="text-xs font-bold text-slate-800 dark:text-gray-100">캐릭터 참조 이미지</h4>
+                                            <p className="text-[10px] text-gray-500 dark:text-gray-400">외모/스타일 일관성 유지</p>
+                                        </div>
+                                    </div>
+                                    {characterRef && (
+                                        <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded font-semibold border border-emerald-300 dark:border-emerald-500/30">
+                                            ✓ 적용 완료
+                                        </span>
+                                    )}
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                    <div className="w-16 h-16 rounded-lg bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 overflow-hidden shrink-0 flex items-center justify-center relative group">
+                                        {characterRef ? (
+                                            <img src={characterRef.url} alt="Character Reference" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span className="text-2xl text-slate-400 dark:text-slate-600">👤</span>
+                                        )}
+                                    </div>
+
+                                    <div className="flex-1 min-w-0 space-y-1">
+                                        <div className="text-[11px] text-slate-600 dark:text-gray-300 font-medium truncate">
+                                            {characterRef ? characterRef.name || '캐릭터_이미지.png' : '이미지를 이곳에 드래그하거나 선택하세요'}
+                                        </div>
+                                        
+                                        <div className="flex items-center gap-2">
+                                            <label className="px-3 py-1 rounded bg-purple-100 dark:bg-purple-900/60 hover:bg-purple-200 dark:hover:bg-purple-800 text-purple-900 dark:text-purple-200 text-[11px] font-bold cursor-pointer border border-purple-300 dark:border-purple-500/30 transition inline-block">
+                                                📁 파일 선택
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*" 
+                                                    className="hidden" 
+                                                    onChange={(e) => {
+                                                        if (e.target.files && e.target.files[0]) {
+                                                            processRefFile(e.target.files[0], 'character');
+                                                        }
+                                                    }} 
+                                                />
+                                            </label>
+                                            {characterRef && (
+                                                <button 
+                                                    onClick={() => {
+                                                        setCharacterRef(null);
+                                                        showToast('🗑️ 캐릭터 참조 이미지가 삭제되었습니다.');
+                                                    }}
+                                                    className="px-2 py-1 rounded bg-slate-200 dark:bg-slate-800 hover:bg-red-500 hover:text-white text-slate-700 dark:text-gray-300 text-[11px] font-semibold transition"
+                                                >
+                                                    삭제
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {isDraggingChar && (
+                                    <div className="absolute inset-0 bg-purple-600/20 backdrop-blur-xs flex items-center justify-center text-xs font-bold text-purple-900 dark:text-purple-200">
+                                        📥 여기에 캐릭터 이미지를 놓으세요!
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* 2. Product Reference Card with Drag & Drop */}
+                            <div 
+                                onDragOver={(e) => handleDragOver(e, setIsDraggingProd)}
+                                onDragLeave={(e) => handleDragLeave(e, setIsDraggingProd)}
+                                onDrop={(e) => handleDropRef(e, 'product', setIsDraggingProd)}
+                                className={cx(
+                                    "p-3.5 rounded-xl border transition-all flex flex-col justify-between space-y-3 relative overflow-hidden",
+                                    isDraggingProd 
+                                        ? "border-pink-500 bg-pink-100/80 dark:bg-pink-950/60 ring-2 ring-pink-500 scale-[1.01]" 
+                                        : "bg-white/80 dark:bg-slate-900/80 border-indigo-200 dark:border-indigo-500/20 hover:border-pink-400"
+                                )}
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-base">🛍️</span>
+                                        <div>
+                                            <h4 className="text-xs font-bold text-slate-800 dark:text-gray-100">상품(제품) 참조 이미지</h4>
+                                            <p className="text-[10px] text-gray-500 dark:text-gray-400">디자인/포장 디테일 반영</p>
+                                        </div>
+                                    </div>
+                                    {productRef && (
+                                        <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded font-semibold border border-emerald-300 dark:border-emerald-500/30">
+                                            ✓ 적용 완료
+                                        </span>
+                                    )}
+                                </div>
+
+                                <div className="flex items-center gap-3">
+                                    <div className="w-16 h-16 rounded-lg bg-slate-100 dark:bg-slate-950 border border-slate-300 dark:border-slate-800 overflow-hidden shrink-0 flex items-center justify-center relative group">
+                                        {productRef ? (
+                                            <img src={productRef.url} alt="Product Reference" className="w-full h-full object-cover" />
+                                        ) : (
+                                            <span className="text-2xl text-slate-400 dark:text-slate-600">🛍️</span>
+                                        )}
+                                    </div>
+
+                                    <div className="flex-1 min-w-0 space-y-1">
+                                        <div className="text-[11px] text-slate-600 dark:text-gray-300 font-medium truncate">
+                                            {productRef ? productRef.name || '상품_이미지.png' : '이미지를 이곳에 드래그하거나 선택하세요'}
+                                        </div>
+                                        
+                                        <div className="flex items-center gap-2">
+                                            <label className="px-3 py-1 rounded bg-pink-100 dark:bg-pink-900/60 hover:bg-pink-200 dark:hover:bg-pink-800 text-pink-900 dark:text-pink-200 text-[11px] font-bold cursor-pointer border border-pink-300 dark:border-pink-500/30 transition inline-block">
+                                                📁 파일 선택
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*" 
+                                                    className="hidden" 
+                                                    onChange={(e) => {
+                                                        if (e.target.files && e.target.files[0]) {
+                                                            processRefFile(e.target.files[0], 'product');
+                                                        }
+                                                    }} 
+                                                />
+                                            </label>
+                                            {productRef && (
+                                                <button 
+                                                    onClick={() => {
+                                                        setProductRef(null);
+                                                        showToast('🗑️ 상품 참조 이미지가 삭제되었습니다.');
+                                                    }}
+                                                    className="px-2 py-1 rounded bg-slate-200 dark:bg-slate-800 hover:bg-red-500 hover:text-white text-slate-700 dark:text-gray-300 text-[11px] font-semibold transition"
+                                                >
+                                                    삭제
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {isDraggingProd && (
+                                    <div className="absolute inset-0 bg-pink-600/20 backdrop-blur-xs flex items-center justify-center text-xs font-bold text-pink-900 dark:text-pink-200">
+                                        📥 여기에 상품 이미지를 놓으세요!
+                                    </div>
+                                )}
+                            </div>
+
+                        </div>
+
+                        {/* Active Reference Indicator summary */}
+                        <div className="flex items-center justify-between text-[11px] bg-slate-100 dark:bg-slate-900/90 p-2.5 rounded-lg border border-indigo-200 dark:border-indigo-500/20">
+                            <span className="text-slate-700 dark:text-gray-300 font-medium">💡 이미지 생성 적용 모드:</span>
+                            <div className="flex items-center gap-2">
+                                {characterRef && productRef ? (
+                                    <span className="font-bold text-purple-600 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/80 px-2 py-0.5 rounded border border-purple-300 dark:border-purple-500/30">
+                                        👤 캐릭터 + 🛍️ 상품 대입 AI 멀티 합성
+                                    </span>
+                                ) : characterRef ? (
+                                    <span className="font-bold text-indigo-600 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-950/80 px-2 py-0.5 rounded border border-indigo-300 dark:border-indigo-500/30">
+                                        👤 캐릭터 집중 AI 합성
+                                    </span>
+                                ) : productRef ? (
+                                    <span className="font-bold text-pink-600 dark:text-pink-300 bg-pink-100 dark:bg-pink-950/80 px-2 py-0.5 rounded border border-pink-300 dark:border-pink-500/30">
+                                        🛍️ 상품 집중 AI 합성
+                                    </span>
+                                ) : (
+                                    <span className="text-gray-500 dark:text-gray-400 italic">
+                                        참조 이미지 미적용 (일반 프롬프트 기반)
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        <textarea
+                            value={scriptText}
+                            onChange={(e) => setScriptText(e.target.value)}
+                            rows={3}
+                            placeholder="[화면: 묘사 내용] 형태와 대본을 여기에 입력하세요..."
+                            className="w-full bg-slate-50 dark:bg-slate-950/90 text-slate-900 dark:text-gray-200 text-xs p-3 rounded-xl border border-slate-300 dark:border-slate-800 focus:outline-none focus:border-indigo-500 font-sans leading-relaxed resize-y"
+                        />
+
+                        {slides.length > 0 && slides.some(s => s.imagePrompt) && (
+                            <div className="pt-2 border-t border-indigo-200 dark:border-indigo-500/20">
+                                <span className="text-[11px] font-bold text-pink-600 dark:text-pink-300 block mb-1.5">
+                                    🎬 추출된 20초 분량 장면별 [화면] 프롬프트 (총 {slides.length}개 장면 / 합계 {TOTAL_DURATION.toFixed(1)}초):
+                                </span>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                    {slides.map((s, idx) => (
+                                        <div key={s.id} className="bg-white/90 dark:bg-slate-950/90 p-2 rounded-lg border border-indigo-200 dark:border-indigo-500/30 text-[10px] space-y-0.5 shadow-sm">
+                                            <div className="flex justify-between text-indigo-700 dark:text-indigo-300 font-bold">
+                                                <span>장면 {idx + 1}</span>
+                                                <span className="font-mono text-pink-600 dark:text-pink-400">{s.duration || 4}초</span>
+                                            </div>
+                                            <p className="text-gray-600 dark:text-gray-300 truncate" title={s.imagePrompt}>
+                                                🖼️ {s.imagePrompt}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                        
+                        {/* Left Column: Image Slides Control Panel */}
+                        <div className="lg:col-span-6 space-y-4">
+                            <div className="flex items-center justify-between px-1">
+                                <h2 className="text-base sm:text-lg font-bold flex items-center gap-2">
+                                    🖼️ 이미지 슬라이드 관리 ({slides.length}장)
+                                </h2>
+                                <div className="flex items-center gap-2">
+                                    <label className="px-3 py-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 hover:bg-indigo-200 dark:hover:bg-indigo-800 text-indigo-900 dark:text-indigo-200 text-xs font-bold cursor-pointer border border-indigo-300 dark:border-indigo-500/30 transition">
+                                        📁 파일 일괄 업로드
+                                        <input 
+                                            type="file" 
+                                            multiple 
+                                            accept="image/*" 
+                                            className="hidden" 
+                                            onChange={(e) => handleBatchUpload(e.target.files)} 
+                                        />
+                                    </label>
+                                    <button 
+                                        onClick={() => {
+                                            const newId = Date.now();
+                                            setSlides([...slides, {
+                                                id: 'slide_' + newId,
+                                                url: generateSampleImage(`추가 이미지 ${slides.length + 1}`, '#8b5cf6', '#ec4899', '✨'),
+                                                title: `추가 이미지 ${slides.length + 1}`,
+                                                effect: 'zoomIn',
+                                                duration: 4.0,
+                                                narration: '',
+                                                imagePrompt: `새 장면 ${slides.length + 1} AI 비주얼 프롬프트`
+                                            }]);
+                                        }}
+                                        className="px-2.5 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-gray-200 text-xs font-bold border border-slate-300 dark:border-slate-700 transition"
+                                    >
+                                        ➕ 추가
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Batch Drag and Drop Zone */}
+                            <div 
+                                onDragOver={(e) => handleDragOver(e, setIsDraggingBatch)}
+                                onDragLeave={(e) => handleDragLeave(e, setIsDraggingBatch)}
+                                onDrop={handleDropBatch}
+                                className={cx(
+                                    "p-3 rounded-xl border border-dashed transition text-center cursor-pointer",
+                                    isDraggingBatch 
+                                        ? "border-purple-500 bg-purple-100/80 dark:bg-purple-950/80 text-purple-900 dark:text-purple-200" 
+                                        : "border-slate-300 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-900/50 text-slate-600 dark:text-gray-400 hover:border-purple-400"
+                                )}
+                            >
+                                <p className="text-xs font-semibold">
+                                    📥 여러 장의 장면 이미지를 드래그 앤 드롭하여 바로 슬라이드로 교체 및 업로드하세요
+                                </p>
+                            </div>
+
+                            {/* Slide Cards List */}
+                            <div className="space-y-3">
+                                {slides.map((slide, idx) => (
+                                    <div 
+                                        key={slide.id}
+                                        className={cx(
+                                            glassCardStyle,
+                                            "p-3 rounded-xl border transition flex flex-col space-y-2.5",
+                                            activeSlideIndex === idx && isPlaying 
+                                                ? "border-purple-500 bg-purple-50 dark:bg-purple-950/20 shadow-md" 
+                                                : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700"
+                                        )}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <div className="flex flex-col items-center justify-center gap-1 bg-slate-100 dark:bg-slate-950/80 p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 shrink-0">
+                                                <span className="w-5 h-5 rounded-full bg-purple-200 dark:bg-purple-900/80 text-purple-900 dark:text-purple-200 font-bold text-[11px] flex items-center justify-center border border-purple-300 dark:border-purple-500/30">
+                                                    {idx + 1}
+                                                </span>
+                                                <div className="flex flex-col gap-1 mt-0.5">
+                                                    <button 
+                                                        disabled={idx === 0}
+                                                        onClick={() => {
+                                                            const updated = [...slides];
+                                                            const [moved] = updated.splice(idx, 1);
+                                                            updated.splice(idx - 1, 0, moved);
+                                                            setSlides(updated);
+                                                            showToast(`▲ 장면 ${idx + 1}을 위로 이동했습니다.`);
+                                                        }}
+                                                        className="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-800 hover:bg-purple-600 text-slate-700 dark:text-gray-300 hover:text-white rounded disabled:opacity-20 text-[10px] font-bold transition"
+                                                        title="위로 이동"
+                                                    >
+                                                        ▲
+                                                    </button>
+                                                    <button 
+                                                        disabled={idx === slides.length - 1}
+                                                        onClick={() => {
+                                                            const updated = [...slides];
+                                                            const [moved] = updated.splice(idx, 1);
+                                                            updated.splice(idx + 1, 0, moved);
+                                                            setSlides(updated);
+                                                            showToast(`▼ 장면 ${idx + 1}을 아래로 이동했습니다.`);
+                                                        }}
+                                                        className="px-1.5 py-0.5 bg-slate-200 dark:bg-slate-800 hover:bg-purple-600 text-slate-700 dark:text-gray-300 hover:text-white rounded disabled:opacity-20 text-[10px] font-bold transition"
+                                                        title="아래로 이동"
+                                                    >
+                                                        ▼
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div className="relative group w-16 h-20 rounded-lg overflow-hidden bg-slate-200 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 shrink-0">
+                                                <img src={slide.url} alt={slide.title} className="w-full h-full object-cover" />
+                                                <label className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center cursor-pointer text-[10px] text-white">
+                                                    <span>📷 변경</span>
+                                                    <input 
+                                                        type="file" 
+                                                        accept="image/*" 
+                                                        className="hidden" 
+                                                        onChange={(e) => handleSingleFileUpload(idx, e.target.files[0])} 
+                                                    />
+                                                </label>
+                                            </div>
+
+                                            <div className="flex-1 min-w-0 space-y-1">
+                                                <div className="flex items-center justify-between text-xs">
+                                                    <span className="font-semibold truncate max-w-[150px]">
+                                                        {slide.title}
+                                                    </span>
+                                                    <span className="text-indigo-600 dark:text-indigo-400 font-mono text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded border border-indigo-200 dark:border-indigo-500/20">
+                                                        {slide.duration || 4.0}초
+                                                    </span>
+                                                </div>
+
+                                                {slide.narration && (
+                                                    <p className="text-[11px] text-slate-700 dark:text-gray-300 bg-slate-100 dark:bg-slate-950/80 p-1.5 rounded border border-slate-200 dark:border-slate-800 truncate" title={slide.narration}>
+                                                        💬 {slide.narration}
+                                                    </p>
+                                                )}
+
+                                                <select 
+                                                    value={slide.effect}
+                                                    onChange={(e) => {
+                                                        const updated = [...slides];
+                                                        updated[idx].effect = e.target.value;
+                                                        setSlides(updated);
+                                                    }}
+                                                    className="w-full bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-gray-200 text-xs rounded-lg px-2 py-1 border border-slate-300 dark:border-slate-700 focus:outline-none focus:border-purple-500"
+                                                >
+                                                    {motionEffects.map(eff => (
+                                                        <option key={eff.id} value={eff.id}>
+                                                            {eff.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            {slides.length > 1 && (
+                                                <button 
+                                                    onClick={() => setSlides(slides.filter((_, i) => i !== idx))}
+                                                    className="text-red-500 hover:text-red-600 text-sm font-bold p-1 self-start"
+                                                    title="삭제"
+                                                >
+                                                    ✕
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        <div className="bg-slate-50 dark:bg-slate-950/80 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 space-y-1.5">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-[10px] font-bold text-pink-600 dark:text-pink-300 flex items-center gap-1">
+                                                    🎨 장면 AI 이미지 프롬프트
+                                                </span>
+                                                <div className="flex items-center gap-1.5">
+                                                    <button
+                                                        onClick={() => generateAIImageForSlide(idx)}
+                                                        disabled={generatingSlideIds[slide.id]}
+                                                        className="px-2.5 py-1 rounded bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-bold transition flex items-center gap-1 disabled:opacity-50"
+                                                    >
+                                                        {generatingSlideIds[slide.id] ? '⚙️ 생성 중...' : '🎨 개별 생성'}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => generateAIImageForSlide(idx)}
+                                                        disabled={generatingSlideIds[slide.id]}
+                                                        className="px-2 py-1 rounded bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-gray-300 text-[10px] font-semibold border border-slate-300 dark:border-slate-700 transition flex items-center gap-1"
+                                                    >
+                                                        🔄 재생성
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <input 
+                                                type="text"
+                                                value={slide.imagePrompt || ''}
+                                                onChange={(e) => {
+                                                    const updated = [...slides];
+                                                    updated[idx].imagePrompt = e.target.value;
+                                                    setSlides(updated);
+                                                }}
+                                                placeholder="장면에 적용할 AI 이미지 생성을 위한 프롬프트 문구"
+                                                className="w-full bg-white dark:bg-slate-900 text-slate-900 dark:text-gray-200 text-[11px] px-2.5 py-1 rounded border border-slate-300 dark:border-slate-700 focus:outline-none focus:border-purple-500 font-sans"
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* BGM Generator Control Panel */}
+                            <div className={cx(glassCardStyle, "p-4 rounded-xl border border-purple-300 dark:border-purple-500/30 space-y-3 bg-purple-50/50 dark:bg-purple-950/10")}>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-lg">🎵</span>
+                                        <h3 className="text-xs font-bold uppercase tracking-wider">배경음악 (BGM) 생성기</h3>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={bgmEnabled} 
+                                            onChange={(e) => setBgmEnabled(e.target.checked)}
+                                            className="sr-only peer" 
+                                        />
+                                        <div className="w-9 h-5 bg-slate-300 dark:bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-purple-600"></div>
+                                    </label>
+                                </div>
+
+                                {bgmEnabled && (
+                                    <div className="space-y-3 pt-1 border-t border-slate-200 dark:border-slate-800/80">
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div>
+                                                <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-1">음악 분위기 (무드)</label>
+                                                <select 
+                                                    value={bgmMood}
+                                                    onChange={(e) => setBgmMood(e.target.value)}
+                                                    className="w-full bg-white dark:bg-slate-900 text-slate-900 dark:text-gray-200 text-xs rounded-lg px-2 py-1.5 border border-slate-300 dark:border-slate-700"
+                                                >
+                                                    <option value="upbeat">🚀 Upbeat Pop (신남)</option>
+                                                    <option value="lofi">🎷 Lo-Fi Chill (차분함)</option>
+                                                    <option value="cinematic">🎬 Cinematic (감성적)</option>
+                                                    <option value="corporate">💼 Corporate (모던)</option>
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-[10px] text-gray-500 dark:text-gray-400 mb-1">음량 ({Math.round(bgmVolume * 100)}%)</label>
+                                                <input 
+                                                    type="range" 
+                                                    min="0" 
+                                                    max="1" 
+                                                    step="0.05"
+                                                    value={bgmVolume}
+                                                    onChange={(e) => setBgmVolume(parseFloat(e.target.value))}
+                                                    className="w-full h-2 bg-slate-300 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500 mt-2"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between pt-1">
+                                            <button 
+                                                onClick={toggleBgmPreview}
+                                                className="px-3 py-1.5 rounded-lg bg-purple-100 dark:bg-purple-900/60 hover:bg-purple-200 dark:hover:bg-purple-800 text-purple-900 dark:text-purple-200 text-xs font-semibold border border-purple-300 dark:border-purple-500/30 transition flex items-center gap-1.5"
+                                            >
+                                                {isBgmPreviewing ? '⏸️ BGM 멈추기' : '▶️ BGM 미리듣기'}
+                                            </button>
+
+                                            <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                                                💡 비디오 추출 시 오디오 스트림이 합성된 MP4 파일로 저장됩니다.
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="lg:col-span-6 space-y-4">
+                            <div className="flex items-center justify-between px-1">
+                                <h2 className="text-base sm:text-lg font-bold flex items-center gap-2">
+                                    📱 라이브 플레이어
+                                </h2>
+                                <span className="text-xs font-mono text-pink-600 dark:text-pink-400 bg-pink-100 dark:bg-pink-950/40 px-2.5 py-1 rounded-full border border-pink-300 dark:border-pink-500/30">
+                                    {currentTime.toFixed(1)}s / {TOTAL_DURATION}.0s
+                                </span>
+                            </div>
+
+                            <div className={cx(glassCardStyle, "rounded-2xl p-4 relative overflow-hidden border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center")}>
+                                <div className={cx("relative w-full max-w-[320px] rounded-2xl overflow-hidden bg-black shadow-2xl flex items-center justify-center border-2 border-slate-800/80", currentRatio.aspectClass, "max-h-[560px]")}>
+                                    <canvas 
+                                        ref={canvasRef} 
+                                        className="w-full h-full object-contain"
+                                    />
+
+                                    {!isPlaying && (
+                                        <button 
+                                            onClick={() => setIsPlaying(true)}
+                                            className="absolute inset-0 m-auto w-16 h-16 rounded-full bg-purple-600/80 hover:bg-purple-500 text-white flex items-center justify-center text-2xl shadow-xl transition transform hover:scale-110 backdrop-blur-sm border border-purple-300/30"
+                                        >
+                                            ▶
+                                        </button>
+                                    )}
+
+                                    {selectedRatioKey === '9:16' && hasMargin && (
+                                        <div className="absolute top-2 right-2 bg-black/70 backdrop-blur-md text-[10px] text-purple-300 px-2 py-0.5 rounded-full font-bold border border-purple-500/30">
+                                            Top 20% Black
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Timeline Controls */}
+                                <div className="w-full mt-4 space-y-3 px-2">
+                                    <input 
+                                        type="range" 
+                                        min="0" 
+                                        max={TOTAL_DURATION} 
+                                        step="0.05"
+                                        value={currentTime}
+                                        onChange={(e) => {
+                                            setIsPlaying(false);
+                                            setCurrentTime(parseFloat(e.target.value));
+                                        }}
+                                        className="w-full h-2 bg-slate-300 dark:bg-slate-800 rounded-lg appearance-none cursor-pointer accent-purple-500 focus:outline-none"
+                                    />
+
+                                    <div className="flex items-center justify-between pt-1">
+                                        <div className="flex items-center gap-3">
+                                            <button 
+                                                onClick={() => setIsPlaying(!isPlaying)}
+                                                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs sm:text-sm font-semibold transition flex items-center gap-1.5"
+                                            >
+                                                {isPlaying ? '⏸️ 일시정지' : '▶️ 재생하기'}
+                                            </button>
+                                            <button 
+                                                onClick={() => {
+                                                    setIsPlaying(false);
+                                                    setCurrentTime(0);
+                                                }}
+                                                className="px-3 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-gray-300 text-xs sm:text-sm transition"
+                                            >
+                                                🔄 처음으로
+                                            </button>
+                                        </div>
+
+                                        <div className="text-[11px] text-gray-500 dark:text-gray-400 font-mono">
+                                            {currentRatio.width}x{currentRatio.height} ({selectedRatioKey})
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {renderedVideoUrl && (
+                                <div className={cx(glassCardStyle, pulseGlowStyle, "p-4 rounded-xl border border-purple-300 dark:border-purple-500/40 flex flex-col sm:flex-row items-center justify-between gap-4 bg-purple-50 dark:bg-purple-950/20 shadow-xl")}>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-lg bg-pink-500/20 text-pink-500 dark:text-pink-400 flex items-center justify-center text-xl shrink-0">
+                                            🎥
+                                        </div>
+                                        <div>
+                                            <h4 className="text-sm font-bold">{TOTAL_DURATION}초 고화질 MP4 동영상 완성!</h4>
+                                            <p className="text-xs text-gray-500 dark:text-gray-300">원본 색감 그대로 제작된 MP4 비디오를 다운로드하세요.</p>
+                                        </div>
+                                    </div>
+                                    <a 
+                                        href={renderedVideoUrl} 
+                                        download={`motion_video_${selectedRatioKey.replace(':','_')}.mp4`}
+                                        className={cx(gradientBtnStyle, "px-4 py-2 rounded-xl text-white text-xs font-bold shrink-0")}
+                                    >
+                                        ⬇️ MP4 비디오 다운로드
+                                    </a>
+                                </div>
+                            )}
+
+                        </div>
+                    </div>
+
+                    {/* Modals & Dialogs */}
+                    {showFFmpegModal && (
+                        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+                            <div className={cx(glassCardStyle, "max-w-2xl w-full rounded-2xl p-6 space-y-4 border border-purple-300 dark:border-purple-500/30 max-h-[90vh] flex flex-col")}>
+                                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                                    <h3 className="text-lg font-bold flex items-center gap-2">
+                                        💻 FFmpeg 명령어 스크립트 ({slides.length}개 슬라이드)
+                                    </h3>
+                                    <button 
+                                        onClick={() => setShowFFmpegModal(false)}
+                                        className="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white text-xl font-bold"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+
+                                <div className="bg-slate-900 dark:bg-slate-950 p-4 rounded-xl border border-slate-700 dark:border-slate-800 overflow-x-auto flex-1 font-mono text-xs text-purple-300">
+                                    <pre className="whitespace-pre">{generateFFmpegCommand()}</pre>
+                                </div>
+
+                                <div className="flex justify-end gap-3 pt-2">
+                                    <button 
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(generateFFmpegCommand());
+                                            showToast('📋 FFmpeg 명령어가 클립보드에 복사되었습니다.');
+                                        }}
+                                        className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition"
+                                    >
+                                        📋 클립보드 복사
+                                    </button>
+                                    <button 
+                                        onClick={() => setShowFFmpegModal(false)}
+                                        className="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-gray-300 text-xs transition"
+                                    >
+                                        닫기
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {showApiKeyModal && (
+                        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+                            <div className={cx(glassCardStyle, "max-w-md w-full rounded-2xl p-6 space-y-4 border border-purple-300 dark:border-purple-500/30 flex flex-col")}>
+                                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                                    <h3 className="text-lg font-bold flex items-center gap-2">
+                                        ⚙️ Gemini API Key 설정
+                                    </h3>
+                                    <button 
+                                        onClick={() => setShowApiKeyModal(false)}
+                                        className="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-white text-xl font-bold"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                                        AI 이미지 생성 기능(<code className="text-purple-600 dark:text-purple-300 bg-purple-100 dark:bg-purple-950/60 px-1 py-0.5 rounded">gemini-3.1-flash-image-preview</code>)에 사용할 구글 Gemini API Key를 입력하세요.
+                                        입력한 API 키는 브라우저 로컬 저장소(Local PC)에 안전하게 보관됩니다.
+                                    </p>
+
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-purple-600 dark:text-purple-300">Gemini API Key</label>
+                                        <input 
+                                            type="password"
+                                            value={tempApiKey}
+                                            onChange={(e) => setTempApiKey(e.target.value)}
+                                            placeholder="AIzaSy..."
+                                            className="w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-white text-xs px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 focus:outline-none focus:border-purple-500 font-mono"
+                                        />
+                                    </div>
+
+                                    {geminiApiKey && (
+                                        <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 p-2 rounded-lg border border-emerald-200 dark:border-emerald-500/20">
+                                            <span>✅ API 키가 로컬에 저장되어 활성화되었습니다.</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-slate-800">
+                                    {geminiApiKey ? (
+                                        <button 
+                                            onClick={() => {
+                                                localStorage.removeItem('gemini_api_key');
+                                                setGeminiApiKey('');
+                                                setTempApiKey('');
+                                                showToast('🗑️ 저장된 API 키가 삭제되었습니다.');
+                                                setShowApiKeyModal(false);
+                                            }}
+                                            className="px-3 py-1.5 rounded-lg bg-red-100 dark:bg-red-950/60 hover:bg-red-200 dark:hover:bg-red-900/80 text-red-700 dark:text-red-300 text-xs font-semibold border border-red-300 dark:border-red-500/30 transition"
+                                        >
+                                            키 삭제
+                                        </button>
+                                    ) : <div></div>}
+
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={() => setShowApiKeyModal(false)}
+                                            className="px-3.5 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-gray-300 text-xs transition"
+                                        >
+                                            취소
+                                        </button>
+                                        <button 
+                                            onClick={() => {
+                                                const trimmed = tempApiKey.trim();
+                                                localStorage.setItem('gemini_api_key', trimmed);
+                                                setGeminiApiKey(trimmed);
+                                                showToast('🔑 API 키가 로컬 PC에 성공적으로 저장되었습니다!');
+                                                setShowApiKeyModal(false);
+                                            }}
+                                            className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold transition"
+                                        >
+                                            저장하기
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {isRendering && (
+                        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-4">
+                            <div className={cx(glassCardStyle, "max-w-md w-full rounded-2xl p-6 text-center space-y-4 border border-purple-500/40")}>
+                                <div className="w-16 h-16 rounded-2xl bg-purple-600/30 text-purple-400 mx-auto flex items-center justify-center text-3xl animate-bounce">
+                                    ⚙️
+                                </div>
+                                <h3 className="text-lg font-bold">MP4 동영상 렌더링 중</h3>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    {slides.length}장의 원본 이미지 모션 및 배경음악 오디오를 인코딩하고 있습니다...
+                                </p>
+
+                                <div className="space-y-1">
+                                    <div className="w-full h-3 bg-slate-200 dark:bg-slate-900 rounded-full overflow-hidden p-0.5 border border-slate-300 dark:border-slate-800">
+                                        <div 
+                                            className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-150"
+                                            style={{ width: `${renderProgress}%` }}
+                                        />
+                                    </div>
+                                    <div className="flex justify-between text-xs font-mono text-gray-500 dark:text-gray-400">
+                                        <span>{renderProgress}%</span>
+                                        <span>{((renderProgress / 100) * TOTAL_DURATION).toFixed(1)}s / {TOTAL_DURATION}.0s</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {toastMessage && (
+                        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 dark:bg-slate-900 border border-purple-500 text-purple-200 px-4 py-3 rounded-xl shadow-2xl text-xs font-semibold animate-fade-in flex items-center gap-2">
+                            <span>{toastMessage}</span>
+                        </div>
+                    )}
+
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

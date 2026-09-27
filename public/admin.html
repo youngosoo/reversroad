@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>관리자</title>
+<script src="/assets/theme.js"></script>
+<link rel="stylesheet" href="/assets/style.css" />
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><img class="brand-logo" src="/assets/logo.png" width="28" height="28" alt="" /> <span>관리자</span></div>
+    <div class="spacer"></div>
+    <div id="userChip"></div>
+    <button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false" title="테마 전환" aria-label="테마 전환"></button>
+    <a class="btn small" href="/">홈으로</a>
+    <button class="btn small" id="logout">로그아웃</button>
+  </header>
+
+  <div id="notice" class="notice" hidden></div>
+
+  <section class="card checklist-card">
+    <h2>AdSense 준비 점검</h2>
+    <p class="hint">광고 심사에서 가장 자주 걸리는 항목을 자동으로 확인합니다. 빨간 항목을 먼저 해결하세요.</p>
+    <ul id="adsenseChecklist"></ul>
+    <p id="checklistStatus" class="small"></p>
+    <p class="muted small">
+      공개 페이지 미리보기:
+      <a href="/" target="_blank" rel="noopener">홈</a> ·
+      <a href="/apps" target="_blank" rel="noopener">앱 목록</a> ·
+      <a href="/about" target="_blank" rel="noopener">소개</a> ·
+      <a href="/contact" target="_blank" rel="noopener">문의</a> ·
+      <a href="/guide" target="_blank" rel="noopener">가이드</a> ·
+      <a href="/privacy" target="_blank" rel="noopener">개인정보처리방침</a> ·
+      <a href="/terms" target="_blank" rel="noopener">이용약관</a> ·
+      <a href="/robots.txt" target="_blank" rel="noopener">robots.txt</a> ·
+      <a href="/sitemap.xml" target="_blank" rel="noopener">sitemap.xml</a> ·
+      <a href="/ads.txt" target="_blank" rel="noopener">ads.txt</a>
+    </p>
+  </section>
+
+  <section class="card panel">
+    <h2>앱 추가</h2>
+    <p class="hint">
+      zip(안에 <span class="mono">index.html</span> 포함) 또는 <span class="mono">.html</span> 파일을 올리면
+      파일을 읽어 <b>이름 · 설명 · 태그 · 사용방법</b>을 자동으로 채웁니다. <b>이름은 짧게(16자 이내)</b>, <b>ID는 짧은 영문</b>으로 만들어지며 언제든 직접 고칠 수 있습니다.
+    </p>
+    <form id="addForm">
+      <div class="form-grid">
+        <div class="field">
+          <label for="name">이름 * <span class="muted" id="nameHint"></span></label>
+          <input id="name" name="name" type="text" maxlength="24" placeholder="예: 가계부" />
+        </div>
+        <div class="field">
+          <label for="id">ID (주소, 짧은 영문 · 비우면 자동)</label>
+          <input id="id" name="id" type="text" pattern="[a-z0-9][a-z0-9-]{0,39}" placeholder="budget" />
+        </div>
+        <div class="field">
+          <label for="icon">아이콘 (이모지 1자)</label>
+          <input id="icon" name="icon" type="text" maxlength="4" placeholder="💰" />
+        </div>
+        <div class="field">
+          <label for="tags">태그 (쉼표 구분)</label>
+          <input id="tags" name="tags" type="text" placeholder="생활, 도구" />
+        </div>
+        <div class="field full">
+          <label for="desc">설명</label>
+          <input id="desc" name="desc" type="text" maxlength="300" placeholder="한 줄 설명" />
+        </div>
+        <div class="field full">
+          <label class="drop-zone" id="dropZone">
+            <input id="file" name="file" type="file" accept=".zip,.html,.htm,application/zip,text/html" class="sr-only" />
+            <span id="dropText"><strong>파일 선택</strong> 또는 여기로 끌어다 놓기 (zip / html) — 올리면 자동 분석됩니다</span>
+          </label>
+        </div>
+        <div class="field full">
+          <label for="howto">사용방법 (분석 결과를 그대로 쓰거나 직접 수정)</label>
+          <textarea id="howto" name="howto" rows="8" placeholder="파일을 올리면 사용 순서가 자동으로 작성됩니다."></textarea>
+        </div>
+      </div>
+
+      <div id="analysisBox"></div>
+
+      <div class="form-footer">
+        <button class="btn primary" type="submit" id="submitBtn">추가</button>
+        <button class="btn" type="button" id="reanalyzeBtn" disabled>다시 분석</button>
+        <label class="row muted" style="font-size:13px">
+          <input type="checkbox" id="autoFill" checked /> 분석 결과로 빈 칸 채우기
+        </label>
+        <span class="muted" id="addStatus"></span>
+      </div>
+    </form>
+  </section>
+
+  <section class="card panel">
+    <h2>등록된 앱 <span class="muted" id="count"></span></h2>
+    <p class="hint">삭제는 기본적으로 <span class="mono">.trash/</span> 폴더로 이동합니다. 완전 삭제는 되돌릴 수 없습니다.</p>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr><th></th><th>이름</th><th>ID</th><th>태그</th><th>사용방법</th><th>등록일</th><th></th></tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card panel">
+    <h2>사이트 설정</h2>
+    <p class="hint">
+      광고 심사에 필요한 사이트 이름·운영자·문의 이메일·도메인·AdSense 게시자 ID를 여기서 입력합니다. 저장하면 모든 공개 페이지에 바로 반영됩니다.
+    </p>
+    <form id="siteForm">
+      <div class="form-grid">
+        <div class="field">
+          <label for="s_name">사이트 이름</label>
+          <input id="s_name" type="text" maxlength="40" placeholder="예: 만들기방" />
+        </div>
+        <div class="field">
+          <label for="s_owner">운영자 이름 <span class="muted">(푸터·정책에 표시)</span></label>
+          <input id="s_owner" type="text" maxlength="40" placeholder="예: 홍길동" />
+        </div>
+        <div class="field">
+          <label for="s_email">문의 이메일 <span class="muted">(필수)</span></label>
+          <input id="s_email" type="text" maxlength="120" placeholder="you@example.com" />
+        </div>
+        <div class="field">
+          <label for="s_domain">도메인 <span class="muted">(https 포함)</span></label>
+          <input id="s_domain" type="text" maxlength="120" placeholder="https://myhome.example.com" />
+        </div>
+        <div class="field full">
+          <label for="s_tagline">한 줄 소개</label>
+          <input id="s_tagline" type="text" maxlength="80" />
+        </div>
+        <div class="field full">
+          <label for="s_description">사이트 설명 <span class="muted">(검색 결과에 표시, 80~160자 권장)</span></label>
+          <input id="s_description" type="text" maxlength="300" />
+        </div>
+        <div class="field">
+          <label for="s_adsense">AdSense 게시자 ID</label>
+          <input id="s_adsense" type="text" maxlength="40" placeholder="ca-pub-0000000000000000" />
+        </div>
+        <div class="field">
+          <label for="s_slot">본문 광고 슬롯 ID <span class="muted">(선택)</span></label>
+          <input id="s_slot" type="text" maxlength="20" placeholder="1234567890" />
+        </div>
+        <div class="field">
+          <label for="s_ga4">GA4 측정 ID <span class="muted">(선택)</span></label>
+          <input id="s_ga4" type="text" maxlength="30" placeholder="G-XXXXXXXXXX" />
+        </div>
+      </div>
+      <div class="form-footer">
+        <button class="btn primary" type="submit" id="siteSaveBtn">설정 저장</button>
+        <span class="muted" id="siteStatus"></span>
+      </div>
+    </form>
+  </section>
+</div>
+
+<dialog class="modal" id="editModal">
+  <form id="editForm" method="dialog">
+    <div class="modal-head"><span id="editTitle">앱 수정</span><div class="spacer"></div><span class="mono muted" id="editId"></span></div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field">
+          <label for="e_name">이름 <span class="muted">(짧게, 16자 이내)</span></label>
+          <input id="e_name" type="text" maxlength="24" />
+        </div>
+        <div class="field">
+          <label for="e_icon">아이콘</label>
+          <input id="e_icon" type="text" maxlength="4" />
+        </div>
+        <div class="field">
+          <label for="e_id">ID (주소) <span class="muted">변경하면 링크가 바뀝니다</span></label>
+          <input id="e_id" type="text" pattern="[a-z0-9][a-z0-9-]{0,39}" placeholder="short-english-id" />
+        </div>
+        <div class="field">
+          <label for="e_tags">태그 (쉼표 구분)</label>
+          <input id="e_tags" type="text" />
+        </div>
+        <div class="field full">
+          <label for="e_desc">설명</label>
+          <input id="e_desc" type="text" maxlength="300" />
+        </div>
+        <div class="field full">
+          <label for="e_howto">사용방법</label>
+          <textarea id="e_howto" rows="10"></textarea>
+        </div>
+      </div>
+      <div id="editAnalysis"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" type="button" id="editAnalyze">파일 다시 분석</button>
+      <div class="spacer"></div>
+      <button class="btn" type="button" id="editCancel">닫기</button>
+      <button class="btn primary" type="button" id="editSave">저장</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="modal" id="viewModal">
+  <div class="modal-head"><span id="viewTitle">사용방법</span><div class="spacer"></div><button class="btn small" type="button" id="viewClose">닫기</button></div>
+  <div class="modal-body">
+    <div id="viewMeta" class="muted" style="font-size:13px"></div>
+    <div class="howto" id="viewHowto"></div>
+  </div>
+</dialog>
+
+<script>
+const notice = document.getElementById('notice');
+const rows = document.getElementById('rows');
+const addForm = document.getElementById('addForm');
+const fileInput = document.getElementById('file');
+const dropZone = document.getElementById('dropZone');
+const dropText = document.getElementById('dropText');
+const defaultDropText = dropText.innerHTML;
+const analysisBox = document.getElementById('analysisBox');
+const reanalyzeBtn = document.getElementById('reanalyzeBtn');
+const autoFill = document.getElementById('autoFill');
+const addStatus = document.getElementById('addStatus');
+const F = {
+  name: document.getElementById('name'),
+  id: document.getElementById('id'),
+  icon: document.getElementById('icon'),
+  tags: document.getElementById('tags'),
+  desc: document.getElementById('desc'),
+  howto: document.getElementById('howto'),
+};
+const E = {
+  name: document.getElementById('e_name'),
+  icon: document.getElementById('e_icon'),
+  id: document.getElementById('e_id'),
+  tags: document.getElementById('e_tags'),
+  desc: document.getElementById('e_desc'),
+  howto: document.getElementById('e_howto'),
+};
+
+let editing = null;
+let lastAnalysis = null;
+let appsCache = [];
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+function say(msg, kind = 'ok') {
+  notice.hidden = !msg;
+  notice.className = 'notice ' + kind;
+  notice.textContent = msg;
+  if (msg) setTimeout(() => { notice.hidden = true; }, 5000);
+}
+function dateOnly(iso) {
+  const d = new Date(iso);
+  return isNaN(d) ? '' : d.toLocaleDateString('ko-KR');
+}
+function setTags(value) { F.tags.value = toTagString(value); }
+function toTagString(v) { return Array.isArray(v) ? v.join(', ') : String(v || ''); }
+
+const NAME_MAX = 16;
+function updateNameHint() {
+  const len = [...F.name.value.trim()].length;
+  const hint = document.getElementById('nameHint');
+  if (!len) { hint.textContent = '짧게 (16자 이내)'; hint.style.color = ''; return; }
+  hint.textContent = `${len}/16자`;
+  hint.style.color = len > NAME_MAX ? 'var(--danger)' : '';
+}
+
+async function api(url, options = {}) {
+  const res = await fetch(url, options);
+  if (res.status === 401) { location.href = '/login.html?next=/admin.html'; throw new Error('로그인이 필요합니다'); }
+  const text = await res.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch { /* ignore */ }
+  if (!res.ok) throw new Error((data && data.error) || text || ('HTTP ' + res.status));
+  return data;
+}
+
+async function loadUser() {
+  const { user } = await fetch('/auth/me').then((r) => r.json());
+  const chip = document.getElementById('userChip');
+  if (!user) { chip.innerHTML = '<a class="btn small" href="/login.html">로그인</a>'; return; }
+  const initial = esc((user.name || user.login || '?').trim().charAt(0).toUpperCase());
+  chip.innerHTML = `<span class="user-chip">${user.avatar ? `<img src="${esc(user.avatar)}" alt="" />` : `<span class="avatar-fallback">${initial}</span>`}<span>${esc(user.name || user.login)}</span><span class="muted">· ${esc(user.provider)}</span></span>`;
+}
+
+// ---------------------------------------------------------------- analysis
+
+function renderAnalysis(box, analysis, { compact = false } = {}) {
+  if (!analysis) { box.innerHTML = ''; return; }
+  const g = analysis.guess || {};
+  const d = analysis.details || {};
+  const tags = (g.tags || []).map((t) => `<span class="badge">${esc(t)}</span>`).join('');
+  const facts = [
+    ['분류', d.category || '미분류'],
+    ['조작 요소', `${(d.controls || []).length}개`],
+    ['저장', (d.storage || []).length ? d.storage.join(', ') : '없음'],
+    ['외부 리소스', (d.externalResources || []).length ? `${d.externalResources.length}개` : '없음'],
+  ];
+  if ((d.libraries || []).length) facts.push(['라이브러리', d.libraries.join(', ')]);
+  if ((d.shortcuts || []).length) facts.push(['단축키', d.shortcuts.join(' ')]);
+  if (analysis.source?.bytes) facts.push(['크기', `${(analysis.source.bytes / 1024).toFixed(1)}KB`]);
+
+  box.innerHTML = `
+    <div class="analysis">
+      <h4>분석 결과${analysis.source?.file ? ` · ${esc(analysis.source.file)}` : ''}</h4>
+      <div style="margin-bottom:6px">${tags || '<span class="muted">태그 없음</span>'}</div>
+      ${compact ? '' : `<div class="facts">${facts.map(([k, v]) => `<span>${esc(k)}: <b>${esc(v)}</b></span>`).join('')}</div>`}
+      ${(d.controls || []).length && !compact ? `<ul>${d.controls.slice(0, 10).map((c) => `<li class="muted">${esc(c.tag)}${c.type && c.type !== c.tag ? ` · ${esc(c.type)}` : ''}${c.label ? ` — ${esc(c.label)}` : ''}</li>`).join('')}</ul>` : ''}
+      ${(analysis.warnings || []).length ? `<ul>${analysis.warnings.map((w) => `<li class="warn">⚠ ${esc(w)}</li>`).join('')}</ul>` : ''}
+    </div>`;
+}
+
+function applyAnalysis(analysis, { force = false } = {}) {
+  if (!analysis) return;
+  lastAnalysis = analysis;
+  const g = analysis.guess || {};
+  if (force || !F.name.value.trim()) F.name.value = g.name || F.name.value;
+  if (force || !F.id.value.trim()) F.id.value = g.slug || F.id.value;
+  if (force || !F.icon.value.trim()) F.icon.value = g.icon || F.icon.value;
+  if (force || !F.desc.value.trim()) F.desc.value = g.desc || F.desc.value;
+  if (force || !F.tags.value.trim()) setTags(g.tags || []);
+  if (force || !F.howto.value.trim()) F.howto.value = g.howto || F.howto.value;
+  updateNameHint();
+  renderAnalysis(analysisBox, analysis);
+}
+
+async function analyzeFile(file) {
+  addStatus.textContent = '파일 분석 중...';
+  analysisBox.innerHTML = '';
+  try {
+    const body = new FormData();
+    body.append('file', file);
+    const { analysis } = await api('/api/analyze', { method: 'POST', body });
+    if (autoFill.checked) applyAnalysis(analysis);
+    else renderAnalysis(analysisBox, analysis);
+    addStatus.textContent = '';
+    reanalyzeBtn.disabled = false;
+  } catch (err) {
+    addStatus.textContent = '';
+    analysisBox.innerHTML = `<div class="analysis"><ul><li class="warn">⚠ 분석 실패: ${esc(err.message)}</li></ul></div>`;
+  }
+}
+
+// ---------------------------------------------------------------- add flow
+
+fileInput.addEventListener('change', () => {
+  const f = fileInput.files[0];
+  dropText.innerHTML = f ? `<strong>${esc(f.name)}</strong> (${(f.size / 1024).toFixed(0)} KB)` : defaultDropText;
+  if (f) analyzeFile(f);
+});
+['dragenter', 'dragover'].forEach((ev) => dropZone.addEventListener(ev, (e) => {
+  e.preventDefault(); dropZone.classList.add('dragover');
+}));
+['dragleave', 'drop'].forEach((ev) => dropZone.addEventListener(ev, (e) => {
+  e.preventDefault(); dropZone.classList.remove('dragover');
+}));
+dropZone.addEventListener('drop', (e) => {
+  if (e.dataTransfer.files.length) {
+    fileInput.files = e.dataTransfer.files;
+    fileInput.dispatchEvent(new Event('change'));
+  }
+});
+reanalyzeBtn.addEventListener('click', () => {
+  if (fileInput.files[0]) analyzeFile(fileInput.files[0]);
+  else say('먼저 파일을 선택하세요', 'err');
+});
+F.name.addEventListener('input', updateNameHint);
+document.getElementById('autoFill').addEventListener('change', (e) => {
+  if (e.target.checked && lastAnalysis) applyAnalysis(lastAnalysis);
+});
+
+addForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!fileInput.files[0] && !F.name.value.trim()) { say('이름을 입력하거나 파일을 올려 주세요', 'err'); return; }
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  addStatus.textContent = '업로드 중...';
+  try {
+    const { app } = await api('/api/apps', { method: 'POST', body: new FormData(addForm) });
+    addForm.reset();
+    dropText.innerHTML = defaultDropText;
+    analysisBox.innerHTML = '';
+    lastAnalysis = null;
+    reanalyzeBtn.disabled = true;
+    addStatus.textContent = '';
+    say(`"${app.name}" 추가 완료 → /${app.path}`);
+    await loadApps();
+  } catch (err) {
+    addStatus.textContent = '';
+    say(err.message, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ---------------------------------------------------------------- app list
+
+async function loadApps() {
+  const { apps } = await api('/api/apps');
+  appsCache = apps;
+  document.getElementById('count').textContent = apps.length ? `(${apps.length})` : '(0)';
+  renderChecklist();
+  if (!apps.length) {
+    rows.innerHTML = '<tr><td colspan="7" class="muted">아직 앱이 없습니다.</td></tr>';
+    return;
+  }
+  rows.innerHTML = apps.map((a) => `
+    <tr>
+      <td style="width:34px;font-size:20px">${esc(a.icon || '📦')}</td>
+      <td><a href="/${esc(a.path || `apps/${a.id}/`)}" target="_blank" rel="noopener">${esc(a.name)}</a><div class="muted" style="font-size:12.5px">${esc(a.desc || '')}</div></td>
+      <td class="mono">${esc(a.id)}</td>
+      <td>${(a.tags || []).map((t) => `<span class="tag">${esc(t)}</span>`).join(' ')}</td>
+      <td>${a.howto ? '<button class="btn small" data-act="view" data-id="' + esc(a.id) + '">보기</button>' : '<span class="muted">없음</span>'}</td>
+      <td class="mono">${esc(dateOnly(a.createdAt))}</td>
+      <td class="actions">
+        <button class="btn small" data-act="edit" data-id="${esc(a.id)}">수정</button>
+        <a class="btn small" href="/api/apps/${esc(a.id)}/download">내려받기</a>
+        <button class="btn small danger" data-act="trash" data-id="${esc(a.id)}">삭제</button>
+        <button class="btn small danger" data-act="purge" data-id="${esc(a.id)}">완전삭제</button>
+      </td>
+    </tr>`).join('');
+}
+
+const editModal = document.getElementById('editModal');
+const viewModal = document.getElementById('viewModal');
+
+rows.addEventListener('click', async (e) => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const { act, id } = btn.dataset;
+  let app;
+  try { app = (await api('/api/apps/' + id)).app; } catch (err) { return say(err.message, 'err'); }
+
+  if (act === 'view') {
+    document.getElementById('viewTitle').textContent = `${app.icon || '📦'} ${app.name}`;
+    document.getElementById('viewMeta').textContent = `/${app.path || `apps/${app.id}/`} · ${(app.tags || []).join(', ')}`;
+    const howto = document.getElementById('viewHowto');
+    howto.textContent = app.howto || '사용방법이 등록되어 있지 않습니다.';
+    howto.classList.toggle('empty-state', !app.howto);
+    viewModal.showModal();
+    return;
+  }
+
+  if (act === 'edit') {
+    editing = app;
+    document.getElementById('editTitle').textContent = '앱 수정';
+    document.getElementById('editId').textContent = `/${app.path || `apps/${app.id}/`}`;
+    E.name.value = app.name || '';
+    E.icon.value = app.icon || '';
+    E.id.value = app.id || '';
+    E.tags.value = toTagString(app.tags);
+    E.desc.value = app.desc || '';
+    E.howto.value = app.howto || '';
+    document.getElementById('editAnalysis').innerHTML = '';
+    editModal.showModal();
+    return;
+  }
+
+  try {
+    if (act === 'trash') {
+      if (!confirm(`"${app.name}" 을(를) .trash 폴더로 이동할까요?`)) return;
+      await api('/api/apps/' + id, { method: 'DELETE' });
+      say(`"${app.name}" 을(를) 휴지통으로 이동했습니다`);
+    } else if (act === 'purge') {
+      if (!confirm(`"${app.name}" 을(를) 완전히 삭제합니다. 되돌릴 수 없습니다.`)) return;
+      await api('/api/apps/' + id + '?permanent=1', { method: 'DELETE' });
+      say(`"${app.name}" 완전 삭제됨`);
+    }
+    await loadApps();
+  } catch (err) {
+    say(err.message, 'err');
+  }
+});
+
+document.getElementById('viewClose').addEventListener('click', () => viewModal.close());
+document.getElementById('editCancel').addEventListener('click', () => editModal.close());
+
+document.getElementById('editAnalyze').addEventListener('click', async () => {
+  if (!editing) return;
+  const box = document.getElementById('editAnalysis');
+  box.innerHTML = '<div class="analysis">분석 중...</div>';
+  try {
+    const { analysis } = await api(`/api/apps/${editing.id}/analyze`, { method: 'POST' });
+    renderAnalysis(box, analysis);
+    const g = analysis.guess || {};
+    E.name.value = g.name || E.name.value;
+    E.icon.value = g.icon || E.icon.value;
+    E.desc.value = g.desc || '';
+    E.tags.value = toTagString(g.tags || []);
+    E.howto.value = g.howto || '';
+    say('분석 결과를 폼에 채웠습니다. 저장을 눌러 반영하세요.');
+  } catch (err) {
+    box.innerHTML = `<div class="analysis"><ul><li class="warn">⚠ ${esc(err.message)}</li></ul></div>`;
+  }
+});
+
+document.getElementById('editSave').addEventListener('click', async () => {
+  if (!editing) return;
+  try {
+    const wantedId = E.id.value.trim().toLowerCase();
+    if (wantedId && wantedId !== editing.id) {
+      await api(`/api/apps/${editing.id}/rename`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id: wantedId }),
+      });
+      editing.id = wantedId;
+    }
+    await api('/api/apps/' + editing.id, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: E.name.value,
+        icon: E.icon.value,
+        tags: E.tags.value,
+        desc: E.desc.value,
+        howto: E.howto.value,
+      }),
+    });
+    editModal.close();
+    say(`"${E.name.value}" 수정 완료`);
+    await loadApps();
+  } catch (err) {
+    say(err.message, 'err');
+  }
+});
+
+document.getElementById('logout').addEventListener('click', async () => {
+  await fetch('/auth/logout', { method: 'POST' });
+  location.href = '/';
+});
+
+// ------------------------------------------------------------- 사이트 설정
+
+const S = {
+  name: document.getElementById('s_name'),
+  owner: document.getElementById('s_owner'),
+  email: document.getElementById('s_email'),
+  domain: document.getElementById('s_domain'),
+  tagline: document.getElementById('s_tagline'),
+  description: document.getElementById('s_description'),
+  adsense: document.getElementById('s_adsense'),
+  slot: document.getElementById('s_slot'),
+  ga4: document.getElementById('s_ga4'),
+};
+
+let siteData = null;
+
+function fillSite(site) {
+  siteData = site;
+  document.title = `관리자 · ${site.name || '사이트'}`;
+  S.name.value = site.name || '';
+  S.owner.value = site.owner === '운영자' ? '' : site.owner || '';
+  S.email.value = site.email || '';
+  S.domain.value = site.domain || '';
+  S.tagline.value = site.tagline || '';
+  S.description.value = site.description || '';
+  S.adsense.value = (site.adsense && site.adsense.client) || '';
+  S.slot.value = (site.adsense && site.adsense.slotInline) || '';
+  S.ga4.value = (site.analytics && site.analytics.ga4) || '';
+}
+
+async function loadSite() {
+  const { site } = await api('/api/site');
+  fillSite(site);
+  renderChecklist();
+}
+
+document.getElementById('siteForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('siteSaveBtn');
+  const status = document.getElementById('siteStatus');
+  btn.disabled = true;
+  status.textContent = '저장 중...';
+  try {
+    const { site } = await api('/api/site', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: S.name.value,
+        owner: S.owner.value,
+        email: S.email.value,
+        domain: S.domain.value,
+        tagline: S.tagline.value,
+        description: S.description.value,
+        adsense: { client: S.adsense.value, slotInline: S.slot.value },
+        analytics: { ga4: S.ga4.value },
+      }),
+    });
+    fillSite(site);
+    renderChecklist();
+    status.textContent = '저장되었습니다';
+    say('사이트 설정을 저장했습니다.');
+  } catch (err) {
+    status.textContent = '';
+    say(err.message, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// -------------------------------------------------------- AdSense 준비 점검
+
+function renderChecklist() {
+  const box = document.getElementById('adsenseChecklist');
+  if (!box || !siteData) return;
+  const apps = appsCache || [];
+  const domain = String(siteData.domain || '');
+  const email = String(siteData.email || '');
+  const client = String((siteData.adsense && siteData.adsense.client) || '');
+  const withDesc = apps.filter((a) => (a.desc || '').length >= 20).length;
+  const withHowto = apps.filter((a) => (a.howto || '').length >= 20).length;
+
+  const rows = [
+    ['도메인 연결 (https, localhost 아님)', /^https:\/\//.test(domain) && !/localhost|127\.0\.0\.1/.test(domain), 'AdSense 심사는 실제 도메인에서만 가능합니다. 도메인을 연결하고 사이트 설정에 입력하세요.'],
+    ['문의 이메일 입력', /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email), '개인정보처리방침·문의 페이지에 표시됩니다. 심사 시 필수 항목입니다.'],
+    ['운영자 이름 입력', Boolean(siteData.owner && siteData.owner !== '운영자'), '푸터와 정책 페이지에 표시됩니다.'],
+    ['AdSense 게시자 ID 입력', /^ca-pub-\d{10,}$/.test(client), 'AdSense에서 사이트를 추가하고 받은 ca-pub-… 값을 넣으면 모든 페이지에 광고 스크립트가 삽입됩니다.'],
+    ['앱 5개 이상 등록', apps.length >= 5, `현재 ${apps.length}개. 앱(콘텐츠)이 너무 적으면 "가치가 낮은 콘텐츠"로 거절될 수 있습니다.`],
+    ['모든 앱에 설명 등록', apps.length > 0 && withDesc === apps.length, `${withDesc}/${apps.length}개 완료. 설명이 없으면 페이지가 빈약해 보입니다.`],
+    ['모든 앱에 사용법 등록', apps.length > 0 && withHowto === apps.length, `${withHowto}/${apps.length}개 완료. 사용법은 심사에서 "유용한 콘텐츠"로 평가됩니다.`],
+    ['필수 페이지 준비 (소개·문의·개인정보·약관)', true, '자동으로 제공됩니다. 실제 이메일만 채우면 됩니다.'],
+    ['robots.txt · sitemap.xml 제공', true, '/robots.txt, /sitemap.xml 로 접근 가능합니다. AdSense 승인 후 Search Console에 제출하세요.'],
+  ];
+
+  box.innerHTML = rows
+    .map(([label, ok, hint]) => `
+      <li class="${ok ? 'pass' : 'fail'}">
+        <span class="mark" aria-hidden="true">${ok ? '✔' : '✕'}</span>
+        <span><strong>${esc(label)}</strong><br /><span class="muted small">${esc(hint)}</span></span>
+      </li>`)
+    .join('');
+  const failed = rows.filter(([, ok]) => !ok).length;
+  const status = document.getElementById('checklistStatus');
+  if (status) {
+    status.textContent = failed
+      ? `AdSense 준비 점검: ${rows.length - failed}/${rows.length} 통과 — 남은 항목 ${failed}개`
+      : `AdSense 준비 점검: ${rows.length}/${rows.length} 통과 — 심사 신청을 준비할 수 있습니다`;
+    status.style.color = failed ? 'var(--danger)' : 'var(--ok)';
+  }
+}
+
+loadUser().catch(() => {});
+loadApps().then(loadSite).catch((err) => say(err.message, 'err'));
+</script>
+</body>
+</html>

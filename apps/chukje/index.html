@@ -1,0 +1,1474 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>축제·행사 사진대장 자동 생성 웹앱</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/exifr/dist/full.umd.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Noto Sans KR', sans-serif; }
+        @media print {
+            body {
+                background: white !important;
+            }
+            body * {
+                visibility: hidden;
+            }
+            #print-area, #print-area * {
+                visibility: visible;
+            }
+            #print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 210mm;
+                margin: 0;
+                padding: 0;
+            }
+            .page-preview {
+                width: 210mm !important;
+                height: 297mm !important;
+                max-height: 297mm !important;
+                padding: 12mm !important;
+                box-sizing: border-box !important;
+                page-break-after: always !important;
+                page-break-inside: avoid !important;
+                break-after: page !important;
+                break-inside: avoid !important;
+                position: relative !important;
+                background: white !important;
+                box-shadow: none !important;
+                margin: 0 !important;
+                border: none !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+        .page-preview {
+            width: 210mm;
+            min-height: 297mm;
+            max-height: 297mm;
+            padding: 12mm;
+            box-sizing: border-box;
+            background: white;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            position: relative;
+            margin: 0 auto 2rem auto;
+            overflow: hidden;
+        }
+        @media screen and (max-width: 800px) {
+            .page-preview {
+                width: 100%;
+                min-height: auto;
+                max-height: none;
+                padding: 4mm;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-sky-600 text-white p-2 rounded-lg font-bold text-lg">사진대장</div>
+                <div>
+                    <h1 class="text-base font-bold text-slate-900 leading-tight">축제·행사 사진대장 자동 생성기</h1>
+                    <p class="text-xs text-slate-500">관공서 결과보고용 표준 포맷 지원 (1:1 크롭)</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div class="hidden md:flex items-center space-x-2 text-xs bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+                    <span class="text-slate-500">총 사진: <strong id="stat-total" class="text-slate-800">0</strong>장</span>
+                    <span class="text-slate-300">|</span>
+                    <span class="text-slate-500">분석완료: <strong id="stat-analyzed" class="text-sky-600">0</strong>장</span>
+                    <span class="text-slate-300">|</span>
+                    <span class="text-slate-500">예상 페이지: <strong id="stat-pages" class="text-slate-800">0</strong>장</span>
+                </div>
+                <button onclick="openSettingsModal()" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1.5 rounded-lg font-medium transition flex items-center space-x-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    <span>외장 API 키 관리</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 no-print">
+
+        <!-- Step Indicator Tabs -->
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center space-x-2 sm:space-x-4 w-full sm:w-auto overflow-x-auto">
+                <button onclick="switchTab(1)" id="tab-btn-1" class="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold transition bg-sky-50 text-sky-700 border border-sky-200 whitespace-nowrap">
+                    <span class="w-6 h-6 rounded-full bg-sky-600 text-white flex items-center justify-center text-xs">1</span>
+                    <span>행사 정보 입력</span>
+                </button>
+                <div class="w-8 h-px bg-slate-300 hidden sm:block"></div>
+                <button onclick="switchTab(2)" id="tab-btn-2" class="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold transition bg-slate-100 text-slate-600 hover:bg-slate-200 whitespace-nowrap">
+                    <span class="w-6 h-6 rounded-full bg-slate-400 text-white flex items-center justify-center text-xs">2</span>
+                    <span>사진 업로드 & 편집</span>
+                </button>
+                <div class="w-8 h-px bg-slate-300 hidden sm:block"></div>
+                <button onclick="switchTab(3)" id="tab-btn-3" class="flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold transition bg-slate-100 text-slate-600 hover:bg-slate-200 whitespace-nowrap">
+                    <span class="w-6 h-6 rounded-full bg-slate-400 text-white flex items-center justify-center text-xs">3</span>
+                    <span>인쇄 미리보기</span>
+                </button>
+            </div>
+            <div class="flex items-center space-x-2 w-full sm:w-auto justify-end">
+                <button onclick="exportProjectJson()" class="text-xs bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg font-medium transition">백업 저장</button>
+                <label class="text-xs bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-3 py-2 rounded-lg font-medium transition cursor-pointer">
+                    백업 복구
+                    <input type="file" id="import-json-file" accept=".json" class="hidden" onchange="importProjectJson(event)">
+                </label>
+                <button onclick="confirmResetProject()" class="text-xs bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-2 rounded-lg font-medium transition">전체 초기화</button>
+            </div>
+        </div>
+
+        <!-- Tab 1: Festival Info -->
+        <div id="tab-content-1" class="space-y-6">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <h2 class="text-lg font-bold text-slate-900 mb-1">행사 기본 정보 입력</h2>
+                <p class="text-xs text-slate-500 mb-6">입력하신 정보는 모든 인쇄 페이지의 머리글에 자동으로 반영됩니다.</p>
+                <form id="festival-form" onsubmit="saveFestivalInfo(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">행사명 <span class="text-rose-500">*</span></label>
+                        <input type="text" id="info-name" required placeholder="예: 2026 원주 다이내믹 댄싱카니발" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">행사기간 <span class="text-rose-500">*</span></label>
+                        <input type="text" id="info-period" required placeholder="예: 2026.10.01.(수) ~ 10.05.(일)" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">행사장소 <span class="text-rose-500">*</span></label>
+                        <input type="text" id="info-location" required placeholder="예: 원주 치악체육관 및 따뚜공연장 일원" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">주최 / 주관</label>
+                        <input type="text" id="info-organizer" placeholder="예: 원주시 / 원주문화재단" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">작성자</label>
+                        <input type="text" id="info-author" placeholder="예: 문화예술과 주무관 홍길동" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">작성일</label>
+                        <input type="text" id="info-date" placeholder="예: 2026.10.07." class="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                    </div>
+                    <div class="md:col-span-2 flex justify-end pt-4">
+                        <button type="submit" class="bg-sky-600 hover:bg-sky-700 text-white font-medium text-sm px-6 py-2.5 rounded-lg shadow transition">
+                            정보 저장 후 사진 업로드로 이동
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Tab 2: Photos Upload & Editor -->
+        <div id="tab-content-2" class="space-y-6 hidden">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <div id="drop-zone" class="border-2 border-dashed border-slate-300 hover:border-sky-500 rounded-xl p-8 text-center bg-slate-50 hover:bg-sky-50/30 transition cursor-pointer flex flex-col items-center justify-center">
+                    <svg class="w-12 h-12 text-slate-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    <p class="text-sm font-medium text-slate-700 mb-1">행사 사진을 여기에 드래그하여 놓으세요 (1:1 자동 크롭)</p>
+                    <p class="text-xs text-slate-400 mb-4">또는 파일 선택 버튼을 클릭하세요 (JPG, JPEG, PNG, WEBP / 장당 최대 20MB, 최대 200장)</p>
+                    <label class="bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold px-4 py-2 rounded-lg cursor-pointer transition shadow">
+                        파일 선택
+                        <input type="file" id="photo-file-input" multiple accept="image/jpeg,image/png,image/webp" class="hidden" onchange="handleFilesSelected(event)">
+                    </label>
+                </div>
+                <div id="upload-progress-container" class="mt-4 hidden">
+                    <div class="flex justify-between text-xs text-slate-600 mb-1">
+                        <span id="upload-status-text">사진 처리 중...</span>
+                        <span id="upload-percent-text">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-200 h-2 rounded-full overflow-hidden">
+                        <div id="upload-progress-bar" class="bg-sky-600 h-full transition-all duration-200" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center space-x-3">
+                    <button onclick="startAiAnalysis()" id="ai-analyze-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-4 py-2.5 rounded-lg transition flex items-center space-x-1.5 shadow">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        <span>AI 자동 분석 시작</span>
+                    </button>
+                    <div id="ai-progress-display" class="text-xs text-slate-500 hidden flex items-center space-x-2">
+                        <span class="inline-block w-3 h-3 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin"></span>
+                        <span id="ai-progress-msg">AI 분석 중...</span>
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <select id="sort-select" onchange="changeSortOrder()" class="text-xs border border-slate-300 rounded-lg px-2.5 py-2 bg-white focus:outline-none">
+                        <option value="date-asc">촬영일시 오름차순 (기본)</option>
+                        <option value="date-desc">촬영일시 내림차순</option>
+                        <option value="filename">파일명순</option>
+                        <option value="upload">업로드순</option>
+                    </select>
+                    <select id="filter-category" onchange="renderPhotoList()" class="text-xs border border-slate-300 rounded-lg px-2.5 py-2 bg-white focus:outline-none">
+                        <option value="">모든 카테고리</option>
+                    </select>
+                    <input type="text" id="search-keyword" oninput="renderPhotoList()" placeholder="설명 검색..." class="text-xs border border-slate-300 rounded-lg px-3 py-2 w-36 sm:w-48 focus:outline-none">
+                </div>
+            </div>
+
+            <div class="bg-slate-100 px-4 py-2 rounded-lg border border-slate-200 flex items-center justify-between text-xs">
+                <div class="flex items-center space-x-3">
+                    <label class="flex items-center space-x-1.5 cursor-pointer font-medium text-slate-700">
+                        <input type="checkbox" id="select-all-checkbox" onchange="toggleSelectAll(this)" class="rounded text-sky-600 focus:ring-sky-500 w-4 h-4">
+                        <span>전체 선택</span>
+                    </label>
+                    <span id="selected-count-badge" class="text-slate-500">0장 선택됨</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <select id="batch-category-select" class="text-xs border border-slate-300 rounded px-2 py-1 bg-white">
+                        <option value="">일괄 카테고리 변경...</option>
+                    </select>
+                    <button onclick="applyBatchCategory()" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-3 py-1 rounded shadow-sm">변경 적용</button>
+                    <button onclick="deleteSelectedPhotos()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-1 rounded">선택 삭제</button>
+                </div>
+            </div>
+
+            <div id="photo-grid-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </div>
+
+        <!-- Tab 3: Print Preview & Export -->
+        <div id="tab-content-3" class="space-y-6 hidden">
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-wrap items-center justify-between gap-4 no-print">
+                <div class="flex flex-wrap items-center gap-4 text-xs">
+                    <label class="flex items-center space-x-1 font-medium">
+                        <span>페이지당 사진:</span>
+                        <select id="print-layout-count" onchange="renderPrintPreview()" class="border border-slate-300 rounded px-2 py-1 bg-white">
+                            <option value="8">8장 (가로2×세로4 - 표준)</option>
+                            <option value="6">6장 (가로2×세로3)</option>
+                            <option value="4">4장 (가로2×세로2)</option>
+                        </select>
+                    </label>
+                    <label class="flex items-center space-x-1 cursor-pointer">
+                        <input type="checkbox" id="opt-show-caption" checked onchange="renderPrintPreview()" class="rounded text-sky-600">
+                        <span>설명글 표시</span>
+                    </label>
+                    <label class="flex items-center space-x-1 cursor-pointer">
+                        <input type="checkbox" id="opt-show-date" checked onchange="renderPrintPreview()" class="rounded text-sky-600">
+                        <span>촬영일시 표시</span>
+                    </label>
+                    <label class="flex items-center space-x-1 cursor-pointer">
+                        <input type="checkbox" id="opt-show-gps" onchange="renderPrintPreview()" class="rounded text-sky-600">
+                        <span>GPS 좌표 표시</span>
+                    </label>
+                    <label class="flex items-center space-x-1 cursor-pointer">
+                        <input type="checkbox" id="opt-fill-empty" checked onchange="renderPrintPreview()" class="rounded text-sky-600">
+                        <span>마지막 페이지 빈칸 테두리 채우기</span>
+                    </label>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button onclick="downloadCsv()" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium px-4 py-2 rounded-lg shadow-sm transition">
+                        CSV 내보내기
+                    </button>
+                    <button onclick="downloadPdf()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-4 py-2 rounded-lg shadow transition flex items-center space-x-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <span>PDF 다운로드</span>
+                    </button>
+                    <button onclick="triggerPrint()" class="bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold px-5 py-2 rounded-lg shadow transition flex items-center space-x-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                        <span>인쇄하기</span>
+                    </button>
+                </div>
+            </div>
+            <div class="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-3 rounded-lg no-print flex items-start space-x-2">
+                <svg class="w-5 h-5 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <div>
+                    <strong class="font-semibold">인쇄 가이드:</strong> 인쇄 대화상자에서 [배율: 100% 또는 기본값], [여백: 없음], [배경 그래픽 인쇄: 켜기]로 설정하셔야 공식 사진대장 서식이 A4 용지에 정확하게 맞춰 출력됩니다.
+                </div>
+            </div>
+            <div id="print-area" class="space-y-8 flex flex-col items-center"></div>
+        </div>
+
+    </main>
+
+    <div id="settings-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div class="flex items-center justify-between border-b pb-3">
+                <h3 class="font-bold text-slate-900 text-base">외장 암호화 API 키 관리</h3>
+                <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600 text-lg font-bold">&times;</button>
+            </div>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Gemini API Key</label>
+                    <input type="password" id="modal-api-key" placeholder="AI 분석용 API 키를 입력하세요" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">비밀번호 (로컬 암호화 저장용)</label>
+                    <input type="password" id="modal-key-password" placeholder="파일로 저장 시 암호화할 비밀번호" class="w-full text-sm border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                </div>
+                <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 flex items-center justify-between">
+                    <div>
+                        <div class="text-xs font-bold text-slate-800">로컬 드라이브 암호화 저장</div>
+                        <div class="text-[11px] text-slate-500">API 키를 암호화하여 .enc 파일로 다운로드합니다.</div>
+                    </div>
+                    <button onclick="exportEncryptedApiKeyFile()" class="px-3 py-1.5 bg-slate-800 text-white text-xs font-semibold rounded-lg hover:bg-slate-900">파일 저장</button>
+                </div>
+                <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 flex items-center justify-between">
+                    <div>
+                        <div class="text-xs font-bold text-slate-800">암호화된 키 파일 불러오기</div>
+                        <div class="text-[11px] text-slate-500">저장된 .enc 파일을 업로드하여 키를 연동합니다.</div>
+                    </div>
+                    <label class="px-3 py-1.5 bg-white border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-100 cursor-pointer">
+                        파일 선택
+                        <input type="file" id="import-enc-file" accept=".enc" class="hidden" onchange="importEncryptedApiKeyFile(event)">
+                    </label>
+                </div>
+                <div class="pt-2">
+                    <button onclick="testApiKeyConnection()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow transition flex items-center justify-center space-x-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <span>API 키 연결 테스트 실행</span>
+                    </button>
+                    <div id="connection-test-result" class="mt-2 text-xs text-center font-medium hidden"></div>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-2 pt-2 border-t">
+                <button onclick="closeSettingsModal()" class="px-4 py-2 bg-slate-100 text-slate-700 text-xs font-medium rounded-lg hover:bg-slate-200">닫기</button>
+                <button onclick="saveApiKeyToMemory()" class="px-4 py-2 bg-sky-600 text-white text-xs font-semibold rounded-lg hover:bg-sky-700">적용 및 저장</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Modal -->
+    <div id="custom-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6 space-y-4 text-center">
+            <div id="modal-icon-container" class="w-12 h-12 rounded-full bg-sky-50 text-sky-600 mx-auto flex items-center justify-center text-xl font-bold">!</div>
+            <h4 id="modal-title" class="font-bold text-slate-900 text-base">알림</h4>
+            <p id="modal-message" class="text-xs text-slate-600 leading-relaxed">메시지 내용</p>
+            <div id="modal-buttons" class="flex justify-center space-x-2 pt-2">
+                <button id="modal-ok-btn" onclick="closeCustomModal()" class="w-full py-2 bg-sky-600 text-white text-xs font-semibold rounded-lg hover:bg-sky-700">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-6 right-6 bg-slate-900 text-white text-xs px-4 py-3 rounded-xl shadow-xl transition-all duration-300 transform translate-y-20 opacity-0 z-50 flex items-center space-x-2">
+        <span id="toast-msg">알림 메시지</span>
+    </div>
+
+    <script>
+        const CATEGORIES = [
+            "전기시설",
+            "가스시설",
+            "수도시설",
+            "배너현수막",
+            "거리현수막",
+            "행사현수막",
+            "음향,조명,LED",
+            "공연(출연자)",
+            "안전관리(시설)",
+            "행사준비/설치",
+            "개회식·식전행사",
+            "내빈·축사·의전",
+            "공연·무대",
+            "체험·참여부스",
+            "먹거리·판매부스",
+            "전시·홍보관",
+            "관람객·현장분위기",
+            "경연·시상·폐회식",
+            "안전·질서·의료",
+            "정리·철수",
+            "기타"
+        ];
+
+        let state = {
+            festival: { name: "", period: "", location: "", organizer: "", author: "", date: "" },
+            photos: [],
+            apiKey: "",
+            activeTab: 1
+        };
+
+        const DB_NAME = "FestivalPhotoLedgerDB";
+        const STORE_NAME = "thumbnails";
+        let db = null;
+
+        function initIndexedDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, 1);
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    db = request.result;
+                    resolve(db);
+                };
+                request.onupgradeneeded = (event) => {
+                    const database = event.target.result;
+                    if (!database.objectStoreNames.contains(STORE_NAME)) {
+                        database.createObjectStore(STORE_NAME);
+                    }
+                };
+            });
+        }
+
+        function saveImageToIDB(id, dataUrl) {
+            return new Promise((resolve, reject) => {
+                if (!db) { resolve(); return; }
+                const transaction = db.transaction([STORE_NAME], "readwrite");
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.put(dataUrl, id);
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        function getImageFromIDB(id) {
+            return new Promise((resolve, reject) => {
+                if (!db) { resolve(null); return; }
+                const transaction = db.transaction([STORE_NAME], "readonly");
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.get(id);
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => resolve(null);
+            });
+        }
+
+        function deleteImageFromIDB(id) {
+            return new Promise((resolve) => {
+                if (!db) { resolve(); return; }
+                const transaction = db.transaction([STORE_NAME], "readwrite");
+                const store = transaction.objectStore(STORE_NAME);
+                store.delete(id);
+                transaction.oncomplete = () => resolve();
+            });
+        }
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await initIndexedDB();
+            } catch (e) {
+                console.error("IndexedDB init error:", e);
+            }
+            loadLocalStorageData();
+            populateCategoryDropdowns();
+            renderFestivalForm();
+            updateStats();
+            setupDropZone();
+        });
+
+        function loadLocalStorageData() {
+            const savedFestival = localStorage.getItem('festival_info');
+            if (savedFestival) {
+                try { state.festival = JSON.parse(savedFestival); } catch (e) {}
+            }
+            const savedApiKey = sessionStorage.getItem('gemini_api_key_temp');
+            if (savedApiKey) {
+                state.apiKey = savedApiKey;
+                document.getElementById('modal-api-key').value = savedApiKey;
+            }
+            const savedPhotosMeta = localStorage.getItem('festival_photos_meta');
+            if (savedPhotosMeta) {
+                try { state.photos = JSON.parse(savedPhotosMeta); } catch (e) {}
+            }
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('festival_info', JSON.stringify(state.festival));
+            const metaOnly = state.photos.map(p => ({
+                id: p.id,
+                filename: p.filename,
+                filesize: p.filesize,
+                timestamp: p.timestamp,
+                hasExifDate: p.hasExifDate,
+                gps: p.gps,
+                category: p.category,
+                caption: p.caption,
+                keywords: p.keywords,
+                confidence: p.confidence,
+                aiStatus: p.aiStatus,
+                selected: p.selected
+            }));
+            localStorage.setItem('festival_photos_meta', JSON.stringify(metaOnly));
+            updateStats();
+        }
+
+        async function deriveKey(password, salt) {
+            const enc = new TextEncoder();
+            const keyMaterial = await window.crypto.subtle.importKey(
+                "raw",
+                enc.encode(password),
+                { name: "PBKDF2" },
+                false,
+                ["deriveKey"]
+            );
+            return window.crypto.subtle.deriveKey(
+                {
+                    name: "PBKDF2",
+                    salt: salt,
+                    iterations: 100000,
+                    hash: "SHA-256"
+                },
+                keyMaterial,
+                { name: "AES-GCM", length: 256 },
+                false,
+                ["encrypt", "decrypt"]
+            );
+        }
+
+        async function exportEncryptedApiKeyFile() {
+            const apiKey = document.getElementById('modal-api-key').value.trim();
+            const password = document.getElementById('modal-key-password').value;
+
+            if (!apiKey) {
+                showCustomModal("알림", "저장할 API 키를 입력하세요.");
+                return;
+            }
+            if (!password) {
+                showCustomModal("알림", "암호화에 사용할 비밀번호를 입력하세요.");
+                return;
+            }
+
+            try {
+                const salt = window.crypto.getRandomValues(new Uint8Array(16));
+                const iv = window.crypto.getRandomValues(new Uint8Array(12));
+                const key = await deriveKey(password, salt);
+
+                const enc = new TextEncoder();
+                const encryptedContent = await window.crypto.subtle.encrypt(
+                    { name: "AES-GCM", iv: iv },
+                    key,
+                    enc.encode(JSON.stringify({ apiKey: apiKey, timestamp: new Date().toISOString() }))
+                );
+
+                const exportData = {
+                    salt: Array.from(salt),
+                    iv: Array.from(iv),
+                    data: Array.from(new Uint8Array(encryptedContent))
+                };
+
+                const blob = new Blob([JSON.stringify(exportData)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `gemini_api_key_${Date.now()}.enc`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                showToast("외장 드라이브에 암호화된 API 키 파일(.enc)이 저장되었습니다.");
+            } catch (e) {
+                console.error("Encryption error:", e);
+                showCustomModal("오류", "API 키 암호화 저장 중 오류가 발생했습니다.");
+            }
+        }
+
+        async function importEncryptedApiKeyFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const password = document.getElementById('modal-key-password').value;
+            if (!password) {
+                showCustomModal("알림", "암호화 파일을 해독할 비밀번호를 먼저 입력하세요.");
+                event.target.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const fileJson = JSON.parse(e.target.result);
+                    const salt = new Uint8Array(fileJson.salt);
+                    const iv = new Uint8Array(fileJson.iv);
+                    const data = new Uint8Array(fileJson.data);
+
+                    const key = await deriveKey(password, salt);
+                    const decrypted = await window.crypto.subtle.decrypt(
+                        { name: "AES-GCM", iv: iv },
+                        key,
+                        data
+                    );
+
+                    const dec = new TextDecoder();
+                    const parsed = JSON.parse(dec.decode(decrypted));
+
+                    if (parsed.apiKey) {
+                        state.apiKey = parsed.apiKey;
+                        document.getElementById('modal-api-key').value = parsed.apiKey;
+                        sessionStorage.setItem('gemini_api_key_temp', parsed.apiKey);
+                        showToast("외부 암호화 키 파일이 성공적으로 복호화되어 연동되었습니다.");
+                    }
+                } catch (err) {
+                    console.error("Decryption error:", err);
+                    showCustomModal("오류", "비밀번호가 일치하지 않거나 손상된 암호화 파일입니다.");
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        async function testApiKeyConnection() {
+            const apiKey = document.getElementById('modal-api-key').value.trim();
+            const resultDiv = document.getElementById('connection-test-result');
+            resultDiv.classList.remove('hidden', 'text-emerald-600', 'text-rose-600');
+            resultDiv.textContent = "연결 테스트 중...";
+
+            if (!apiKey) {
+                resultDiv.classList.add('text-rose-600');
+                resultDiv.textContent = "테스트할 API 키를 입력하세요.";
+                return;
+            }
+
+            try {
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+                const payload = {
+                    contents: [{ role: "user", parts: [{ text: "ping" }] }]
+                };
+
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    resultDiv.classList.add('text-emerald-600');
+                    resultDiv.textContent = "✓ API 키 연결 테스트 성공! 정상 작동합니다.";
+                } else {
+                    const errJson = await response.json();
+                    throw new Error(errJson.error?.message || `HTTP ${response.status}`);
+                }
+            } catch (e) {
+                resultDiv.classList.add('text-rose-600');
+                resultDiv.textContent = `✗ 연결 실패: ${e.message}`;
+            }
+        }
+
+        function saveApiKeyToMemory() {
+            const key = document.getElementById('modal-api-key').value.trim();
+            state.apiKey = key;
+            sessionStorage.setItem('gemini_api_key_temp', key);
+            closeSettingsModal();
+            showToast("API 키가 임시 적용되었습니다.");
+        }
+
+        function populateCategoryDropdowns() {
+            const filterSelect = document.getElementById('filter-category');
+            const batchSelect = document.getElementById('batch-category-select');
+            
+            filterSelect.innerHTML = '<option value="">모든 카테고리</option>';
+            batchSelect.innerHTML = '<option value="">일괄 카테고리 변경...</option>';
+
+            CATEGORIES.forEach(cat => {
+                const opt1 = document.createElement('option');
+                opt1.value = cat;
+                opt1.textContent = cat;
+                filterSelect.appendChild(opt1);
+
+                const opt2 = document.createElement('option');
+                opt2.value = cat;
+                opt2.textContent = cat;
+                batchSelect.appendChild(opt2);
+            });
+        }
+
+        function switchTab(tabNum) {
+            state.activeTab = tabNum;
+            for (let i = 1; i <= 3; i++) {
+                const content = document.getElementById(`tab-content-${i}`);
+                const btn = document.getElementById(`tab-btn-${i}`);
+                if (i === tabNum) {
+                    content.classList.remove('hidden');
+                    btn.className = "flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold transition bg-sky-50 text-sky-700 border border-sky-200 whitespace-nowrap";
+                    btn.querySelector('span:first-child').className = "w-6 h-6 rounded-full bg-sky-600 text-white flex items-center justify-center text-xs";
+                } else {
+                    content.classList.add('hidden');
+                    btn.className = "flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-semibold transition bg-slate-100 text-slate-600 hover:bg-slate-200 whitespace-nowrap";
+                    btn.querySelector('span:first-child').className = "w-6 h-6 rounded-full bg-slate-400 text-white flex items-center justify-center text-xs";
+                }
+            }
+            if (tabNum === 2) {
+                renderPhotoList();
+            } else if (tabNum === 3) {
+                renderPrintPreview();
+            }
+        }
+
+        function renderFestivalForm() {
+            document.getElementById('info-name').value = state.festival.name || '';
+            document.getElementById('info-period').value = state.festival.period || '';
+            document.getElementById('info-location').value = state.festival.location || '';
+            document.getElementById('info-organizer').value = state.festival.organizer || '';
+            document.getElementById('info-author').value = state.festival.author || '';
+            document.getElementById('info-date').value = state.festival.date || '';
+        }
+
+        function saveFestivalInfo(event) {
+            event.preventDefault();
+            state.festival = {
+                name: document.getElementById('info-name').value.trim(),
+                period: document.getElementById('info-period').value.trim(),
+                location: document.getElementById('info-location').value.trim(),
+                organizer: document.getElementById('info-organizer').value.trim(),
+                author: document.getElementById('info-author').value.trim(),
+                date: document.getElementById('info-date').value.trim()
+            };
+            saveToLocalStorage();
+            showToast("행사 기본 정보가 저장되었습니다.");
+            switchTab(2);
+        }
+
+        function setupDropZone() {
+            const dropZone = document.getElementById('drop-zone');
+            ['dragenter', 'dragover'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropZone.classList.add('border-sky-500', 'bg-sky-50/50');
+                }, false);
+            });
+            ['dragleave', 'drop'].forEach(eventName => {
+                dropZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropZone.classList.remove('border-sky-500', 'bg-sky-50/50');
+                }, false);
+            });
+            dropZone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                handleFiles(files);
+            });
+        }
+
+        function handleFilesSelected(event) {
+            const files = event.target.files;
+            handleFiles(files);
+            event.target.value = '';
+        }
+
+        async function handleFiles(fileList) {
+            const validFiles = Array.from(fileList).filter(f => {
+                return ['image/jpeg', 'image/png', 'image/webp'].includes(f.type) && f.size <= 20 * 1024 * 1024;
+            });
+
+            if (validFiles.length === 0) {
+                showCustomModal("알림", "지원되는 이미지 형식(JPG, PNG, WEBP)이며 20MB 이하인 파일만 업로드할 수 있습니다.");
+                return;
+            }
+
+            if (state.photos.length + validFiles.length > 200) {
+                showCustomModal("알림", "최대 200장까지만 업로드할 수 있습니다.");
+                return;
+            }
+
+            const progressContainer = document.getElementById('upload-progress-container');
+            const progressBar = document.getElementById('upload-progress-bar');
+            const progressStatus = document.getElementById('upload-status-text');
+            const progressPercent = document.getElementById('upload-percent-text');
+            progressContainer.classList.remove('hidden');
+
+            let total = validFiles.length;
+
+            for (let i = 0; i < total; i++) {
+                const file = validFiles[i];
+                progressStatus.textContent = `사진 처리 중 (${i + 1}/${total}): ${file.name}`;
+                const percent = Math.round(((i + 1) / total) * 100);
+                progressBar.style.width = `${percent}%`;
+                progressPercent.textContent = `${percent}%`;
+
+                try {
+                    const photoObj = await processSingleFile(file);
+                    state.photos.push(photoObj);
+                } catch (err) {
+                    console.error("File process error:", err);
+                }
+            }
+
+            progressContainer.classList.add('hidden');
+            sortPhotos('date-asc');
+            saveToLocalStorage();
+            showToast(`${total}장의 사진이 성공적으로 추가되었습니다.`);
+            renderPhotoList();
+        }
+
+        async function processSingleFile(file) {
+            const id = 'photo_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            let datetimeOriginal = null;
+            let hasExifDate = false;
+            let gps = null;
+
+            try {
+                const exifData = await exifr.parse(file, { tiff: true, gps: true, xmp: true }) || {};
+                const rawDate = exifData.DateTimeOriginal || exifData.CreateDate || exifData.ModifyDate;
+                if (rawDate) {
+                    const d = new Date(rawDate);
+                    if (!isNaN(d.getTime())) {
+                        datetimeOriginal = formatLocalDateTime(d);
+                        hasExifDate = true;
+                    }
+                }
+                if (exifData.latitude && exifData.longitude) {
+                    gps = { lat: exifData.latitude, lon: exifData.longitude };
+                }
+            } catch (e) {
+                console.warn("EXIF extraction failed:", e);
+            }
+
+            if (!datetimeOriginal) {
+                datetimeOriginal = formatLocalDateTime(new Date(file.lastModified));
+            }
+
+            const { displayUrl, apiBase64 } = await resizeImage1to1(file);
+            await saveImageToIDB(id, displayUrl);
+
+            return {
+                id: id,
+                filename: file.name,
+                filesize: file.size,
+                timestamp: datetimeOriginal,
+                hasExifDate: hasExifDate,
+                gps: gps,
+                category: "기타",
+                caption: "",
+                keywords: [],
+                confidence: 0,
+                aiStatus: "none",
+                selected: false,
+                apiBase64: apiBase64
+            };
+        }
+
+        function formatLocalDateTime(dateObj) {
+            const pad = (n) => n < 10 ? '0' + n : n;
+            return dateObj.getFullYear() + '-' +
+                pad(dateObj.getMonth() + 1) + '-' +
+                pad(dateObj.getDate()) + 'T' +
+                pad(dateObj.getHours()) + ':' +
+                pad(dateObj.getMinutes());
+        }
+
+        function resizeImage1to1(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+
+                        // 1:1 정사각형 중앙 크롭 계산
+                        const size = Math.min(img.width, img.height);
+                        const startX = (img.width - size) / 2;
+                        const startY = (img.height - size) / 2;
+
+                        const max1 = 1600;
+                        canvas.width = max1;
+                        canvas.height = max1;
+                        ctx.drawImage(img, startX, startY, size, size, 0, 0, max1, max1);
+                        const displayUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+                        const max2 = 768;
+                        canvas.width = max2;
+                        canvas.height = max2;
+                        ctx.drawImage(img, startX, startY, size, size, 0, 0, max2, max2);
+                        const dataUrlApi = canvas.toDataURL('image/jpeg', 0.7);
+                        const apiBase64 = dataUrlApi.split(',')[1];
+
+                        resolve({ displayUrl, apiBase64 });
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function changeSortOrder() {
+            sortPhotos(document.getElementById('sort-select').value);
+            renderPhotoList();
+            saveToLocalStorage();
+        }
+
+        function sortPhotos(sortBy) {
+            if (sortBy === 'date-asc') {
+                state.photos.sort((a, b) => new Date(a.timestamp || 0) - new Date(b.timestamp || 0));
+            } else if (sortBy === 'date-desc') {
+                state.photos.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+            } else if (sortBy === 'filename') {
+                state.photos.sort((a, b) => a.filename.localeCompare(b.filename));
+            }
+        }
+
+        async function renderPhotoList() {
+            const container = document.getElementById('photo-grid-container');
+            const filterCat = document.getElementById('filter-category').value;
+            const searchKeyword = document.getElementById('search-keyword').value.trim().toLowerCase();
+
+            container.innerHTML = '';
+
+            const filtered = state.photos.filter(p => {
+                const matchCat = !filterCat || p.category === filterCat;
+                const matchSearch = !searchKeyword || (p.caption && p.caption.toLowerCase().includes(searchKeyword)) || p.filename.toLowerCase().includes(searchKeyword);
+                return matchCat && matchSearch;
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full py-12 text-center text-slate-400 text-sm">
+                        등록된 사진이 없거나 검색 결과가 없습니다.
+                    </div>
+                `;
+                return;
+            }
+
+            for (let i = 0; i < filtered.length; i++) {
+                const photo = filtered[i];
+                const thumbUrl = await getImageFromIDB(photo.id) || 'https://placehold.co/400x400/e2e8f0/64748b?text=No+Image';
+
+                const card = document.createElement('div');
+                card.className = `bg-white rounded-xl border ${photo.selected ? 'border-sky-500 ring-1 ring-sky-500' : 'border-slate-200'} shadow-sm p-4 flex flex-col justify-between transition`;
+                
+                let catOptions = '';
+                CATEGORIES.forEach(cat => {
+                    catOptions += `<option value="${cat}" ${photo.category === cat ? 'selected' : ''}>${cat}</option>`;
+                });
+
+                card.innerHTML = `
+                    <div>
+                        <div class="relative aspect-square bg-slate-100 rounded-lg overflow-hidden mb-3">
+                            <img src="${thumbUrl}" alt="${photo.filename}" class="w-full h-full object-cover">
+                            <div class="absolute top-2 left-2">
+                                <input type="checkbox" ${photo.selected ? 'checked' : ''} onchange="togglePhotoSelect('${photo.id}')" class="w-4 h-4 rounded text-sky-600 focus:ring-sky-500 cursor-pointer shadow">
+                            </div>
+                            <div class="absolute top-2 right-2 flex space-x-1">
+                                ${!photo.hasExifDate ? '<span class="bg-amber-500 text-white text-[10px] px-1.5 py-0.5 rounded shadow">일시 미확인</span>' : ''}
+                                ${photo.aiStatus === 'success' ? '<span class="bg-emerald-600 text-white text-[10px] px-1.5 py-0.5 rounded shadow">AI 완료</span>' : ''}
+                                ${photo.aiStatus === 'failed' ? '<span class="bg-rose-600 text-white text-[10px] px-1.5 py-0.5 rounded shadow">실패</span>' : ''}
+                            </div>
+                            <div class="absolute bottom-2 left-2 bg-slate-900/70 text-white text-[10px] px-2 py-0.5 rounded truncate max-w-[80%]">
+                                ${photo.filename}
+                            </div>
+                        </div>
+
+                        <div class="space-y-2 mb-3">
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="text-slate-500 font-medium">촬영일시</span>
+                                <input type="datetime-local" value="${photo.timestamp || ''}" onchange="updatePhotoTimestamp('${photo.id}', this.value)" class="border border-slate-300 rounded px-1.5 py-1 text-xs bg-slate-50 focus:bg-white focus:outline-none">
+                            </div>
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="text-slate-500 font-medium">카테고리</span>
+                                <select onchange="updatePhotoCategory('${photo.id}', this.value)" class="border border-slate-300 rounded px-1.5 py-1 text-xs bg-white focus:outline-none w-36">
+                                    ${catOptions}
+                                </select>
+                            </div>
+                            ${photo.gps ? `<div class="text-[11px] text-emerald-600 font-mono">GPS: ${photo.gps.lat.toFixed(4)}, ${photo.gps.lon.toFixed(4)}</div>` : ''}
+                        </div>
+
+                        <div>
+                            <div class="flex items-center justify-between text-xs mb-1">
+                                <span class="text-slate-500 font-medium">한 줄 설명</span>
+                                <span id="char-count-${photo.id}" class="text-[11px] ${photo.caption.length > 45 ? 'text-rose-600 font-bold' : 'text-slate-400'}">${photo.caption.length}/45자</span>
+                            </div>
+                            <textarea rows="2" oninput="updatePhotoCaption('${photo.id}', this)" placeholder="사진 설명을 입력하세요" class="w-full text-xs border border-slate-300 rounded-lg p-2 focus:ring-1 focus:ring-sky-500 focus:outline-none resize-none">${photo.caption || ''}</textarea>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-3 mt-3 border-t border-slate-100 text-xs">
+                        <button onclick="reanalyzeSingle('${photo.id}')" class="text-emerald-600 hover:text-emerald-700 font-medium flex items-center space-x-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                            <span>재분석</span>
+                        </button>
+                        <button onclick="deletePhoto('${photo.id}')" class="text-rose-500 hover:text-rose-700 font-medium">삭제</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            }
+            updateStats();
+        }
+
+        function togglePhotoSelect(id) {
+            const photo = state.photos.find(p => p.id === id);
+            if (photo) {
+                photo.selected = !photo.selected;
+                saveToLocalStorage();
+                updateSelectedCount();
+            }
+        }
+
+        function toggleSelectAll(checkbox) {
+            const isChecked = checkbox.checked;
+            state.photos.forEach(p => p.selected = isChecked);
+            renderPhotoList();
+            saveToLocalStorage();
+            updateSelectedCount();
+        }
+
+        function updateSelectedCount() {
+            const count = state.photos.filter(p => p.selected).length;
+            document.getElementById('selected-count-badge').textContent = `${count}장 선택됨`;
+        }
+
+        function updatePhotoTimestamp(id, val) {
+            const photo = state.photos.find(p => p.id === id);
+            if (photo) { photo.timestamp = val; saveToLocalStorage(); }
+        }
+
+        function updatePhotoCategory(id, val) {
+            const photo = state.photos.find(p => p.id === id);
+            if (photo) { photo.category = val; saveToLocalStorage(); }
+        }
+
+        function updatePhotoCaption(id, textarea) {
+            const photo = state.photos.find(p => p.id === id);
+            if (photo) {
+                photo.caption = textarea.value;
+                const counter = document.getElementById(`char-count-${id}`);
+                if (counter) {
+                    counter.textContent = `${photo.caption.length}/45자`;
+                    counter.className = `text-[11px] ${photo.caption.length > 45 ? 'text-rose-600 font-bold' : 'text-slate-400'}`;
+                }
+                saveToLocalStorage();
+            }
+        }
+
+        function deletePhoto(id) {
+            state.photos = state.photos.filter(p => p.id !== id);
+            deleteImageFromIDB(id);
+            saveToLocalStorage();
+            renderPhotoList();
+            showToast("사진이 삭제되었습니다.");
+        }
+
+        function deleteSelectedPhotos() {
+            const selectedIds = state.photos.filter(p => p.selected).map(p => p.id);
+            if (selectedIds.length === 0) {
+                showCustomModal("알림", "선택된 사진이 없습니다.");
+                return;
+            }
+            selectedIds.forEach(id => deleteImageFromIDB(id));
+            state.photos = state.photos.filter(p => !p.selected);
+            saveToLocalStorage();
+            renderPhotoList();
+            showToast("선택한 사진들이 삭제되었습니다.");
+        }
+
+        function applyBatchCategory() {
+            const cat = document.getElementById('batch-category-select').value;
+            if (!cat) {
+                showCustomModal("알림", "적용할 카테고리를 선택하세요.");
+                return;
+            }
+            const selected = state.photos.filter(p => p.selected);
+            if (selected.length === 0) {
+                showCustomModal("알림", "선택된 사진이 없습니다.");
+                return;
+            }
+            selected.forEach(p => p.category = cat);
+            saveToLocalStorage();
+            renderPhotoList();
+            showToast(`선택한 ${selected.length}장 사진의 카테고리가 일괄 변경되었습니다.`);
+        }
+
+        function updateStats() {
+            const total = state.photos.length;
+            const analyzed = state.photos.filter(p => p.aiStatus === 'success' || p.caption.trim().length > 0).length;
+            const layoutCount = parseInt(document.getElementById('print-layout-count')?.value || 8);
+            const pages = Math.ceil(total / layoutCount) || 1;
+
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-analyzed').textContent = analyzed;
+            document.getElementById('stat-pages').textContent = pages;
+        }
+
+        async function startAiAnalysis() {
+            const apiKey = state.apiKey || document.getElementById('modal-api-key').value.trim();
+            if (!apiKey) {
+                openSettingsModal();
+                showCustomModal("API 키 필요", "AI 자동 분석을 사용하려면 설정에서 Gemini API 키를 입력해주세요.");
+                return;
+            }
+
+            const targets = state.photos.filter(p => p.apiBase64);
+            if (targets.length === 0) {
+                showCustomModal("알림", "분석할 사진이 없습니다.");
+                return;
+            }
+
+            const btn = document.getElementById('ai-analyze-btn');
+            const display = document.getElementById('ai-progress-display');
+            const msg = document.getElementById('ai-progress-msg');
+            btn.disabled = true;
+            display.classList.remove('hidden');
+
+            const systemPrompt = `당신은 지방자치단체 축제 결과보고용 사진대장을 작성하는 담당 주무관이다. 
+사진에 실제로 보이는 시각적 증거와 사용자가 지정했거나 사진에서 판단되는 [카테고리]에 엄격히 맞추어 설명글을 작성해야 한다.
+- 규칙: 
+1. 사진에 실제로 보이는 객체, 현장 상황, 시설물 또는 행사 활동만 사실에 기반하여 서술하라. (추측, 과장, 감상 표현 금지)
+2. 현재 지정된 카테고리의 성격과 맥락에 정확히 부합하는 설명이어야 한다.
+3. 관공서 공문서 및 결과보고 표준 서식에 맞춰 '~하는 모습', '~설치 상태', '~진행 장면' 등 명사형으로 종결하라.
+4. 글자 수는 공백 포함 25자 이상 45자 이내로 엄수하라.`;
+
+            let successCount = 0;
+            const batchSize = 4;
+
+            for (let i = 0; i < targets.length; i += batchSize) {
+                const chunk = targets.slice(i, i + batchSize);
+                msg.textContent = `AI 분석 중 (${Math.min(i + batchSize, targets.length)}/${targets.length})...`;
+
+                await Promise.all(chunk.map(async (photo) => {
+                    photo.aiStatus = 'analyzing';
+                    const success = await callGeminiApiWithRetry(photo, apiKey, systemPrompt);
+                    if (success) successCount++;
+                }));
+
+                renderPhotoList();
+            }
+
+            btn.disabled = false;
+            display.classList.add('hidden');
+            saveToLocalStorage();
+            showToast(`AI 분석 완료: 총 ${successCount}장 성공`);
+        }
+
+        async function reanalyzeSingle(id) {
+            const apiKey = state.apiKey || document.getElementById('modal-api-key').value.trim();
+            if (!apiKey) {
+                openSettingsModal();
+                showCustomModal("API 키 필요", "설정에서 Gemini API 키를 입력해주세요.");
+                return;
+            }
+            const photo = state.photos.find(p => p.id === id);
+            if (!photo || !photo.apiBase64) return;
+
+            showToast("재분석 중...");
+            const systemPrompt = `당신은 지방자치단체 축제 결과보고용 사진대장을 작성하는 담당 주무관이다. 사진에 실제로 보이는 내용과 카테고리(${photo.category})에 맞춰 사실만 서술하라. 명사형 종결 25~45자.`;
+            const success = await callGeminiApiWithRetry(photo, apiKey, systemPrompt);
+            renderPhotoList();
+            saveToLocalStorage();
+            showToast(success ? "재분석 성공" : "재분석 실패");
+        }
+
+        async function callGeminiApiWithRetry(photo, apiKey, systemPrompt) {
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            const currentCategory = photo.category || "기타";
+            const payload = {
+                contents: [{
+                    role: "user",
+                    parts: [
+                        { text: `이 축제 행사 사진을 분석하라. 현재 설정된 카테고리: [${currentCategory}]. 사진의 시각적 요소와 카테고리를 연계하여, 해당 카테고리에 정확히 부합하는 관공서 보고용 한 줄 설명글을 작성하고, JSON 형식으로 카테고리(필요시 최적값으로 수정), 캡션(25~45자, 명사형 종결), 키워드, 신뢰도를 반환하라.` },
+                        { inlineData: { mimeType: "image/jpeg", data: photo.apiBase64 } }
+                    ]
+                }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: "OBJECT",
+                        properties: {
+                            category: { type: "STRING", enum: CATEGORIES },
+                            caption: { type: "STRING" },
+                            keywords: { type: "ARRAY", items: { type: "STRING" } },
+                            confidence: { type: "NUMBER" }
+                        },
+                        required: ["category", "caption", "keywords", "confidence"]
+                    }
+                },
+                systemInstruction: { parts: [{ text: systemPrompt }] }
+            };
+
+            let attempts = 0;
+            let delay = 1000;
+
+            while (attempts < 3) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (!response.ok) throw new Error(`HTTP error ${response.status}`);
+                    const result = await response.json();
+                    const candidate = result.candidates?.[0];
+                    if (candidate && candidate.content?.parts?.[0]?.text) {
+                        const parsed = JSON.parse(candidate.content.parts[0].text);
+                        photo.category = parsed.category || currentCategory;
+                        photo.caption = parsed.caption || "";
+                        photo.keywords = parsed.keywords || [];
+                        photo.confidence = parsed.confidence || 0.9;
+                        photo.aiStatus = 'success';
+                        return true;
+                    }
+                } catch (e) {
+                    console.warn(`API attempt ${attempts + 1} failed:`, e);
+                }
+                attempts++;
+                if (attempts < 3) {
+                    await new Promise(r => setTimeout(r, delay));
+                    delay *= 2;
+                }
+            }
+            photo.aiStatus = 'failed';
+            return false;
+        }
+
+        async function renderPrintPreview() {
+            const container = document.getElementById('print-area');
+            container.innerHTML = '';
+
+            const itemsPerPage = parseInt(document.getElementById('print-layout-count').value);
+            const showCaption = document.getElementById('opt-show-caption').checked;
+            const showDate = document.getElementById('opt-show-date').checked;
+            const showGps = document.getElementById('opt-show-gps').checked;
+            const fillEmpty = document.getElementById('opt-fill-empty').checked;
+
+            const totalPhotos = state.photos.length;
+            const totalPages = Math.ceil(totalPhotos / itemsPerPage) || 1;
+            const festival = state.festival;
+
+            for (let pageIdx = 0; pageIdx < totalPages; pageIdx++) {
+                const pageDiv = document.createElement('div');
+                pageDiv.className = 'page-preview border border-slate-200 rounded-lg flex flex-col justify-between';
+
+                const startIndex = pageIdx * itemsPerPage;
+                const pagePhotos = state.photos.slice(startIndex, startIndex + itemsPerPage);
+
+                let headerHtml = `
+                    <div style="height: 13mm;" class="border-b-2 border-slate-900 pb-2 mb-3 flex flex-col justify-between shrink-0">
+                        <div class="text-center font-bold text-lg tracking-widest text-slate-900">사 진 대 장</div>
+                        <div class="flex justify-between items-end text-[11px] text-slate-800 font-medium px-1">
+                            <div>행사명: ${festival.name || '(미입력)'} | 기간: ${festival.period || '(미입력)'} | 장소: ${festival.location || '(미입력)'}</div>
+                            <div>작성: ${festival.author || '담당자'} (${festival.date || ''})</div>
+                        </div>
+                    </div>
+                `;
+
+                let gridTemplateRows = "repeat(4, 1fr)";
+                if (itemsPerPage === 6) gridTemplateRows = "repeat(3, 1fr)";
+                if (itemsPerPage === 4) gridTemplateRows = "repeat(2, 1fr)";
+
+                let cellsHtml = `<div style="display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: ${gridTemplateRows}; gap: 3mm 5mm; flex: 1; height: calc(297mm - 38mm);" class="box-border">`;
+
+                for (let i = 0; i < itemsPerPage; i++) {
+                    const photo = pagePhotos[i];
+                    const globalIndex = startIndex + i + 1;
+
+                    if (photo) {
+                        const thumbUrl = await getImageFromIDB(photo.id) || '';
+                        const dateStr = showDate && photo.timestamp ? photo.timestamp.replace('T', ' ') : '';
+                        const gpsStr = showGps && photo.gps ? `GPS: ${photo.gps.lat.toFixed(2)}, ${photo.gps.lon.toFixed(2)}` : '';
+                        const captionStr = showCaption ? (photo.caption || '(설명 없음)') : '';
+
+                        cellsHtml += `
+                            <div class="border-[0.4mm] border-slate-800 flex flex-col box-border bg-white overflow-hidden">
+                                <div style="height: ${showCaption ? 'calc(100% - 15mm)' : 'calc(100% - 8mm)'};" class="bg-white flex items-center justify-center overflow-hidden border-b-[0.4mm] border-slate-800 p-1">
+                                    <img src="${thumbUrl}" alt="photo" style="width: 100%; height: 100%; object-fit: cover;">
+                                </div>
+                                <div style="height: ${showCaption ? '15mm' : '8mm'};" class="flex flex-col justify-between p-1 box-border bg-slate-50 text-[10px]">
+                                    <div class="flex justify-between items-center text-slate-600 font-semibold ${showCaption ? 'border-b border-slate-200 pb-0.5' : ''}">
+                                        <span>[${globalIndex}] ${photo.category || '기타'}</span>
+                                        <span>${dateStr} ${gpsStr}</span>
+                                    </div>
+                                    ${showCaption ? `<div class="text-slate-900 font-medium truncate leading-tight overflow-hidden">${captionStr}</div>` : ''}
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        if (fillEmpty) {
+                            cellsHtml += `
+                                <div class="border-[0.4mm] border-dashed border-slate-300 flex flex-col box-border bg-white">
+                                    <div style="height: calc(100% - 15mm);" class="border-b-[0.4mm] border-dashed border-slate-300"></div>
+                                    <div style="height: 15mm;" class="bg-slate-50/50"></div>
+                                </div>
+                            `;
+                        } else {
+                            cellsHtml += `<div></div>`;
+                        }
+                    }
+                }
+
+                cellsHtml += `</div>`;
+
+                let footerHtml = `
+                    <div style="height: 10mm;" class="text-center text-xs font-bold text-slate-700 pt-2 shrink-0 border-t border-slate-200">
+                        - ${pageIdx + 1} / ${totalPages} -
+                    </div>
+                `;
+
+                pageDiv.innerHTML = headerHtml + cellsHtml + footerHtml;
+                container.appendChild(pageDiv);
+            }
+            updateStats();
+        }
+
+        function triggerPrint() {
+            window.print();
+        }
+
+        async function downloadPdf() {
+            if (state.photos.length === 0) {
+                showCustomModal("알림", "다운로드할 사진 데이터가 없습니다.");
+                return;
+            }
+
+            showToast("PDF 파일을 생성 중입니다. 잠시만 기다려주세요...");
+
+            const element = document.getElementById('print-area');
+            const opt = {
+                margin: 0,
+                filename: `${state.festival.name || '축제_사진대장'}.pdf`,
+                image: { type: 'jpeg', quality: 0.95 },
+                html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            try {
+                await html2pdf().set(opt).from(element).save();
+                showToast("PDF 다운로드가 완료되었습니다.");
+            } catch (e) {
+                console.error("PDF generation error:", e);
+                showCustomModal("오류", "PDF 생성 중 오류가 발생했습니다. 인쇄하기 기능을 통해 PDF로 저장해보세요.");
+            }
+        }
+
+        function downloadCsv() {
+            if (state.photos.length === 0) {
+                showCustomModal("알림", "내보낼 사진 데이터가 없습니다.");
+                return;
+            }
+
+            let csvContent = "\uFEFF" + "연번,파일명,촬영일시,카테고리,설명\n";
+            state.photos.forEach((p, index) => {
+                const row = [
+                    index + 1,
+                    `"${p.filename}"`,
+                    `"${p.timestamp || ''}"`,
+                    `"${p.category || ''}"`,
+                    `"${(p.caption || '').replace(/"/g, '""')}"`
+                ];
+                csvContent += row.join(",") + "\n";
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${state.festival.name || '사진대장'}_목록.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast("CSV 파일이 다운로드되었습니다.");
+        }
+
+        function exportProjectJson() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
+            const a = document.createElement('a');
+            a.href = dataStr;
+            a.download = `${state.festival.name || '축제'}_프로젝트백업.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            showToast("프로젝트 백업 파일이 저장되었습니다.");
+        }
+
+        async function importProjectJson(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (imported.festival && imported.photos) {
+                        state.festival = imported.festival;
+                        state.photos = imported.photos;
+                        saveToLocalStorage();
+                        renderFestivalForm();
+                        renderPhotoList();
+                        showToast("프로젝트가 성공적으로 복구되었습니다.");
+                    } else {
+                        throw new Error("Invalid format");
+                    }
+                } catch (err) {
+                    showCustomModal("오류", "올바른 백업 JSON 파일이 아닙니다.");
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        function confirmResetProject() {
+            showCustomModal("전체 초기화", "모든 사진과 정보가 삭제됩니다. 정말 초기화하시겠습니까?", true, () => {
+                localStorage.clear();
+                state.photos.forEach(p => deleteImageFromIDB(p.id));
+                state = {
+                    festival: { name: "", period: "", location: "", organizer: "", author: "", date: "" },
+                    photos: [],
+                    apiKey: "",
+                    activeTab: 1
+                };
+                renderFestivalForm();
+                renderPhotoList();
+                switchTab(1);
+                showToast("초기화되었습니다.");
+            });
+        }
+
+        function openSettingsModal() {
+            document.getElementById('settings-modal').classList.remove('hidden');
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settings-modal').classList.add('hidden');
+        }
+
+        function showCustomModal(title, message, isConfirm = false, onConfirm = null) {
+            const modal = document.getElementById('custom-modal');
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-message').textContent = message;
+            const buttonsContainer = document.getElementById('modal-buttons');
+
+            if (isConfirm) {
+                buttonsContainer.innerHTML = `
+                    <button onclick="closeCustomModal()" class="flex-1 py-2 bg-slate-100 text-slate-700 text-xs font-medium rounded-lg hover:bg-slate-200">취소</button>
+                    <button id="modal-confirm-action-btn" class="flex-1 py-2 bg-rose-600 text-white text-xs font-semibold rounded-lg hover:bg-rose-700">확인</button>
+                `;
+                document.getElementById('modal-confirm-action-btn').onclick = () => {
+                    closeCustomModal();
+                    if (onConfirm) onConfirm();
+                };
+            } else {
+                buttonsContainer.innerHTML = `
+                    <button onclick="closeCustomModal()" class="w-full py-2 bg-sky-600 text-white text-xs font-semibold rounded-lg hover:bg-sky-700">확인</button>
+                `;
+            }
+            modal.classList.remove('hidden');
+        }
+
+        function closeCustomModal() {
+            document.getElementById('custom-modal').classList.add('hidden');
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').textContent = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,1727 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 뉴스 쇼츠 대본 스튜디오 &amp; 랭킹 엔진</title>
+<!-- Tailwind CSS CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: {
+          brand: {
+            50: '#eff6ff',
+            100: '#dbeafe',
+            400: '#60a5fa',
+            500: '#3b82f6',
+            600: '#2563eb',
+            700: '#1d4ed8',
+            900: '#1e3a8a',
+          },
+          darkbg: '#0a0d14',
+          darkpanel: '#121722',
+          darkborder: '#1f293d',
+          accent: '#10b981'
+        }
+      }
+    }
+  }
+</script>
+<!-- Font Awesome Icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+<style>
+  body {
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    background-color: #0a0d14;
+    color: #f1f5f9;
+  }
+  
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0d111a;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #26334d;
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3b82f6;
+  }
+
+  .glass-panel {
+    background: rgba(18, 23, 34, 0.85);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+  }
+
+  .glow-active {
+    box-shadow: 0 0 20px -3px rgba(59, 130, 246, 0.35);
+  }
+
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  @keyframes audioPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.7; transform: scale(1.05); }
+  }
+  .speaking-pulse {
+    animation: audioPulse 1.2s infinite ease-in-out;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+</style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-brand-500 selection:text-white">
+
+<!-- HEADER NAVIGATION -->
+<header class="sticky top-0 z-40 glass-panel border-b border-darkborder px-4 lg:px-8 py-3.5">
+  <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 via-brand-500 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-brand-500/20">
+        <i class="fa-solid fa-bolt-lightning text-lg"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="font-bold text-lg tracking-tight text-white">ShortsNews AI</h1>
+          <span class="px-2 py-0.5 text-[10px] font-extrabold tracking-wider bg-brand-500/20 text-brand-400 border border-brand-500/30 rounded-full">v3.5 External API</span>
+        </div>
+        <p class="text-xs text-slate-400">실시간 이슈 랭킹 &amp; 외장형 AI 쇼츠 대본 엔진</p>
+      </div>
+    </div>
+
+    <!-- Header Right Quick Actions -->
+    <div class="flex items-center gap-2 sm:gap-3">
+      <button id="btnOpenApiKeyModal" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-2 border border-slate-700 transition">
+        <i class="fa-solid fa-key text-amber-400"></i>
+        <span class="hidden sm:inline">API 설정</span>
+        <span id="apiKeyBadge" class="w-2 h-2 rounded-full bg-slate-500"></span>
+      </button>
+      <button id="btnOpenCustomModal" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-2 border border-slate-700 transition">
+        <i class="fa-solid fa-plus text-brand-400"></i>
+        <span class="hidden sm:inline">직접 뉴스 입력</span>
+      </button>
+      <button id="btnOpenBookmarks" class="relative px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-2 border border-slate-700 transition">
+        <i class="fa-solid fa-bookmark text-amber-400"></i>
+        <span class="hidden sm:inline">보관함</span>
+        <span id="bookmarkBadge" class="hidden px-1.5 py-0.5 text-[10px] bg-amber-500 text-slate-950 font-bold rounded-full">0</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-7xl w-full mx-auto p-4 lg:p-6 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+  <!-- LEFT COLUMN: CATEGORIES, TRENDS & ARTICLE LIST -->
+  <section class="lg:col-span-5 flex flex-col gap-4">
+    
+    <!-- Category Tabs -->
+    <div class="glass-panel rounded-2xl p-3 border border-darkborder">
+      <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800/80 px-1">
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+          <i class="fa-solid fa-layer-group text-brand-400"></i> 카테고리
+        </span>
+        <span id="articleTotalCount" class="text-xs text-slate-500">총 0개 소식</span>
+      </div>
+      <div id="categoryTabs" class="flex flex-wrap gap-1.5">
+        <!-- JS rendered tabs -->
+      </div>
+    </div>
+
+    <!-- Keyword Cloud Bar -->
+    <div class="glass-panel rounded-xl p-3 border border-darkborder flex items-center gap-2 overflow-x-auto text-xs">
+      <span class="text-slate-400 font-semibold whitespace-nowrap flex items-center gap-1 text-[11px] shrink-0">
+        <i class="fa-solid fa-fire text-rose-500"></i> 실시간 키워드:
+      </span>
+      <div id="tagCloud" class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+        <!-- JS rendered tags -->
+      </div>
+    </div>
+
+    <!-- Filter & Search Controls -->
+    <div class="glass-panel rounded-xl p-3 border border-darkborder flex flex-col gap-2">
+      <div class="relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-500 text-xs"></i>
+        <input type="text" id="searchInput" placeholder="뉴스 제목 또는 기사 검색..." class="w-full bg-slate-900/90 text-slate-200 text-xs pl-8 pr-3 py-2 rounded-lg border border-slate-800 focus:outline-none focus:border-brand-500 transition">
+      </div>
+      <div class="flex items-center justify-between gap-2 text-xs">
+        <select id="outletFilter" class="bg-slate-900 text-slate-300 text-xs px-2.5 py-1.5 rounded-lg border border-slate-800 focus:outline-none focus:border-brand-500">
+          <option value="all">모든 언론사</option>
+          <option value="연합뉴스">연합뉴스</option>
+          <option value="KBS">KBS</option>
+          <option value="MBC">MBC</option>
+          <option value="SBS">SBS</option>
+          <option value="YTN">YTN</option>
+          <option value="JTBC">JTBC</option>
+        </select>
+        
+        <select id="sortBy" class="bg-slate-900 text-slate-300 text-xs px-2.5 py-1.5 rounded-lg border border-slate-800 focus:outline-none focus:border-brand-500">
+          <option value="score">관심도 높은순</option>
+          <option value="cluster">동시 보도 많은순</option>
+          <option value="recent">최신순</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Interest Score Visual Chart -->
+    <div class="glass-panel rounded-xl p-3 border border-darkborder">
+      <div class="flex items-center justify-between mb-2 px-1">
+        <h3 class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+          <i class="fa-solid fa-chart-bar text-brand-400"></i> 관심도 스코어 TOP 5
+        </h3>
+        <span class="text-[10px] text-slate-500">보도 매체 수 + 최신성 연산</span>
+      </div>
+      <div id="chartContainer" class="space-y-2 py-1">
+        <!-- JS rendered bar chart -->
+      </div>
+    </div>
+
+    <!-- News Article List -->
+    <div class="glass-panel rounded-2xl p-2 border border-darkborder flex-1 flex flex-col min-h-[380px]">
+      <ul id="newsList" class="space-y-2 overflow-y-auto max-h-[520px] pr-1">
+        <!-- JS rendered news list -->
+      </ul>
+    </div>
+
+  </section>
+
+  <!-- RIGHT COLUMN: ARTICLE DETAIL & SCRIPT STUDIO -->
+  <section class="lg:col-span-7 flex flex-col gap-4">
+    <div id="detailPanel" class="glass-panel rounded-2xl p-5 border border-darkborder min-h-[600px] flex flex-col justify-between">
+      <div class="flex flex-col items-center justify-center h-full text-center p-12 text-slate-500 my-auto">
+        <div class="w-16 h-16 rounded-full bg-slate-800/80 border border-slate-700/50 flex items-center justify-center text-slate-400 mb-4 text-2xl">
+          <i class="fa-solid fa-newspaper"></i>
+        </div>
+        <h3 class="text-base font-semibold text-slate-300 mb-1">뉴스를 선택해주세요</h3>
+        <p class="text-xs text-slate-500 max-w-sm">왼쪽 목록에서 뉴스를 선택하면 관심도 상세 분석, 3줄 핵심 요약, AI 쇼츠 대본 자동 생성이 시작됩니다.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- TELEPROMPTER FULLSCREEN MODAL -->
+<div id="prompterModal" class="fixed inset-0 bg-slate-950/95 backdrop-blur-xl z-50 hidden flex-col justify-between p-6 sm:p-10">
+  <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+    <div class="flex items-center gap-3">
+      <span class="w-3 h-3 rounded-full bg-rose-500 animate-pulse"></span>
+      <h2 id="prompterTitle" class="text-sm font-bold text-slate-200 truncate max-w-md">텔레프롬프터 가이드</h2>
+    </div>
+    <div class="flex items-center gap-4">
+      <div class="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg text-xs">
+        <span class="text-slate-400">속도:</span>
+        <input type="range" id="prompterSpeed" min="1" max="10" value="3" class="w-20 accent-brand-500">
+        <span id="prompterSpeedVal" class="text-slate-200 font-mono">3x</span>
+      </div>
+      <div class="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-lg text-xs">
+        <span class="text-slate-400">글자 크기:</span>
+        <button id="btnFontSmaller" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 font-bold">-</button>
+        <button id="btnFontLarger" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-slate-300 font-bold">+</button>
+      </div>
+      <button id="btnClosePrompter" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+  </div>
+
+  <div id="prompterScrollArea" class="my-auto overflow-hidden h-[60vh] relative flex items-center justify-center text-center">
+    <div class="absolute inset-x-0 top-1/2 -translate-y-1/2 h-24 border-y border-brand-500/30 bg-brand-500/5 pointer-events-none"></div>
+    <div id="prompterTextContent" class="transition-transform duration-100 ease-linear font-bold text-slate-100 leading-relaxed max-w-3xl px-4 text-3xl sm:text-4xl">
+      <!-- Dynamic script line by line -->
+    </div>
+  </div>
+
+  <div class="flex items-center justify-center gap-4 border-t border-slate-800 pt-4">
+    <button id="btnPrompterReset" class="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-2">
+      <i class="fa-solid fa-rotate-left"></i> 처음으로
+    </button>
+    <button id="btnPrompterToggle" class="px-8 py-3 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-sm font-bold flex items-center gap-2 shadow-lg shadow-brand-500/30 transition">
+      <i id="prompterPlayIcon" class="fa-solid fa-play"></i> <span id="prompterPlayText">스크롤 시작 (Space)</span>
+    </button>
+  </div>
+</div>
+
+<!-- CUSTOM NEWS ADD MODAL -->
+<div id="customModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+  <div class="glass-panel w-full max-w-lg rounded-2xl p-6 border border-slate-700 shadow-2xl relative">
+    <button id="btnCloseCustomModal" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+      <i class="fa-solid fa-xmark text-lg"></i>
+    </button>
+    <h3 class="text-base font-bold text-white mb-1 flex items-center gap-2">
+      <i class="fa-solid fa-pen-to-square text-brand-400"></i> 직접 뉴스 / 속보 등록
+    </h3>
+    <p class="text-xs text-slate-400 mb-4">원하는 뉴스 기사나 속보 문장을 입력하여 쇼츠 대본을 생성할 수 있습니다.</p>
+    
+    <div class="space-y-3">
+      <div>
+        <label class="block text-xs font-semibold text-slate-300 mb-1">카테고리</label>
+        <select id="customCat" class="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded-lg p-2.5 text-xs focus:border-brand-500">
+          <option value="pol">정치</option>
+          <option value="eco">경제</option>
+          <option value="soc">사회</option>
+          <option value="cul">문화·연예</option>
+          <option value="it">IT·과학</option>
+          <option value="world">국제</option>
+        </select>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-300 mb-1">출처 / 언론사명</label>
+        <input type="text" id="customOutlet" value="자체 제보/속보" class="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded-lg p-2.5 text-xs focus:border-brand-500">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-300 mb-1">기사 제목</label>
+        <input type="text" id="customTitle" placeholder="예: 한국은행, 임시 금통위 개최 검토... 시장 '격랑'" class="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded-lg p-2.5 text-xs focus:border-brand-500">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-slate-300 mb-1">기사 본문 내용</label>
+        <textarea id="customDesc" rows="4" placeholder="기사 본문 내용이나 핵심 요약 문장을 입력하세요." class="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded-lg p-2.5 text-xs focus:border-brand-500"></textarea>
+      </div>
+      <button id="btnSubmitCustom" class="w-full py-2.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-brand-500/20 transition">
+        등록 및 대본 생성하기
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- BOOKMARKS DRAWER MODAL -->
+<div id="bookmarksModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+  <div class="glass-panel w-full max-w-2xl rounded-2xl p-6 border border-slate-700 shadow-2xl relative max-h-[85vh] flex flex-col">
+    <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4">
+      <h3 class="text-base font-bold text-white flex items-center gap-2">
+        <i class="fa-solid fa-bookmark text-amber-400"></i> 저장된 쇼츠 대본 보관함
+      </h3>
+      <button id="btnCloseBookmarksModal" class="text-slate-400 hover:text-white">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+    </div>
+    <div id="bookmarksList" class="overflow-y-auto space-y-3 flex-1 pr-1">
+      <!-- Dynamic list -->
+    </div>
+  </div>
+</div>
+
+<!-- EXTERNAL API KEY MANAGEMENT MODAL (POPUP) -->
+<div id="apiKeyModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+  <div class="glass-panel w-full max-w-lg rounded-2xl p-6 border border-slate-700 shadow-2xl relative">
+    <button id="btnCloseApiKeyModal" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+      <i class="fa-solid fa-xmark text-lg"></i>
+    </button>
+    
+    <div class="flex items-center gap-2.5 mb-1">
+      <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center text-sm">
+        <i class="fa-solid fa-shield-halved"></i>
+      </div>
+      <h3 class="text-base font-bold text-white">외장형 API 키 보안 저장소 &amp; 연결 테스트</h3>
+    </div>
+    <p class="text-xs text-slate-400 mb-4 leading-relaxed">
+      본 앱은 외장 API 키 연동 방식을 지원합니다. 입력하신 API 키는 <b>AES-256 GCM</b> 알고리즘으로 암호화되어 사용자 컴퓨터(로컬 드라이브)에 안전하게 저장 및 복원할 수 있습니다.
+    </p>
+
+    <div class="space-y-4">
+      <!-- Gemini API Key Input Field -->
+      <div>
+        <label class="block text-xs font-semibold text-slate-300 mb-1 flex justify-between">
+          <span>Gemini API Key <span class="text-rose-400">*필수</span></span>
+          <span id="apiKeyStatusText" class="text-[11px] text-slate-400 font-mono">미등록</span>
+        </label>
+        <div class="relative">
+          <input type="password" id="inputApiKey" placeholder="AIzaSy... 형식의 API Key 입력" class="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded-lg p-2.5 text-xs pr-10 focus:border-brand-500 font-mono">
+          <button id="btnToggleKeyVis" type="button" class="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300 text-xs">
+            <i class="fa-solid fa-eye"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Encryption Passphrase Input Field -->
+      <div>
+        <label class="block text-xs font-semibold text-slate-300 mb-1">
+          로컬 저장 파일 비밀번호 <span class="text-slate-500 font-normal">(파일 저장/복원 암호화용)</span>
+        </label>
+        <input type="password" id="inputEncPassphrase" placeholder="파일 내보내기/불러오기 시 사용할 비밀번호" class="w-full bg-slate-900 border border-slate-800 text-slate-200 rounded-lg p-2.5 text-xs focus:border-brand-500">
+      </div>
+
+      <!-- Dynamic Connection Test Result Box -->
+      <div id="connectionTestResult" class="hidden p-3 rounded-xl bg-slate-900/90 border text-xs">
+        <!-- JS rendered results -->
+      </div>
+
+      <!-- Main Action Buttons -->
+      <div class="grid grid-cols-2 gap-2 pt-1">
+        <button id="btnTestApiKey" class="py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold border border-slate-700 flex items-center justify-center gap-2 transition">
+          <i class="fa-solid fa-plug-circle-check text-brand-400"></i> 연결 테스트
+        </button>
+
+        <button id="btnExportApiKey" class="py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition">
+          <i class="fa-solid fa-file-shield"></i> 암호화 파일로 저장
+        </button>
+      </div>
+
+      <!-- File Import & Reset Row -->
+      <div class="flex items-center justify-between pt-2 border-t border-slate-800 text-xs">
+        <label class="cursor-pointer text-brand-400 hover:text-brand-300 font-semibold flex items-center gap-1.5">
+          <i class="fa-solid fa-file-import"></i> 암호화 파일 불러오기
+          <input type="file" id="inputFileImport" accept=".enc" class="hidden">
+        </label>
+        <button id="btnClearKey" class="text-slate-500 hover:text-rose-400 text-[11px] font-medium flex items-center gap-1">
+          <i class="fa-solid fa-trash-can"></i> API 키 초기화
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================================================
+   1) GLOBAL API CONFIG & CONSTANTS
+   ========================================================= */
+const apiKey = ""; // Gemini API key provided at runtime environment
+
+const OUTLET_LINK = {
+  "연합뉴스": "https://www.yna.co.kr",
+  "KBS": "https://news.kbs.co.kr",
+  "MBC": "https://imnews.imbc.com",
+  "SBS": "https://news.sbs.co.kr",
+  "YTN": "https://www.ytn.co.kr",
+  "JTBC": "https://news.jtbc.co.kr"
+};
+
+const CATEGORY_LIST = [
+  { id: "all",   label: "전체 이슈", icon: "fa-globe" },
+  { id: "pol",   label: "정치",     icon: "fa-landmark" },
+  { id: "eco",   label: "경제",     icon: "fa-chart-line" },
+  { id: "soc",   label: "사회",     icon: "fa-users" },
+  { id: "cul",   label: "문화·연예", icon: "fa-clapperboard" },
+  { id: "it",    label: "IT·과학",  icon: "fa-microchip" },
+  { id: "world", label: "국제",     icon: "fa-earth-americas" }
+];
+
+let DATA = [
+  { id: 1, category: "pol", outlet: "연합뉴스", title: "국회, 내년도 예산안 처리 놓고 여야 대치 계속", description: "국회는 내년도 예산안 처리를 두고 여야 간 이견을 좁히지 못하고 있다. 여당은 법정 처리 시한을 지키자는 입장이나 야당은 특정 예산 삭감을 요구하며 맞서고 있다.", hoursAgo: 2 },
+  { id: 2, category: "pol", outlet: "KBS", title: "여야, 예산안 처리 시한 앞두고 막판 협상", description: "여야 원내대표가 예산안 처리 시한을 하루 앞두고 막판 조율에 나섰다. 쟁점 예산에 대한 절충안이 이번 주 내 마련될 수 있다는 전망이 나온다.", hoursAgo: 1 },
+  { id: 3, category: "pol", outlet: "MBC", title: "예산안 처리 D-3, 국회 파행 우려", description: "예산안 처리 시한이 사흘 앞으로 다가왔지만 여야 협상은 여전히 공전하고 있다. 일부 상임위는 파행을 겪으며 심사 일정에 차질을 빚고 있다.", hoursAgo: 4 },
+  { id: 4, category: "pol", outlet: "SBS", title: "대통령, 개각 통해 국정 쇄신 나서", description: "대통령이 경제·사회 부처를 중심으로 개각을 단행하며 국정 쇄신 의지를 밝혔다. 새 내각은 이번 주 중 임명장을 받고 본격 업무에 들어갈 예정이다.", hoursAgo: 6 },
+  { id: 5, category: "pol", outlet: "YTN", title: "대통령실, 개각 명단 발표...경제팀 전격 개편", description: "대통령실이 이번 개각의 세부 명단을 공식 발표했다. 경제부처 수장이 교체되며 향후 경제 정책 기조에 변화가 생길지 주시되고 있다.", hoursAgo: 5 },
+  
+  { id: 7, category: "eco", outlet: "연합뉴스", title: "한국은행, 기준금리 동결 결정... 동결 행진", description: "한국은행이 이번 달 금융통화위원회에서 기준금리를 현 수준으로 동결했다. 물가와 가계부채 부담을 동시에 고려한 결정으로 풀이된다.", hoursAgo: 3 },
+  { id: 8, category: "eco", outlet: "KBS", title: "한은 금통위, 기준금리 3연속 동결", description: "한국은행 금융통화위원회가 기준금리를 세 차례 연속 동결했다. 경기 둔화 우려와 물가 안정 사이에서 신중한 태도를 유지한 것으로 보인다.", hoursAgo: 2 },
+  { id: 9, category: "eco", outlet: "MBC", title: "기준금리 동결...가계부채 폭증 우려 반영", description: "한은이 가계부채 증가세를 우려해 기준금리를 동결했다. 부동산 시장 자극을 최소화하려는 의도로 해석된다.", hoursAgo: 4 },
+  { id: 10, category: "eco", outlet: "JTBC", title: "코스피, 외국인 폭풍 매도세에 2,400선 붕괴", description: "코스피 지수가 외국인 투자자의 대규모 매도세에 2400선 아래로 내려앉았다. 반도체 및 이차전지 업종 중심의 하락세가 두드러졌다.", hoursAgo: 1 },
+  { id: 11, category: "eco", outlet: "연합뉴스", title: "코스피 2,400선 밑으로...반도체 대형주 급락", description: "코스피가 반도체 대형주의 급락 여파로 2400선을 하회했다. 글로벌 반도체 수요 둔화 우려가 투자심리를 급격히 위축시켰다.", hoursAgo: 2 },
+
+  { id: 13, category: "soc", outlet: "KBS", title: "서울 도심 기습 폭우... 곳곳 침수 피해 잇따라", description: "서울 도심에 시간당 50mm 이상의 많은 비가 쏟아지며 곳곳에서 침수 피해가 이어졌다. 지하차도와 상가 등이 물에 잠기며 시민 불편이 컸다.", hoursAgo: 1 },
+  { id: 14, category: "soc", outlet: "SBS", title: "기록적 기습 폭우에 서울 도로 통제 및 물난리", description: "기록적인 폭우로 서울 도심 주요 도로가 통제되는 등 물난리가 벌어졌다. 소방당국은 침수 신고가 급증하며 밤새 구조 작업을 이어갔다.", hoursAgo: 2 },
+  { id: 15, category: "soc", outlet: "YTN", title: "중부지방 폭우 특보... 주민 긴급 대피령", description: "중부지방에 폭우특보가 발효되며 경사지 위험 지역 주민들이 긴급 대피했다. 기상당국은 당분간 많은 비가 이어질 것으로 예보했다.", hoursAgo: 1 },
+
+  { id: 24, category: "it", outlet: "연합뉴스", title: "국내 AI 스타트업, 한국어 특화 초거대 언어모델 공개", description: "국내 대표 AI 기업이 새로운 한국어 초거대 언어모델을 공개했다. 기존 해외 글로벌 모델보다 한국어 처리 속도와 맥락 이해도가 월등하다고 밝혔다.", hoursAgo: 2 },
+  { id: 25, category: "it", outlet: "MBC", title: "토종 AI 모델 전격 등장... 글로벌 생성형 AI 시장 도전장", description: "국산 인공지능 모델이 잇따라 공개되며 기술 경쟁이 치열해지고 있다. 전문가들은 데이터 고품질 확보와 인프라 투자가 핵심 관건이라고 지적한다.", hoursAgo: 3 },
+  { id: 26, category: "it", outlet: "KBS", title: "차세대 우주 발사체 프로젝트 본격 착수", description: "한국형 발사체의 다음 차수 발사 준비 작업이 본격 시작됐다. 관계 기관은 목표 궤도 안착을 위해 상단부 엔진 시험 평가를 마쳤다.", hoursAgo: 8 },
+
+  { id: 29, category: "world", outlet: "KBS", title: "미 연준, 다음 FOMC 금리 동결 신호 시사", description: "미국 연방준비제도가 다음 회의에서 기준금리를 동결할 가능성을 강하게 시사했다. 인플레이션 지표가 예상보다 안정세를 보인다는 평가다.", hoursAgo: 3 },
+  { id: 31, category: "world", outlet: "MBC", title: "중동 정세 긴장 고조... 국제유가 하루 만에 4% 급등", description: "중동 지역의 군사적 긴장이 급격히 고조되며 국제유가가 4% 이상 급등했다. 주요 산유국의 추가 감산 가능성까지 대두되고 있다.", hoursAgo: 1 },
+  { id: 32, category: "world", outlet: "SBS", title: "국제유가, 중동 공급망 리스크 폭발에 고공행진", description: "국제유가가 중동 리스크 확대에 따라 고공행진을 이어가고 있다. 에너지를 주로 수입하는 국가들의 물가 상방 압력이 커질 전망이다.", hoursAgo: 2 }
+];
+
+/* =========================================================
+   2) SCORING & CLUSTERING ALGORITHM
+   ========================================================= */
+const STOPWORDS = new Set([
+  "그리고","에서","으로","에게","대해","통해","위해","대한","대해서",
+  "발표","결정","추진","공개","우려","논의","검토","관련","계속",
+  "나서","앞두고","놓고","등","것","수","중","있다","없다","했다","한다","밝혔다","전했다"
+]);
+
+function tokenize(title) {
+  return title
+    .replace(/[,.'"…!?%\-\[\]\(\)]/g, " ")
+    .split(/\s+/)
+    .map(t => t.trim())
+    .filter(t => t.length >= 2 && !STOPWORDS.has(t));
+}
+
+function clusterArticles(articles) {
+  const n = articles.length;
+  const parent = Array.from({ length: n }, (_, i) => i);
+  function find(x) { return parent[x] === x ? x : (parent[x] = find(parent[x])); }
+  function union(x, y) { const rx = find(x), ry = find(y); if (rx !== ry) parent[rx] = ry; }
+
+  const keywordSets = articles.map(a => new Set(tokenize(a.title)));
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      let overlap = 0;
+      keywordSets[i].forEach(k => { if (keywordSets[j].has(k)) overlap++; });
+      if (overlap >= 1) union(i, j);
+    }
+  }
+
+  const groups = {};
+  for (let i = 0; i < n; i++) {
+    const root = find(i);
+    if (!groups[root]) groups[root] = [];
+    groups[root].push(i);
+  }
+
+  return articles.map((a, i) => {
+    const root = find(i);
+    const memberIdx = groups[root];
+    const outlets = [...new Set(memberIdx.map(idx => articles[idx].outlet))];
+    return { ...a, clusterCount: outlets.length, clusterOutlets: outlets };
+  });
+}
+
+function scoreArticles(articles) {
+  const clustered = clusterArticles(articles);
+  return clustered.map(a => {
+    const recencyScore = Math.max(0, 100 - a.hoursAgo * 4);
+    const finalScore = Math.min(99, Math.round(a.clusterCount * 18 + recencyScore * 0.45));
+    return { ...a, recencyScore, finalScore };
+  });
+}
+
+/* =========================================================
+   3) AI SCRIPT ENGINE & GEMINI API CALLS
+   ========================================================= */
+const TONES = {
+  announcer: {
+    name: "진지한 아나운서 🎙️",
+    intro: "안녕하십니까, 빠른 뉴스 전달자입니다.",
+    ending: "이상 오늘의 주요 뉴스였습니다. 구독과 알림 설정으로 가장 빠른 소식을 받아보세요."
+  },
+  creator: {
+    name: "유쾌한 크리에이터 🚀",
+    intro: "여러분 이거 진짜 대박 사건입니다! 지금 난리 난 소식 1분 만에 짚어드릴게요!",
+    ending: "여러분은 어떻게 생각하시나요? 댓글로 남겨주시고 좋아요 잊지 마세요!"
+  },
+  deep: {
+    name: "지식 탐구자 💡",
+    intro: "단순한 뉴스가 아닙니다. 핵심 배경과 미래에 미칠 영향을 깊이 있게 알아봅시다.",
+    ending: "더 자세한 분석이 필요하다면 고정 댓글 링크를 확인해보세요."
+  },
+  urgent: {
+    name: "긴박한 속보 리포터 🚨",
+    intro: "[속보] 방금 들어온 긴급 소식입니다! 집중해서 봐주세요!",
+    ending: "추가 소식이 들어오는 대로 빠르게 업데이트해 드리겠습니다. 팔로우 필수!"
+  },
+  mz: {
+    name: "Z세대 반말 숏폼 ⚡",
+    intro: "야, 너 이거 진짜 알고 있었냐? 완전 난리났는데 대박이다.",
+    ending: "친구들한테 공유해주고 반응 올려봐라!"
+  }
+};
+
+async function fetchWithRetry(url, options, maxRetries = 5) {
+  let delay = 1000;
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const res = await fetch(url, options);
+      if (res.ok) return await res.json();
+      if (res.status === 429 || res.status >= 500) {
+        // Retryable
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || `HTTP ${res.status}`);
+      }
+    } catch (e) {
+      if (i === maxRetries - 1) throw e;
+    }
+    await new Promise(r => setTimeout(r, delay));
+    delay *= 2;
+  }
+}
+
+function getActiveApiKey() {
+  return externalApiKey.trim() || apiKey;
+}
+
+async function callGeminiScriptAPI(article, toneKey, durationSec, hookType) {
+  const activeKey = getActiveApiKey();
+  if (!activeKey) {
+    throw new Error("등록된 API 키가 없습니다. 상단 [API 설정]에서 키를 먼저 등록해 주세요.");
+  }
+
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${activeKey}`;
+
+  const toneName = TONES[toneKey]?.name || toneKey;
+  
+  // 시스템 프롬프트: 사용자가 지정한 정교한 숏폼 5단계 대본 구조 엄격 적용
+  const systemPrompt = `당신은 대한민국 최고의 유튜브 쇼츠, 틱톡, 리일스 숏폼 전문 구성 작가입니다.
+제공된 뉴스 기사를 바탕으로 시청자의 시선을 사로잡고 끝까지 몰입하게 만드는 숏폼 대본을 작성하세요.
+
+[대본이 반드시 지켜야 할 구조 및 엄격 규칙]
+1) 0~3초 - 후킹 (Hook)
+   - 스크롤을 멈추게 할 문장 1개만 작성. 설명이나 인사 절대 금지.
+   - 호기심 질문형 / 파격 반전형 / 숫자·손실·이득 충격형 중 선택.
+   - 문장은 8단어(어절) 이내, 낭독 시 2초 초과 금지.
+   - 전체 결론을 다 주지 말고 "이 뒤에 뭐가 나올지 알아야만 궁금증이 풀리는" 정보 격차(curiosity gap)를 형성할 것.
+
+2) 3~7초 - 상황 압축 제시 (Setup)
+   - 후킹에서 만든 궁금증을 유지한 채 사건 배경을 한 문장으로 압축.
+   - "왜 이 일이 지금 문제인가"를 1초 만에 이해하게 만들 것. 결론 제시 절대 금지.
+
+3) 7~18초 - 핵심 정보 + 텐션 유지 (Body: Setup-Tension-Payoff)
+   - 3단 비트로 재구성:
+     * Setup: 무슨 일이 있었는가 (사실 1)
+     * Tension: 그로 인해 생긴 갈등/의문/이해관계 충돌 (사실 2)
+     * Payoff: 그 갈등이 어떻게 되었는가/어떻게 될 것인가 (사실 3)
+   - 한 문장 12단어 이내, 접속사 최소화, 구어체 작성.
+
+4) 18~24초 - 왜 중요한가 (Why it matters)
+   - 이 뉴스가 시청자의 삶/지갑/일상과 어떻게 연결되는지 1~2문장 제시.
+   - 정치→생활정책, 경제→지갑·자산, 사회→안전·일상, IT→기술, 국제→물가·안보 연관성 고려.
+
+5) 24~28초 - 루프 클로징 (Loop Close) + CTA
+   - 영상의 마지막 문장이 0~3초 후킹 문장과 의미적으로 다시 연결되도록 작성 (반복 재생 유도).
+   - 자연스러운 대화체 CTA 1개 삽입 (댓글 유도 또는 팔로우 유도, 강요형 금지).
+
+[전체 분량 / 톤 규칙]
+- 전체 낭독 시간 15~28초 목표 (한국어 기준 1초당 4~5음절).
+- 모든 문장은 친근한 존댓말 구어체로 통일.
+- 초등학생도 이해할 수 있는 쉬운 단어 사용.
+- "그리고, 그런데, 하지만" 같은 접속사 최소화, 끊어치는 문장.
+- 정치적 편향 금지, 입력된 핵심 사실과 출처를 벗어난 없는 사실 추가 금지.`;
+
+  const userQuery = `
+[뉴스 정보]
+제목: ${article.title}
+출처: ${article.outlet}
+카테고리: ${article.category}
+본문 내용: ${article.description}
+
+[요청 연출 옵션]
+- 보이스 톤: ${toneName}
+- 목표 재생 시간: 15~28초 (평균 ${durationSec}초 타겟)
+- 후킹 선호 스타일: ${hookType}
+
+반드시 지정된 JSON 구조로만 답변하세요:
+{
+  "hook": "0~3초 후킹 문장 (8어절 이내, 결론 금지)",
+  "scriptLines": [
+    {"time": "0~3초", "text": "...", "cue": "오프닝 빨간색 대형 자막 + 긴박한 효과음"},
+    {"time": "3~7초", "text": "...", "cue": "상황 압축 자막 + 기사 헤드라인 줌인"},
+    {"time": "7~18초", "text": "...", "cue": "3단 비트 핵심 정보 전달 및 빠른 점프컷"},
+    {"time": "18~24초", "text": "...", "cue": "시청자 영향 강조 아이콘 자막"},
+    {"time": "24~28초", "text": "...", "cue": "루프 클로징 및 자연스러운 댓글 유도 CTA"}
+  ],
+  "visualCues": "전체 B-Roll 및 BGM 연출 가이드 요약",
+  "hashtags": "#뉴스 #쇼츠 #핵심키워드1 #핵심키워드2",
+  "imagePrompt": "English prompt describing a dramatic vertical news thumbnail illustration for Imagen"
+}
+`;
+
+  const payload = {
+    contents: [{ parts: [{ text: userQuery }] }],
+    systemInstruction: { parts: [{ text: systemPrompt }] },
+    generationConfig: {
+      responseMimeType: "application/json"
+    }
+  };
+
+  const responseData = await fetchWithRetry(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  const textRes = responseData.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!textRes) throw new Error("AI 응답이 비어있습니다.");
+  return JSON.parse(textRes);
+}
+
+async function callImagenAPI(imagePrompt) {
+  const activeKey = getActiveApiKey();
+  if (!activeKey) {
+    throw new Error("등록된 API 키가 없습니다. 상단 [API 설정]에서 키를 등록해 주세요.");
+  }
+
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:predict?key=${activeKey}`;
+
+  const payload = {
+    instances: [{ prompt: `High quality 9:16 vertical orientation youtube shorts cover, realistic news thumbnail art: ${imagePrompt}` }],
+    parameters: { sampleCount: 1, aspectRatio: "9:16" }
+  };
+
+  const responseData = await fetchWithRetry(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  const b64 = responseData.predictions?.[0]?.bytesBase64Encoded;
+  if (!b64) throw new Error("이미지 생성 결과가 없습니다.");
+  return `data:image/png;base64,${b64}`;
+}
+
+function generateSummary(article) {
+  const sentences = article.description.split(/(?<=[.!?])\s*/).filter(s => s.trim().length > 0);
+  const line1 = article.title.replace(/[.,]+$/, "") + ".";
+  const line2 = sentences[0] || "관련 세부 사항은 보도 매체 원문에서 확인할 수 있습니다.";
+  const line3 = sentences[1] || sentences[0] || "추가 사실관계에 대한 지속적인 관찰이 필요합니다.";
+  return [line1, line2, line3];
+}
+
+function buildFallbackScriptOutput(article, summaryLines, toneKey, durationSec, hookType) {
+  const tone = TONES[toneKey] || TONES.announcer;
+  let hook = "";
+  const keyword = tokenize(article.title)[0] || "핵심 이슈";
+
+  if (hookType === "question") hook = `지금 난리 난 '${keyword}', 도대체 왜 다들 이러는 걸까요?`;
+  else if (hookType === "reversal") hook = `'${keyword}' 그냥 넘어갔다간 큰일 날 수 있습니다.`;
+  else if (hookType === "number") hook = `언론사가 일제히 보도한 '${keyword}', 딱 20초 요약!`;
+  else hook = `[속보] 지금 당장 주목해야 할 '${keyword}' 소식입니다!`;
+
+  const scriptText = `[0~3초 | 후킹]
+${hook}
+
+[3~7초 | 상황 압축]
+${summaryLines[0]}
+
+[7~18초 | 핵심 정보 (3단 비트)]
+• 무슨 일인가: ${summaryLines[1]}
+• 쟁점과 갈등: ${summaryLines[2]}
+• 앞으로의 상황: 관련 대응과 논의가 빠르게 이어지고 있습니다.
+
+[18~24초 | 시청자 연결 (Why it matters)]
+이 소식, 우리 일상과 통장에도 직접적인 영향을 줄 수밖에 없는데요.
+
+[24~28초 | 루프 클로징 + CTA]
+처음 질문 기억하시나요? 여러분은 어떻게 생각하시나요? 댓글로 의견을 나눠주세요!`;
+
+  const visualCues = `🎬 [추천 숏폼 연출 가이드 (5단계 숏폼 전용)]
+• 0~3초: 대형 빨간 자막 + 줌인 효과음 (Swoosh)
+• 3~7초: 뉴스 헤드라인 화면 줌인
+• 7~18초: 2.5초 간격 빠른 점프컷과 키워드 강조
+• 18~24초: 시청자 삶 연관 아이콘 강조
+• 24~28초: 하단 댓글 참여 유도 자막`;
+
+  const hashtags = `#뉴스 #쇼츠뉴스 #${article.category} #${tokenize(article.title).slice(0, 3).join(" #")}`;
+
+  return { scriptText, visualCues, hashtags, imagePrompt: `News broadcast background with graph and spotlight for ${article.title}` };
+}
+
+/* =========================================================
+   4) GLOBAL STATE
+   ========================================================= */
+let currentCategory = "all";
+let currentArticles = [];
+let selectedArticleId = null;
+let bookmarks = JSON.parse(localStorage.getItem("shorts_bookmarks") || "[]");
+
+let externalApiKey = sessionStorage.getItem("shorts_external_api_key") || "";
+
+let currentTone = "announcer";
+let currentDuration = 30;
+let currentHook = "question";
+
+let prompterInterval = null;
+let isPrompterPlaying = false;
+let prompterPosY = 0;
+let prompterFontSize = 36;
+
+let currentUtterance = null;
+let isSpeaking = false;
+
+/* =========================================================
+   5) INITIALIZATION & LISTENERS
+   ========================================================= */
+function renderCategoryTabs() {
+  const tabsEl = document.getElementById("categoryTabs");
+  if (!tabsEl) return;
+  tabsEl.innerHTML = "";
+
+  CATEGORY_LIST.forEach(cat => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition ${
+      currentCategory === cat.id
+        ? "bg-brand-600 text-white border-brand-500 shadow-md shadow-brand-500/20 font-bold"
+        : "bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800 hover:text-white"
+    }`;
+    btn.innerHTML = `<i class="fa-solid ${cat.icon} text-[11px]"></i> ${cat.label}`;
+    btn.addEventListener("click", () => {
+      currentCategory = cat.id;
+      renderCategoryTabs();
+      updateArticles();
+    });
+    tabsEl.appendChild(btn);
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  renderCategoryTabs();
+  updateArticles();
+  updateBookmarkBadge();
+  updateApiKeyBadge();
+
+  document.getElementById("searchInput").addEventListener("input", filterAndRenderList);
+  document.getElementById("outletFilter").addEventListener("change", filterAndRenderList);
+  document.getElementById("sortBy").addEventListener("change", filterAndRenderList);
+
+  document.getElementById("btnOpenApiKeyModal").addEventListener("click", openApiKeyModal);
+  document.getElementById("btnCloseApiKeyModal").addEventListener("click", closeApiKeyModal);
+  document.getElementById("btnToggleKeyVis").addEventListener("click", toggleKeyVisibility);
+  document.getElementById("btnTestApiKey").addEventListener("click", testApiKeyConnection);
+  document.getElementById("btnExportApiKey").addEventListener("click", exportEncryptedApiKey);
+  document.getElementById("inputFileImport").addEventListener("change", importEncryptedApiKey);
+  document.getElementById("btnClearKey").addEventListener("click", clearStoredApiKey);
+
+  document.getElementById("btnOpenCustomModal").addEventListener("click", () => {
+    document.getElementById("customModal").classList.remove("hidden");
+    document.getElementById("customModal").classList.add("flex");
+  });
+  document.getElementById("btnCloseCustomModal").addEventListener("click", () => {
+    document.getElementById("customModal").classList.add("hidden");
+    document.getElementById("customModal").classList.remove("flex");
+  });
+  document.getElementById("btnSubmitCustom").addEventListener("click", handleCustomNewsSubmit);
+
+  document.getElementById("btnOpenBookmarks").addEventListener("click", openBookmarksModal);
+  document.getElementById("btnCloseBookmarksModal").addEventListener("click", () => {
+    document.getElementById("bookmarksModal").classList.add("hidden");
+    document.getElementById("bookmarksModal").classList.remove("flex");
+  });
+
+  document.getElementById("btnClosePrompter").addEventListener("click", closePrompter);
+  document.getElementById("btnPrompterToggle").addEventListener("click", togglePrompterPlay);
+  document.getElementById("btnPrompterReset").addEventListener("click", resetPrompter);
+  document.getElementById("prompterSpeed").addEventListener("input", (e) => {
+    document.getElementById("prompterSpeedVal").textContent = `${e.target.value}x`;
+  });
+  document.getElementById("btnFontLarger").addEventListener("click", () => {
+    prompterFontSize = Math.min(60, prompterFontSize + 4);
+    document.getElementById("prompterTextContent").style.fontSize = `${prompterFontSize}px`;
+  });
+  document.getElementById("btnFontSmaller").addEventListener("click", () => {
+    prompterFontSize = Math.max(20, prompterFontSize - 4);
+    document.getElementById("prompterTextContent").style.fontSize = `${prompterFontSize}px`;
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (!document.getElementById("prompterModal").classList.contains("hidden")) {
+      if (e.code === "Space") {
+        e.preventDefault();
+        togglePrompterPlay();
+      } else if (e.code === "Escape") {
+        closePrompter();
+      }
+    }
+  });
+});
+
+/* =========================================================
+   6) CRYPTO & EXTERNAL API KEY POPUP CONTROLLER
+   ========================================================= */
+async function encryptWithWebCrypto(text, password) {
+  const enc = new TextEncoder();
+  const salt = window.crypto.getRandomValues(new Uint8Array(16));
+  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  const pwKey = await window.crypto.subtle.importKey(
+    "raw", enc.encode(password || "shorts-default-passphrase"), "PBKDF2", false, ["deriveKey"]
+  );
+  const key = await window.crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+    pwKey,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["encrypt"]
+  );
+  const encrypted = await window.crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, enc.encode(text));
+  const combined = new Uint8Array(salt.length + iv.length + encrypted.byteLength);
+  combined.set(salt, 0);
+  combined.set(iv, salt.length);
+  combined.set(new Uint8Array(encrypted), salt.length + iv.length);
+  return btoa(String.fromCharCode(...combined));
+}
+
+async function decryptWithWebCrypto(cipherB64, password) {
+  const binary = atob(cipherB64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const salt = bytes.slice(0, 16);
+  const iv = bytes.slice(16, 28);
+  const data = bytes.slice(28);
+  const enc = new TextEncoder();
+  const pwKey = await window.crypto.subtle.importKey(
+    "raw", enc.encode(password || "shorts-default-passphrase"), "PBKDF2", false, ["deriveKey"]
+  );
+  const key = await window.crypto.subtle.deriveKey(
+    { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+    pwKey,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["decrypt"]
+  );
+  const decrypted = await window.crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data);
+  return new TextDecoder().decode(decrypted);
+}
+
+function updateApiKeyBadge() {
+  const badge = document.getElementById("apiKeyBadge");
+  const statusText = document.getElementById("apiKeyStatusText");
+  const activeKey = getActiveApiKey();
+
+  if (activeKey && activeKey.trim().length > 5) {
+    badge.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+    if (statusText) {
+      statusText.textContent = "등록됨 (사용 가능)";
+      statusText.className = "text-[11px] text-emerald-400 font-mono font-semibold";
+    }
+  } else {
+    badge.className = "w-2 h-2 rounded-full bg-slate-500";
+    if (statusText) {
+      statusText.textContent = "미등록";
+      statusText.className = "text-[11px] text-slate-500 font-mono";
+    }
+  }
+}
+
+function openApiKeyModal() {
+  document.getElementById("inputApiKey").value = externalApiKey;
+  document.getElementById("connectionTestResult").classList.add("hidden");
+  document.getElementById("apiKeyModal").classList.remove("hidden");
+  document.getElementById("apiKeyModal").classList.add("flex");
+  updateApiKeyBadge();
+}
+
+function closeApiKeyModal() {
+  const inputVal = document.getElementById("inputApiKey").value.trim();
+  if (inputVal) {
+    externalApiKey = inputVal;
+    sessionStorage.setItem("shorts_external_api_key", externalApiKey);
+  }
+  document.getElementById("apiKeyModal").classList.add("hidden");
+  document.getElementById("apiKeyModal").classList.remove("flex");
+  updateApiKeyBadge();
+}
+
+function toggleKeyVisibility() {
+  const input = document.getElementById("inputApiKey");
+  const icon = document.querySelector("#btnToggleKeyVis i");
+  if (input.type === "password") {
+    input.type = "text";
+    icon.className = "fa-solid fa-eye-slash";
+  } else {
+    input.type = "password";
+    icon.className = "fa-solid fa-eye";
+  }
+}
+
+async function testApiKeyConnection() {
+  const key = document.getElementById("inputApiKey").value.trim() || getActiveApiKey();
+  const resBox = document.getElementById("connectionTestResult");
+  resBox.classList.remove("hidden");
+
+  if (!key) {
+    resBox.className = "p-3 rounded-xl bg-rose-950/40 border border-rose-800 text-rose-300 text-xs";
+    resBox.innerHTML = `
+      <div class="flex items-center gap-1.5 font-bold mb-0.5">
+        <i class="fa-solid fa-circle-exclamation text-rose-400"></i> API 키 미입력
+      </div>
+      <p class="text-[11px] text-rose-200/80">Gemini API 키를 먼저 입력하거나 파일에서 불러온 후 연결 테스트를 진행해 주세요.</p>`;
+    return;
+  }
+
+  resBox.className = "p-3 rounded-xl bg-brand-950/40 border border-brand-800 text-brand-300 text-xs flex items-center gap-2";
+  resBox.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Gemini API 서버 연결 테스트 진행 중...`;
+
+  try {
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${key}`;
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: "API connection test." }] }]
+      })
+    });
+
+    if (response.ok) {
+      externalApiKey = key;
+      sessionStorage.setItem("shorts_external_api_key", key);
+      updateApiKeyBadge();
+      resBox.className = "p-3 rounded-xl bg-emerald-950/40 border border-emerald-800 text-emerald-300 text-xs";
+      resBox.innerHTML = `
+        <div class="flex items-center gap-1.5 font-bold mb-1">
+          <i class="fa-solid fa-circle-check text-emerald-400"></i> 연결 성공 (Status 200 OK)
+        </div>
+        <p class="text-[11px] text-emerald-200/80">Gemini 3 Flash API와 정상적으로 연동되었습니다. AI 쇼츠 대본 및 이미지 생성을 사용할 수 있습니다.</p>`;
+    } else {
+      const errJson = await response.json().catch(() => ({}));
+      const errMsg = errJson.error?.message || response.statusText;
+      resBox.className = "p-3 rounded-xl bg-rose-950/40 border border-rose-800 text-rose-300 text-xs";
+      resBox.innerHTML = `
+        <div class="flex items-center gap-1.5 font-bold mb-1">
+          <i class="fa-solid fa-circle-xmark text-rose-400"></i> 연결 실패 (Status ${response.status})
+        </div>
+        <p class="text-[11px] text-rose-200/80">${errMsg}</p>`;
+    }
+  } catch (err) {
+    resBox.className = "p-3 rounded-xl bg-rose-950/40 border border-rose-800 text-rose-300 text-xs";
+    resBox.innerHTML = `
+      <div class="flex items-center gap-1.5 font-bold mb-1">
+        <i class="fa-solid fa-wifi text-rose-400"></i> 통신 오류
+      </div>
+      <p class="text-[11px] text-rose-200/80">${err.message}</p>`;
+  }
+}
+
+async function exportEncryptedApiKey() {
+  const key = document.getElementById("inputApiKey").value.trim() || externalApiKey;
+  const passphrase = document.getElementById("inputEncPassphrase").value.trim();
+
+  if (!key) {
+    showToast("암호화 저장할 API 키를 먼저 입력해 주세요.");
+    return;
+  }
+
+  try {
+    const encryptedData = await encryptWithWebCrypto(key, passphrase);
+    const exportObject = {
+      app: "ShortsNewsAI",
+      version: "3.5",
+      type: "encrypted_key_bundle",
+      data: encryptedData,
+      createdAt: new Date().toISOString()
+    };
+
+    const blob = new Blob([JSON.stringify(exportObject, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `shorts_api_key_${Date.now()}.enc`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    externalApiKey = key;
+    sessionStorage.setItem("shorts_external_api_key", key);
+    updateApiKeyBadge();
+    showToast("암호화 파일이 사용자 로컬 드라이브에 저장되었습니다.");
+  } catch (err) {
+    showToast("암호화 파일 저장 실패: " + err.message);
+  }
+}
+
+async function importEncryptedApiKey(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const passphrase = document.getElementById("inputEncPassphrase").value.trim();
+  const reader = new FileReader();
+
+  reader.onload = async (e) => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (!parsed.data) throw new Error("올바르지 않은 암호화 키 파일입니다.");
+
+      const decryptedKey = await decryptWithWebCrypto(parsed.data, passphrase);
+      if (!decryptedKey || decryptedKey.length < 5) throw new Error("복호화 결과가 유효하지 않습니다.");
+
+      document.getElementById("inputApiKey").value = decryptedKey;
+      externalApiKey = decryptedKey;
+      sessionStorage.setItem("shorts_external_api_key", decryptedKey);
+      updateApiKeyBadge();
+      showToast("암호화 파일로부터 API 키를 로드하였습니다.");
+    } catch (err) {
+      showToast("복호화 실패: 파일이 손상되었거나 비밀번호가 틀렸습니다.");
+    }
+  };
+
+  reader.readAsText(file);
+  event.target.value = "";
+}
+
+function clearStoredApiKey() {
+  externalApiKey = "";
+  sessionStorage.removeItem("shorts_external_api_key");
+  document.getElementById("inputApiKey").value = "";
+  document.getElementById("connectionTestResult").classList.add("hidden");
+  updateApiKeyBadge();
+  showToast("등록된 외장 API 키가 초기화되었습니다.");
+}
+
+/* =========================================================
+   7) NEWS FEED CONTROLLERS
+   ========================================================= */
+function updateArticles() {
+  let filtered = DATA;
+  if (currentCategory !== "all") {
+    filtered = DATA.filter(a => a.category === currentCategory);
+  }
+  currentArticles = scoreArticles(filtered);
+  renderTagCloud();
+  filterAndRenderList();
+}
+
+function renderTagCloud() {
+  const tagContainer = document.getElementById("tagCloud");
+  tagContainer.innerHTML = "";
+  const allTokens = currentArticles.flatMap(a => tokenize(a.title));
+  const counts = {};
+  allTokens.forEach(t => counts[t] = (counts[t] || 0) + 1);
+  const sortedTags = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0, 7);
+
+  sortedTags.forEach(([tag, num]) => {
+    const chip = document.createElement("button");
+    chip.className = "px-2 py-0.5 bg-slate-800 hover:bg-brand-900/40 text-slate-300 hover:text-brand-300 rounded-md text-[11px] font-medium border border-slate-700/60 whitespace-nowrap transition";
+    chip.textContent = `#${tag}`;
+    chip.addEventListener("click", () => {
+      document.getElementById("searchInput").value = tag;
+      filterAndRenderList();
+    });
+    tagContainer.appendChild(chip);
+  });
+}
+
+function filterAndRenderList() {
+  const query = document.getElementById("searchInput").value.trim().toLowerCase();
+  const outlet = document.getElementById("outletFilter").value;
+  const sortBy = document.getElementById("sortBy").value;
+
+  let list = [...currentArticles];
+
+  if (query) {
+    list = list.filter(a => a.title.toLowerCase().includes(query) || a.description.toLowerCase().includes(query));
+  }
+  if (outlet !== "all") {
+    list = list.filter(a => a.outlet === outlet);
+  }
+
+  if (sortBy === "score") {
+    list.sort((a,b) => b.finalScore - a.finalScore);
+  } else if (sortBy === "cluster") {
+    list.sort((a,b) => b.clusterCount - a.clusterCount);
+  } else if (sortBy === "recent") {
+    list.sort((a,b) => a.hoursAgo - b.hoursAgo);
+  }
+
+  document.getElementById("articleTotalCount").textContent = `총 ${list.length}개 소식`;
+  renderNewsList(list);
+  renderChart(list.slice(0, 5));
+}
+
+function renderChart(topList) {
+  const container = document.getElementById("chartContainer");
+  container.innerHTML = "";
+
+  if (!topList.length) {
+    container.innerHTML = `<p class="text-xs text-slate-500 py-2 text-center">데이터가 없습니다.</p>`;
+    return;
+  }
+
+  const maxScore = Math.max(...topList.map(a => a.finalScore), 10);
+
+  topList.forEach((a, idx) => {
+    const pct = Math.max(10, Math.round((a.finalScore / maxScore) * 100));
+    const row = document.createElement("div");
+    row.className = "flex items-center gap-2 text-xs cursor-pointer group";
+    row.addEventListener("click", () => selectArticle(a.id));
+
+    row.innerHTML = `
+      <span class="w-4 font-bold text-[11px] text-slate-500 text-right group-hover:text-brand-400">${idx + 1}</span>
+      <div class="flex-1">
+        <div class="flex justify-between text-[11px] mb-0.5">
+          <span class="text-slate-300 font-medium truncate max-w-[180px] group-hover:text-white">${a.title}</span>
+          <span class="text-brand-400 font-bold">${a.finalScore}점</span>
+        </div>
+        <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+          <div class="h-full bg-gradient-to-r from-brand-600 to-indigo-500 rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+        </div>
+      </div>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function renderNewsList(articles) {
+  const listEl = document.getElementById("newsList");
+  listEl.innerHTML = "";
+
+  if (!articles.length) {
+    listEl.innerHTML = `
+      <div class="py-12 text-center text-slate-500 text-xs">
+        <i class="fa-solid fa-magnifying-glass text-2xl mb-2 block"></i>
+        검색 결과와 일치하는 뉴스가 없습니다.
+      </div>`;
+    return;
+  }
+
+  articles.forEach(a => {
+    const isBookmarked = bookmarks.some(b => b.id === a.id);
+    const li = document.createElement("li");
+    const isSelected = selectedArticleId === a.id;
+
+    li.className = `p-3 rounded-xl border transition cursor-pointer relative ${
+      isSelected
+        ? "bg-brand-900/30 border-brand-500/70 glow-active"
+        : "bg-slate-900/80 border-slate-800 hover:border-slate-700 hover:bg-slate-800/80"
+    }`;
+
+    li.innerHTML = `
+      <div class="flex items-center justify-between gap-2 mb-1">
+        <div class="flex items-center gap-2">
+          <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700">${a.outlet}</span>
+          <span class="text-[11px] text-slate-500">${a.hoursAgo < 24 ? a.hoursAgo + '시간 전' : Math.floor(a.hoursAgo/24) + '일 전'}</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+            관심도 ${a.finalScore}
+          </span>
+          <button class="btn-bookmark-toggle text-slate-500 hover:text-amber-400 p-1 text-xs" data-id="${a.id}">
+            <i class="fa-${isBookmarked ? 'solid text-amber-400' : 'regular'} fa-star"></i>
+          </button>
+        </div>
+      </div>
+      <h4 class="text-xs font-semibold text-slate-200 line-clamp-2 leading-snug mb-1.5">${a.title}</h4>
+      <div class="flex items-center gap-2 text-[10px] text-slate-400">
+        ${a.clusterCount > 1 
+          ? `<span class="text-brand-400 font-semibold flex items-center gap-1"><i class="fa-solid fa-layer-group"></i> ${a.clusterCount}개 매체 동시 보도</span>` 
+          : `<span class="text-slate-500">단독 보도/개별 소식</span>`}
+      </div>
+    `;
+
+    li.querySelector(".btn-bookmark-toggle").addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleBookmark(a);
+    });
+
+    li.addEventListener("click", () => selectArticle(a.id));
+    listEl.appendChild(li);
+  });
+}
+
+function selectArticle(id) {
+  selectedArticleId = id;
+  filterAndRenderList();
+  renderDetailPanel();
+}
+
+function getArticleById(id) {
+  let article = currentArticles.find(a => a.id === id);
+  if (!article) article = DATA.find(a => a.id === id);
+  if (!article) article = bookmarks.find(b => b.id === id);
+
+  if (article) {
+    return {
+      ...article,
+      clusterCount: article.clusterCount || 1,
+      clusterOutlets: (article.clusterOutlets && article.clusterOutlets.length) ? article.clusterOutlets : [article.outlet || "자체 제보"],
+      finalScore: article.finalScore || 50,
+      recencyScore: article.recencyScore || 50
+    };
+  }
+  return null;
+}
+
+/* =========================================================
+   8) SCRIPT STUDIO UI & GENERATION FLOW
+   ========================================================= */
+function renderDetailPanel() {
+  const detailEl = document.getElementById("detailPanel");
+  const article = getArticleById(selectedArticleId);
+
+  if (!article) {
+    detailEl.innerHTML = `
+      <div class="flex flex-col items-center justify-center h-full text-center p-12 text-slate-500 my-auto">
+        <i class="fa-solid fa-newspaper text-3xl mb-3"></i>
+        <p class="text-xs">뉴스를 선택해 상세 대본을 구성하세요.</p>
+      </div>`;
+    return;
+  }
+
+  const summary = generateSummary(article);
+  const outletsList = (article.clusterOutlets && article.clusterOutlets.length) ? article.clusterOutlets : [article.outlet || "자체 제보"];
+
+  detailEl.innerHTML = `
+    <div class="space-y-4">
+      <div>
+        <div class="flex items-center justify-between gap-2 mb-2">
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-md bg-brand-500/20 text-brand-400 border border-brand-500/30 font-bold text-xs">
+              ${article.outlet}
+            </span>
+            <span class="text-xs text-slate-400"><i class="fa-regular fa-clock"></i> ${article.hoursAgo}시간 전 발행</span>
+          </div>
+          <a href="${OUTLET_LINK[article.outlet] || '#'}" target="_blank" class="text-xs text-slate-400 hover:text-brand-400 flex items-center gap-1 transition">
+            원문 바로가기 <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+          </a>
+        </div>
+        <h2 class="text-base sm:text-lg font-bold text-white leading-snug">${article.title}</h2>
+      </div>
+
+      <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-2">
+        <h3 class="text-xs font-bold text-brand-400 flex items-center gap-1.5">
+          <i class="fa-solid fa-list-check"></i> 3줄 핵심 요약 및 증거
+        </h3>
+        <ol class="list-decimal list-inside text-xs text-slate-300 space-y-1.5 leading-relaxed">
+          <li>${summary[0]}</li>
+          <li>${summary[1]}</li>
+          <li>${summary[2]}</li>
+        </ol>
+        <div class="pt-2 border-t border-slate-800/80 flex flex-wrap gap-2 text-[11px] text-slate-400">
+          <span>• 동시 보도 매체: <b class="text-slate-200">${outletsList.join(", ")}</b></span>
+          <span>• 관심도 스코어: <b class="text-emerald-400">${article.finalScore}점</b></span>
+        </div>
+      </div>
+
+      <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-3.5 space-y-3">
+        <h3 class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+          <i class="fa-solid fa-sliders text-brand-400"></i> AI 대본 연출 옵션 설정
+        </h3>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+          <div>
+            <label class="block text-[11px] text-slate-400 font-semibold mb-1">말투 / 보이스 톤</label>
+            <select id="selectTone" class="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg p-2 text-xs focus:border-brand-500">
+              <option value="announcer">진지한 아나운서 🎙️</option>
+              <option value="creator">유쾌한 크리에이터 🚀</option>
+              <option value="deep">지식 탐구자 💡</option>
+              <option value="urgent">긴박한 속보 리포터 🚨</option>
+              <option value="mz">Z세대 반말 숏폼 ⚡</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-[11px] text-slate-400 font-semibold mb-1">목표 재생 시간</label>
+            <select id="selectDuration" class="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg p-2 text-xs focus:border-brand-500">
+              <option value="15">15초 (초고속 요약)</option>
+              <option value="30" selected>30초 (표준 숏폼)</option>
+              <option value="60">60초 (심화 브리핑)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-[11px] text-slate-400 font-semibold mb-1">후킹(Hook) 스타일</label>
+            <select id="selectHook" class="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-lg p-2 text-xs focus:border-brand-500">
+              <option value="question">호기심 질문형</option>
+              <option value="reversal">파격 경고/반전형</option>
+              <option value="number">숫자 요약 강조형</option>
+              <option value="shock">긴급 속보 강조형</option>
+            </select>
+          </div>
+        </div>
+
+        <button id="btnGenerateScript" class="w-full py-2.5 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-500 hover:to-indigo-500 text-white font-bold rounded-xl text-xs shadow-lg shadow-brand-500/25 flex items-center justify-center gap-2 transition">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> AI 맞춤 대본 생성하기
+        </button>
+      </div>
+
+      <div id="scriptOutputArea" class="space-y-3">
+        <!-- Dynamic script output -->
+      </div>
+    </div>
+  `;
+
+  document.getElementById("btnGenerateScript").addEventListener("click", () => {
+    currentTone = document.getElementById("selectTone").value;
+    currentDuration = parseInt(document.getElementById("selectDuration").value);
+    currentHook = document.getElementById("selectHook").value;
+    executeScriptGeneration(article, summary);
+  });
+
+  executeScriptGeneration(article, summary);
+}
+
+async function executeScriptGeneration(article, summary) {
+  const outputArea = document.getElementById("scriptOutputArea");
+  
+  outputArea.innerHTML = `
+    <div class="p-8 rounded-xl bg-slate-900/80 border border-slate-800 text-center space-y-3">
+      <div class="w-10 h-10 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+      <p class="text-xs font-semibold text-brand-400">Gemini AI가 정교한 5단계 숏폼 대본을 연출 중입니다...</p>
+      <p class="text-[11px] text-slate-500">0~3초 후킹부터 루프 클로징 및 CTA까지 최적화하고 있습니다.</p>
+    </div>
+  `;
+
+  try {
+    const aiRes = await callGeminiScriptAPI(article, currentTone, currentDuration, currentHook);
+    
+    let formattedScript = `[0~3초 | 후킹 (Hook)]\n${aiRes.hook}\n\n`;
+    if (aiRes.scriptLines && Array.isArray(aiRes.scriptLines)) {
+      aiRes.scriptLines.forEach(line => {
+        formattedScript += `[${line.time} | ${line.cue || '연출'}]\n${line.text}\n\n`;
+      });
+    }
+
+    renderScriptResultUI(
+      article,
+      formattedScript.trim(),
+      aiRes.visualCues || "화면 연출 지침 가이드",
+      aiRes.hashtags || "#뉴스 #쇼츠",
+      aiRes.imagePrompt || article.title
+    );
+  } catch (err) {
+    console.warn("AI generation error fallback:", err);
+    const fallback = buildFallbackScriptOutput(article, summary, currentTone, currentDuration, currentHook);
+    renderScriptResultUI(article, fallback.scriptText, fallback.visualCues, fallback.hashtags, fallback.imagePrompt);
+    showToast(err.message.includes("API 키") ? err.message : "스마트 템플릿 엔진 모드로 대본이 생성되었습니다.");
+  }
+}
+
+function renderScriptResultUI(article, scriptText, visualCues, hashtags, imagePrompt) {
+  const outputArea = document.getElementById("scriptOutputArea");
+  const activeKey = getActiveApiKey();
+
+  outputArea.innerHTML = `
+    <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+          <i class="fa-solid fa-scroll text-brand-400"></i> 완성된 쇼츠 대본
+        </span>
+        ${activeKey 
+          ? `<span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1"><i class="fa-solid fa-bolt text-[9px]"></i> 외장 API 연동 모드</span>`
+          : `<span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-800 text-slate-400 border border-slate-700">템플릿 전용 모드</span>`}
+      </div>
+      <div class="flex items-center gap-1">
+        <button id="btnTTS" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 border border-slate-700 transition">
+          <i class="fa-solid fa-volume-high text-brand-400"></i> <span id="ttsBtnText">음성 듣기</span>
+        </button>
+        <button id="btnLaunchPrompter" class="px-2.5 py-1 rounded-lg bg-brand-600 hover:bg-brand-500 text-white text-xs font-bold flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-desktop"></i> 프롬프터
+        </button>
+      </div>
+    </div>
+
+    <textarea id="scriptContentText" readonly rows="8" class="w-full bg-slate-950 border border-slate-800 text-slate-100 rounded-xl p-3 text-xs leading-relaxed font-mono focus:outline-none resize-y">${scriptText}</textarea>
+
+    <div class="bg-slate-900/80 border border-slate-800 rounded-xl p-3 space-y-2 text-xs">
+      <div class="text-slate-300 font-mono whitespace-pre-line leading-relaxed text-[11px]">${visualCues}</div>
+      <div class="pt-2 border-t border-slate-800/80 text-brand-400 font-semibold text-[11px]">${hashtags}</div>
+    </div>
+
+    <!-- AI Thumbnail Generation Card -->
+    <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-3.5 space-y-2">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+          <i class="fa-solid fa-image text-indigo-400"></i> Imagen 4.0 AI 숏폼 썸네일 아트
+        </span>
+        <button id="btnGenThumbnail" class="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold rounded-lg transition">
+          썸네일 생성
+        </button>
+      </div>
+      <div id="thumbnailResultBox" class="hidden text-center py-2">
+        <!-- Dynamic Image Box -->
+      </div>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <button id="btnCopyScript" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border border-slate-700 transition">
+        <i class="fa-solid fa-copy"></i> 대본 복사
+      </button>
+      <button id="btnDownloadScript" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border border-slate-700 transition">
+        <i class="fa-solid fa-download"></i> .TXT 저장
+      </button>
+    </div>
+  `;
+
+  document.getElementById("btnCopyScript").addEventListener("click", () => {
+    copyToClipboard(document.getElementById("scriptContentText").value);
+  });
+
+  document.getElementById("btnDownloadScript").addEventListener("click", () => {
+    const text = document.getElementById("scriptContentText").value;
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Shorts_Script_${article.id}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("대본 파일이 다운로드되었습니다.");
+  });
+
+  document.getElementById("btnLaunchPrompter").addEventListener("click", () => {
+    openPrompter(article.title, scriptText);
+  });
+
+  document.getElementById("btnTTS").addEventListener("click", () => {
+    toggleTTS(scriptText);
+  });
+
+  document.getElementById("btnGenThumbnail").addEventListener("click", async () => {
+    const box = document.getElementById("thumbnailResultBox");
+    box.classList.remove("hidden");
+    box.innerHTML = `<div class="p-4 text-xs text-indigo-300 flex items-center justify-center gap-2"><i class="fa-solid fa-spinner animate-spin"></i> Imagen 4.0에서 9:16 썸네일 아트 생성 중...</div>`;
+
+    try {
+      const imgUrl = await callImagenAPI(imagePrompt);
+      box.innerHTML = `
+        <div class="relative max-w-[180px] mx-auto rounded-xl overflow-hidden border border-slate-700 shadow-xl group">
+          <img src="${imgUrl}" alt="[Image of 쇼츠 썸네일 아트]" class="w-full h-auto object-cover">
+          <a href="${imgUrl}" download="Shorts_Cover_${article.id}.png" class="absolute inset-0 bg-slate-950/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-bold transition">
+            <i class="fa-solid fa-download mr-1"></i> 다운로드
+          </a>
+        </div>`;
+    } catch (err) {
+      box.innerHTML = `<p class="text-xs text-rose-400 py-2">${err.message}</p>`;
+    }
+  });
+}
+
+/* =========================================================
+   9) TELEPROMPTER & TTS
+   ========================================================= */
+function openPrompter(title, script) {
+  const modal = document.getElementById("prompterModal");
+  document.getElementById("prompterTitle").textContent = title;
+  
+  const cleanScript = script.replace(/\[.*?\]/g, "").trim();
+  document.getElementById("prompterTextContent").innerHTML = cleanScript.split("\n").filter(l => l.trim()).map(line => `<p class="my-4">${line}</p>`).join("");
+
+  modal.classList.remove("hidden");
+  modal.classList.add("flex");
+  resetPrompter();
+}
+
+function closePrompter() {
+  const modal = document.getElementById("prompterModal");
+  modal.classList.add("hidden");
+  modal.classList.remove("flex");
+  stopPrompterScroll();
+}
+
+function resetPrompter() {
+  stopPrompterScroll();
+  prompterPosY = 0;
+  document.getElementById("prompterTextContent").style.transform = `translateY(0px)`;
+}
+
+function togglePrompterPlay() {
+  if (isPrompterPlaying) {
+    stopPrompterScroll();
+  } else {
+    startPrompterScroll();
+  }
+}
+
+function startPrompterScroll() {
+  isPrompterPlaying = true;
+  document.getElementById("prompterPlayIcon").className = "fa-solid fa-pause";
+  document.getElementById("prompterPlayText").textContent = "일시 정지 (Space)";
+
+  const content = document.getElementById("prompterTextContent");
+  
+  prompterInterval = setInterval(() => {
+    const speed = parseInt(document.getElementById("prompterSpeed").value);
+    prompterPosY -= speed * 0.7;
+    content.style.transform = `translateY(${prompterPosY}px)`;
+
+    if (Math.abs(prompterPosY) > content.clientHeight + 200) {
+      resetPrompter();
+    }
+  }, 30);
+}
+
+function stopPrompterScroll() {
+  isPrompterPlaying = false;
+  if (prompterInterval) clearInterval(prompterInterval);
+  document.getElementById("prompterPlayIcon").className = "fa-solid fa-play";
+  document.getElementById("prompterPlayText").textContent = "스크롤 시작 (Space)";
+}
+
+function toggleTTS(script) {
+  if (!('speechSynthesis' in window)) {
+    showToast("이 브라우저는 음성 합성을 지원하지 않습니다.");
+    return;
+  }
+
+  const btnText = document.getElementById("ttsBtnText");
+
+  if (isSpeaking) {
+    window.speechSynthesis.cancel();
+    isSpeaking = false;
+    btnText.textContent = "음성 듣기";
+    return;
+  }
+
+  const cleanText = script.replace(/\[.*?\]/g, "").trim();
+  currentUtterance = new SpeechSynthesisUtterance(cleanText);
+  currentUtterance.lang = "ko-KR";
+  currentUtterance.rate = 1.05;
+
+  currentUtterance.onstart = () => {
+    isSpeaking = true;
+    btnText.textContent = "음성 중지";
+  };
+
+  currentUtterance.onend = () => {
+    isSpeaking = false;
+    btnText.textContent = "음성 듣기";
+  };
+
+  currentUtterance.onerror = () => {
+    isSpeaking = false;
+    btnText.textContent = "음성 듣기";
+  };
+
+  window.speechSynthesis.speak(currentUtterance);
+}
+
+/* =========================================================
+   10) CUSTOM NEWS & BOOKMARKS
+   ========================================================= */
+function handleCustomNewsSubmit() {
+  const cat = document.getElementById("customCat").value;
+  const outlet = document.getElementById("customOutlet").value.trim() || "자체 속보";
+  const title = document.getElementById("customTitle").value.trim();
+  const desc = document.getElementById("customDesc").value.trim();
+
+  if (!title || !desc) {
+    showToast("제목과 본문을 모두 입력해 주세요.");
+    return;
+  }
+
+  const newArticle = {
+    id: Date.now(),
+    category: cat,
+    outlet: outlet,
+    title: title,
+    description: desc,
+    hoursAgo: 0
+  };
+
+  DATA.unshift(newArticle);
+  document.getElementById("customModal").classList.add("hidden");
+  document.getElementById("customModal").classList.remove("flex");
+
+  document.getElementById("customTitle").value = "";
+  document.getElementById("customDesc").value = "";
+
+  updateArticles();
+  selectArticle(newArticle.id);
+  showToast("새로운 뉴스가 추가되었습니다.");
+}
+
+function toggleBookmark(article) {
+  const idx = bookmarks.findIndex(b => b.id === article.id);
+  if (idx >= 0) {
+    bookmarks.splice(idx, 1);
+    showToast("보관함에서 제거되었습니다.");
+  } else {
+    bookmarks.push(article);
+    showToast("보관함에 저장되었습니다.");
+  }
+  localStorage.setItem("shorts_bookmarks", JSON.stringify(bookmarks));
+  updateBookmarkBadge();
+  filterAndRenderList();
+}
+
+function updateBookmarkBadge() {
+  const badge = document.getElementById("bookmarkBadge");
+  if (bookmarks.length > 0) {
+    badge.textContent = bookmarks.length;
+    badge.classList.remove("hidden");
+  } else {
+    badge.classList.add("hidden");
+  }
+}
+
+function openBookmarksModal() {
+  const modal = document.getElementById("bookmarksModal");
+  const listEl = document.getElementById("bookmarksList");
+  listEl.innerHTML = "";
+
+  if (!bookmarks.length) {
+    listEl.innerHTML = `
+      <div class="text-center py-12 text-slate-500 text-xs">
+        <i class="fa-solid fa-star text-3xl mb-2 block text-slate-600"></i>
+        보관된 뉴스가 없습니다. 뉴스 목록에서 별 아이콘을 눌러 보관해보세요.
+      </div>`;
+  } else {
+    bookmarks.forEach(a => {
+      const item = document.createElement("div");
+      item.className = "bg-slate-900 border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-3 text-xs";
+      item.innerHTML = `
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="px-2 py-0.5 rounded bg-brand-500/20 text-brand-400 font-bold text-[10px]">${a.outlet}</span>
+            <span class="text-slate-400 text-[10px]">${a.hoursAgo}시간 전</span>
+          </div>
+          <h4 class="font-semibold text-slate-200 truncate">${a.title}</h4>
+        </div>
+        <div class="flex items-center gap-2">
+          <button class="btn-load-bm px-3 py-1.5 bg-brand-600 hover:bg-brand-500 text-white rounded-lg text-xs font-bold" data-id="${a.id}">
+            불러오기
+          </button>
+          <button class="btn-del-bm text-slate-500 hover:text-rose-400 p-1" data-id="${a.id}">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>
+      `;
+
+      item.querySelector(".btn-load-bm").addEventListener("click", () => {
+        selectArticle(a.id);
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+      });
+
+      item.querySelector(".btn-del-bm").addEventListener("click", () => {
+        toggleBookmark(a);
+        openBookmarksModal();
+      });
+
+      listEl.appendChild(item);
+    });
+  }
+
+  modal.classList.remove("hidden");
+  modal.classList.add("flex");
+}
+
+/* =========================================================
+   11) UTILITY FUNCTIONS
+   ========================================================= */
+function copyToClipboard(text) {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  textarea.style.top = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  try {
+    const successful = document.execCommand("copy");
+    if (successful) {
+      showToast("클립보드에 복사되었습니다.");
+    } else {
+      showToast("복사에 실패했습니다.");
+    }
+  } catch (err) {
+    showToast("복사에 실패했습니다.");
+  }
+  document.body.removeChild(textarea);
+}
+
+function showToast(message) {
+  const toast = document.createElement("div");
+  toast.className = "fixed bottom-6 left-1/2 -translate-x-1/2 bg-emerald-500 text-slate-950 px-4 py-2 rounded-xl text-xs font-bold shadow-2xl z-50 transition-all transform duration-300 flex items-center gap-2";
+  toast.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${message}`;
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translate(-50%, 10px)";
+    setTimeout(() => toast.remove(), 300);
+  }, 2200);
+}
+</script>
+</body>
+</html>

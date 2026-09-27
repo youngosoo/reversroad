@@ -1,0 +1,1536 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>네이버 여행 커넥트 콘텐츠 자동 생성기 & API 외장 관리자</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome CDN for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter / Noto Sans KR -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        naver: {
+                            DEFAULT: '#03C75A',
+                            dark: '#02b350',
+                            light: '#e6f9ef',
+                            subtle: '#f2fbf6'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Noto Sans KR', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        
+        @keyframes typingDots {
+            0%, 20% { transform: translateY(0); opacity: 0.4; }
+            50% { transform: translateY(-4px); opacity: 1; }
+            80%, 100% { transform: translateY(0); opacity: 0.4; }
+        }
+        .dot-1 { animation: typingDots 1.4s infinite 0.1s; }
+        .dot-2 { animation: typingDots 1.4s infinite 0.3s; }
+        .dot-3 { animation: typingDots 1.4s infinite 0.5s; }
+
+        .chat-bubble-ai {
+            border-bottom-left-radius: 2px;
+        }
+        .chat-bubble-user {
+            border-bottom-right-radius: 2px;
+        }
+
+        /* Naver SmartEditor Style Preview Elements */
+        .naver-quote-box {
+            border-left: 4px solid #03C75A;
+            background-color: #f8fafc;
+            padding: 10px 14px;
+            margin: 8px 0;
+            border-radius: 0 8px 8px 0;
+            font-style: italic;
+        }
+        .naver-photo-tag {
+            background-color: #e6f9ef;
+            color: #02b350;
+            border: 1px dashed #03C75A;
+            padding: 6px 12px;
+            border-radius: 8px;
+            display: inline-block;
+            margin: 6px 0;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen flex flex-col justify-between antialiased relative">
+
+    <!-- Drag & Drop Overlay Indicator -->
+    <div id="drag-drop-overlay" class="fixed inset-0 bg-naver/90 backdrop-blur-md z-50 flex flex-col items-center justify-center text-white hidden pointer-events-none transition-all duration-200">
+        <div class="p-8 border-4 border-dashed border-white/80 rounded-3xl flex flex-col items-center max-w-md text-center bg-naver-dark/30 shadow-2xl">
+            <i class="fa-solid fa-cloud-arrow-up text-6xl mb-4 animate-bounce"></i>
+            <h2 class="text-2xl font-bold mb-2">스크린샷 이미지를 여기에 놓으세요!</h2>
+            <p class="text-sm text-emerald-100">상세페이지 이미지들을 끌어다 놓으면 자동으로 분석 대상 목록에 추가됩니다.</p>
+        </div>
+    </div>
+
+    <!-- Top Header & API Key External Manager Bar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-4xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-naver text-white flex items-center justify-center font-bold text-xl shadow-md">
+                    N
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg leading-tight text-slate-900">네이버 여행 커넥트 콘텐츠 생성기</h1>
+                    <p class="text-xs text-slate-500">네이버 블로그(스마트에디터 ONE) 원고 & Drag & Drop 지원</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <!-- External API Key Manager Modal Trigger Button -->
+                <button onclick="openApiKeyModal()" class="px-3 py-1.5 text-xs font-semibold text-white bg-slate-800 hover:bg-slate-900 rounded-lg transition-all flex items-center gap-1.5 shadow-sm border border-slate-700">
+                    <i class="fa-solid fa-shield-halved text-amber-400"></i>
+                    <span>API Key 외장 관리자</span>
+                </button>
+
+                <!-- History Drawer Toggle -->
+                <button id="btn-toggle-history" onclick="toggleHistoryDrawer()" class="px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors flex items-center gap-1.5 border border-slate-200">
+                    <i class="fa-solid fa-clock-rotate-left text-naver"></i>
+                    <span>이전 작성 내역</span>
+                </button>
+                
+                <!-- Reset Button -->
+                <button onclick="resetApp()" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-red-600 bg-slate-100 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1 border border-slate-200">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span class="hidden sm:inline">새로 작성</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- External Key Status Bar -->
+        <div class="bg-slate-50 border-t border-slate-200 py-2 px-4">
+            <div class="max-w-4xl mx-auto flex items-center justify-between text-xs">
+                <div class="flex items-center gap-2">
+                    <span class="font-semibold text-slate-600"><i class="fa-solid fa-key text-amber-500 mr-1"></i>현재 로드된 API Key 상태:</span>
+                    <span id="api-key-status-badge" class="px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-100 text-amber-800 border border-amber-200">
+                        미설정 (외장 암호화 파일 로드 필요)
+                    </span>
+                </div>
+                <button onclick="openApiKeyModal()" class="text-xs text-naver hover:underline font-semibold flex items-center gap-1">
+                    <i class="fa-solid fa-gear"></i> 키 관리 및 연결 테스트 팝업열기
+                </button>
+            </div>
+        </div>
+
+        <!-- Step Indicator Bar -->
+        <div class="bg-white border-t border-slate-100 px-4 py-2.5">
+            <div class="max-w-4xl mx-auto grid grid-cols-5 gap-1 text-center text-xs">
+                <div id="step-1-indicator" class="py-1 px-1 rounded-md transition-all duration-300 border font-medium text-slate-400 border-transparent">
+                    <span class="block sm:inline font-bold">1단계</span> <span class="hidden sm:inline">이미지 수집</span>
+                </div>
+                <div id="step-2-indicator" class="py-1 px-1 rounded-md transition-all duration-300 border font-medium text-slate-400 border-transparent">
+                    <span class="block sm:inline font-bold">2단계</span> <span class="hidden sm:inline">정보 확인</span>
+                </div>
+                <div id="step-3-indicator" class="py-1 px-1 rounded-md transition-all duration-300 border font-medium text-slate-400 border-transparent">
+                    <span class="block sm:inline font-bold">3단계</span> <span class="hidden sm:inline">제목 선택</span>
+                </div>
+                <div id="step-4-indicator" class="py-1 px-1 rounded-md transition-all duration-300 border font-medium text-slate-400 border-transparent">
+                    <span class="block sm:inline font-bold">4단계</span> <span class="hidden sm:inline">링크 입력</span>
+                </div>
+                <div id="step-5-indicator" class="py-1 px-1 rounded-md transition-all duration-300 border font-medium text-slate-400 border-transparent">
+                    <span class="block sm:inline font-bold">5단계</span> <span class="hidden sm:inline">원고 완성</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Chat Workspace -->
+    <main id="main-workspace" class="flex-1 max-w-4xl w-full mx-auto p-4 flex flex-col justify-between overflow-hidden relative">
+        
+        <!-- Chat History Window -->
+        <div id="chat-window" class="flex-1 overflow-y-auto pr-1 space-y-4 pb-36">
+            <!-- Dynamic Chat Messages Injected Here -->
+        </div>
+
+        <!-- Floating Input Area -->
+        <div class="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-slate-100 via-slate-100 to-transparent pt-4 pb-4 px-4 z-20">
+            <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+                
+                <!-- Thumbnails Bar -->
+                <div id="thumbnail-preview-container" class="hidden px-3 pt-3 flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-100">
+                    <span class="text-xs text-slate-400 font-medium shrink-0"><i class="fa-solid fa-images mr-1"></i>첨부 이미지 (<span id="thumb-count">0</span>장):</span>
+                    <div id="thumbnail-list" class="flex items-center gap-2">
+                        <!-- Dynamic Image Thumbnails -->
+                    </div>
+                </div>
+
+                <!-- Input Controls Bar -->
+                <div class="p-2 flex items-center gap-2">
+                    <!-- Image Upload File Button -->
+                    <input type="file" id="file-input" accept="image/*" multiple class="hidden" onchange="handleFileSelect(event)">
+                    <button type="button" id="btn-file-upload" onclick="document.getElementById('file-input').click()" 
+                            class="p-2.5 text-slate-500 hover:text-naver hover:bg-slate-100 rounded-xl transition-colors flex items-center justify-center shrink-0" 
+                            title="이미지 파일 선택">
+                        <i class="fa-solid fa-paperclip text-lg"></i>
+                    </button>
+
+                    <!-- Text Input Field -->
+                    <input type="text" id="user-input" placeholder="메시지를 입력하거나 이미지 드래그&드롭 / 붙여넣기(Ctrl+V)..." 
+                           class="flex-1 px-3 py-2 text-sm focus:outline-none bg-transparent"
+                           onkeydown="if(event.key === 'Enter') handleSendAction()">
+
+                    <!-- Action / Send Button -->
+                    <button type="button" id="btn-send" onclick="handleSendAction()" 
+                            class="bg-naver hover:bg-naver-dark text-white px-4 py-2.5 rounded-xl font-medium text-sm transition-all flex items-center gap-1.5 shadow-md shrink-0">
+                        <span id="btn-send-label">전송</span>
+                        <i class="fa-solid fa-paper-plane text-xs"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="text-center text-[11px] text-slate-400 mt-1.5">
+                💡 팁: 이미지를 <b>끌어다 놓거나(Drag&Drop)</b>, 캡처 후 <kbd class="px-1 py-0.5 bg-white border border-slate-300 rounded text-slate-600">Ctrl+V</kbd> 로 바로 붙여넣으세요.
+            </div>
+        </div>
+    </main>
+
+    <!-- External API Key Encryption & Connection Test Modal Popup -->
+    <div id="api-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm hidden animate-fade-in p-4">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden flex flex-col max-h-[90vh]">
+            
+            <!-- Modal Header -->
+            <div class="bg-slate-900 text-white px-5 py-4 flex items-center justify-between border-b border-slate-800">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-lock text-base"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-base text-white">외장형 API Key 암호화 관리자</h3>
+                        <p class="text-xs text-slate-400">로컬 암호화 저장 / 외부 파일 로드 / 연결 테스트</p>
+                    </div>
+                </div>
+                <button onclick="closeApiKeyModal()" class="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Modal Content Forms -->
+            <div class="p-5 overflow-y-auto space-y-5 text-xs text-slate-700">
+                
+                <!-- Section 1: Enter Keys & Test Connection -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                    <div class="font-bold text-slate-800 text-sm flex items-center gap-2 border-b border-slate-200 pb-2">
+                        <i class="fa-solid fa-key text-amber-500"></i>
+                        <span>1. 앱 사용 API Key 설정</span>
+                    </div>
+
+                    <div>
+                        <label class="block font-medium text-slate-600 mb-1">Google Gemini API Key <span class="text-red-500">*</span></label>
+                        <div class="relative flex items-center">
+                            <input type="password" id="modal-gemini-key" placeholder="Google AI Studio에서 발급받은 API Key" 
+                                   class="w-full pl-3 pr-9 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-naver bg-white text-xs font-mono">
+                            <button type="button" onclick="togglePasswordVisibility('modal-gemini-key')" class="absolute right-2.5 text-slate-400 hover:text-slate-600">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block font-medium text-slate-600 mb-1">네이버 파트너 / API Key (선택 확장용)</label>
+                        <div class="relative flex items-center">
+                            <input type="password" id="modal-naver-key" placeholder="네이버 관련 추가 API Key가 있을 경우 입력" 
+                                   class="w-full pl-3 pr-9 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-naver bg-white text-xs font-mono">
+                            <button type="button" onclick="togglePasswordVisibility('modal-naver-key')" class="absolute right-2.5 text-slate-400 hover:text-slate-600">
+                                <i class="fa-solid fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Connection Test Area -->
+                    <div class="pt-2 flex items-center justify-between gap-2 border-t border-slate-200/80">
+                        <button onclick="testApiConnection()" id="btn-test-connection" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-semibold flex items-center gap-1.5 transition-colors">
+                            <i class="fa-solid fa-plug-circle-check text-emerald-400"></i>
+                            <span>연결 테스트 실행</span>
+                        </button>
+                        <div id="connection-test-result" class="text-[11px] font-semibold text-slate-500 truncate">
+                            테스트 준비 완료
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Encrypted Backup / Export -->
+                <div class="bg-emerald-50/60 p-4 rounded-xl border border-emerald-200/80 space-y-3">
+                    <div class="font-bold text-slate-800 text-sm flex items-center gap-2 border-b border-emerald-200 pb-2">
+                        <i class="fa-solid fa-file-shield text-naver"></i>
+                        <span>2. 사용자 로컬 드라이브에 암호화하여 저장</span>
+                    </div>
+                    <p class="text-[11px] text-slate-600 leading-relaxed">
+                        API Key를 웹 브라우저가 아닌 <b>사용자의 컴퓨터/USB에 암호화 파일(.enc)</b>로 안전하게 보관합니다. 파일 해독에 사용할 <b>비밀번호(Passphrase)</b>를 설정하세요.
+                    </p>
+
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">암호화 비밀번호 (Passphrase)</label>
+                        <input type="password" id="export-passphrase" placeholder="파일을 암호화/해독할 비밀번호 설정" 
+                               class="w-full px-3 py-2 border border-emerald-300 rounded-lg focus:outline-none focus:border-naver bg-white text-xs">
+                    </div>
+
+                    <button onclick="exportEncryptedKeyFile()" class="w-full py-2 bg-naver hover:bg-naver-dark text-white rounded-lg font-bold flex items-center justify-center gap-2 transition-colors shadow-sm">
+                        <i class="fa-solid fa-download"></i>
+                        <span>로컬 드라이브에 암호화 파일 다운로드 (.enc)</span>
+                    </button>
+                </div>
+
+                <!-- Section 3: Import Encrypted Key File -->
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                    <div class="font-bold text-slate-800 text-sm flex items-center gap-2 border-b border-slate-200 pb-2">
+                        <i class="fa-solid fa-file-arrow-up text-indigo-600"></i>
+                        <span>3. 저장된 암호화 파일 불러오기</span>
+                    </div>
+
+                    <div class="space-y-2">
+                        <input type="file" id="import-file-input" accept=".enc,.json" class="block w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                        <input type="password" id="import-passphrase" placeholder="파일 암호화 시 설정한 비밀번호 입력" 
+                               class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-indigo-500 bg-white text-xs">
+                    </div>
+
+                    <button onclick="importEncryptedKeyFile()" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold flex items-center justify-center gap-2 transition-colors shadow-sm">
+                        <i class="fa-solid fa-key"></i>
+                        <span>암호 해독 및 API Key 적용</span>
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="bg-slate-100 px-5 py-3 border-t border-slate-200 flex justify-between items-center text-xs">
+                <span class="text-slate-500">🔒 AES-GCM 256-bit Web Crypto 표준 적용</span>
+                <button onclick="applyAndCloseModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-bold transition-colors">
+                    적용 및 닫기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- History Sidebar Drawer -->
+    <div id="history-drawer" class="fixed inset-0 z-50 transform translate-x-full transition-transform duration-300 ease-in-out pointer-events-none">
+        <div id="history-backdrop" onclick="toggleHistoryDrawer()" class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm opacity-0 transition-opacity duration-300 pointer-events-auto"></div>
+        
+        <div class="absolute right-0 top-0 bottom-0 w-full max-w-md bg-white shadow-2xl flex flex-col pointer-events-auto">
+            <div class="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-folder-open text-naver text-lg"></i>
+                    <h3 class="font-bold text-slate-800">이전 생성 원고 내역</h3>
+                </div>
+                <button onclick="toggleHistoryDrawer()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-200">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div id="history-list" class="flex-1 overflow-y-auto p-4 space-y-3">
+                <!-- Dynamically generated history cards -->
+            </div>
+
+            <div class="p-3 border-t border-slate-200 bg-slate-50 text-center text-xs text-slate-500">
+                최근 작성된 네이버 블로그 원고는 로컬에 자동 보관됩니다.
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        const STATES = {
+            COLLECT_IMAGES: 1, // 1단계: 이미지 첨부 / 드래그앤드롭
+            CONFIRM_INFO: 2,   // 2단계: 이미지 분석 및 상품 정보 확인
+            CHOOSE_TITLE: 3,   // 3단계: SEO 맞춤 블로그 제목 제안 및 선택
+            INPUT_LINK: 4,     // 4단계: 네이버 여행 커넥트 예약 URL 입력
+            RESULT: 5          // 5단계: 스마트에디터 ONE 블로그 원고 생성 완료
+        };
+
+        let currentState = STATES.COLLECT_IMAGES;
+        let activeKeys = {
+            geminiKey: sessionStorage.getItem('ext_gemini_key') || '',
+            naverKey: sessionStorage.getItem('ext_naver_key') || ''
+        };
+
+        let uploadedImages = [];
+        let extractedData = null;
+        let selectedTitle = '';
+        let reservationLink = '';
+        let generatedResult = null;
+
+        window.addEventListener('DOMContentLoaded', () => {
+            updateApiKeyBadge();
+            document.addEventListener('paste', handlePasteEvent);
+            initDragAndDrop();
+            renderHistoryList();
+            initCurrentState();
+        });
+
+        async function getCryptoKey(passphrase, salt, usage) {
+            const enc = new TextEncoder();
+            const keyMaterial = await crypto.subtle.importKey(
+                "raw",
+                enc.encode(passphrase),
+                { name: "PBKDF2" },
+                false,
+                ["deriveKey"]
+            );
+            return await crypto.subtle.deriveKey(
+                {
+                    name: "PBKDF2",
+                    salt: salt,
+                    iterations: 100000,
+                    hash: "SHA-256"
+                },
+                keyMaterial,
+                { name: "AES-GCM", length: 256 },
+                false,
+                [usage]
+            );
+        }
+
+        async function encryptKeysPayload(keysObj, passphrase) {
+            const enc = new TextEncoder();
+            const salt = crypto.getRandomValues(new Uint8Array(16));
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+
+            const cryptoKey = await getCryptoKey(passphrase, salt, "encrypt");
+            const dataToEncrypt = enc.encode(JSON.stringify(keysObj));
+
+            const encryptedBuffer = await crypto.subtle.encrypt(
+                { name: "AES-GCM", iv: iv },
+                cryptoKey,
+                dataToEncrypt
+            );
+
+            const exportBundle = {
+                salt: Array.from(salt),
+                iv: Array.from(iv),
+                ciphertext: Array.from(new Uint8Array(encryptedBuffer)),
+                version: "1.0",
+                timestamp: new Date().toISOString()
+            };
+
+            return JSON.stringify(exportBundle, null, 2);
+        }
+
+        async function decryptKeysPayload(bundleString, passphrase) {
+            const dec = new TextDecoder();
+            const bundle = JSON.parse(bundleString);
+
+            if (!bundle.salt || !bundle.iv || !bundle.ciphertext) {
+                throw new Error("유효하지 않은 암호화 파일 포맷입니다.");
+            }
+
+            const salt = new Uint8Array(bundle.salt);
+            const iv = new Uint8Array(bundle.iv);
+            const ciphertext = new Uint8Array(bundle.ciphertext);
+
+            const cryptoKey = await getCryptoKey(passphrase, salt, "decrypt");
+
+            const decryptedBuffer = await crypto.subtle.decrypt(
+                { name: "AES-GCM", iv: iv },
+                cryptoKey,
+                ciphertext
+            );
+
+            const decryptedText = dec.decode(decryptedBuffer);
+            return JSON.parse(decryptedText);
+        }
+
+        function openApiKeyModal() {
+            document.getElementById('modal-gemini-key').value = activeKeys.geminiKey;
+            document.getElementById('modal-naver-key').value = activeKeys.naverKey;
+            document.getElementById('api-modal').classList.remove('hidden');
+        }
+
+        function closeApiKeyModal() {
+            document.getElementById('api-modal').classList.add('hidden');
+        }
+
+        function togglePasswordVisibility(inputId) {
+            const el = document.getElementById(inputId);
+            el.type = el.type === 'password' ? 'text' : 'password';
+        }
+
+        function updateApiKeyBadge() {
+            const badge = document.getElementById('api-key-status-badge');
+            if (activeKeys.geminiKey) {
+                const masked = activeKeys.geminiKey.substring(0, 6) + '...' + activeKeys.geminiKey.substring(activeKeys.geminiKey.length - 4);
+                badge.className = "px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-100 text-emerald-800 border border-emerald-300";
+                badge.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-600 mr-1"></i>로드 완료 (${masked})`;
+            } else {
+                badge.className = "px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-100 text-amber-800 border border-amber-200";
+                badge.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-1"></i>미설정 (외장 암호화 파일 로드 필요)`;
+            }
+        }
+
+        async function exportEncryptedKeyFile() {
+            const geminiKey = document.getElementById('modal-gemini-key').value.trim();
+            const naverKey = document.getElementById('modal-naver-key').value.trim();
+            const passphrase = document.getElementById('export-passphrase').value.trim();
+
+            if (!geminiKey) {
+                alert('저장할 Gemini API Key를 입력하세요.');
+                return;
+            }
+            if (!passphrase) {
+                alert('파일을 보호할 비밀번호(Passphrase)를 입력해주세요.');
+                return;
+            }
+
+            try {
+                const keysObj = { geminiKey, naverKey, createdAt: new Date().toISOString() };
+                const encryptedJson = await encryptKeysPayload(keysObj, passphrase);
+
+                const blob = new Blob([encryptedJson], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `naver_travel_api_keys_encrypted.enc`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                alert('🔒 API Key가 로컬 드라이브에 성공적으로 암호화되어 저장되었습니다!');
+                document.getElementById('export-passphrase').value = '';
+            } catch (err) {
+                alert('암호화 실패: ' + err.message);
+            }
+        }
+
+        async function importEncryptedKeyFile() {
+            const fileInput = document.getElementById('import-file-input');
+            const passphrase = document.getElementById('import-passphrase').value.trim();
+
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert('불러올 암호화 파일(.enc)을 선택해주세요.');
+                return;
+            }
+            if (!passphrase) {
+                alert('파일 암호 해독 비밀번호를 입력해주세요.');
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+
+            reader.onload = async function (e) {
+                try {
+                    const content = e.target.result;
+                    const decryptedKeys = await decryptKeysPayload(content, passphrase);
+
+                    if (decryptedKeys && decryptedKeys.geminiKey) {
+                        activeKeys.geminiKey = decryptedKeys.geminiKey;
+                        activeKeys.naverKey = decryptedKeys.naverKey || '';
+
+                        sessionStorage.setItem('ext_gemini_key', activeKeys.geminiKey);
+                        sessionStorage.setItem('ext_naver_key', activeKeys.naverKey);
+
+                        document.getElementById('modal-gemini-key').value = activeKeys.geminiKey;
+                        document.getElementById('modal-naver-key').value = activeKeys.naverKey;
+
+                        updateApiKeyBadge();
+                        alert('✅ 암호 해독 성공! API Key가 이 세션에 정상적으로 복원되었습니다.');
+                        document.getElementById('import-passphrase').value = '';
+                        fileInput.value = '';
+                    } else {
+                        throw new Error("유효한 API Key 데이터가 없습니다.");
+                    }
+                } catch (err) {
+                    alert('🔑 암호 해독 실패: 비밀번호가 일치하지 않거나 파일이 훼손되었습니다.\n(' + err.message + ')');
+                }
+            };
+
+            reader.readAsText(file);
+        }
+
+        async function testApiConnection() {
+            const geminiKey = document.getElementById('modal-gemini-key').value.trim();
+            const resultEl = document.getElementById('connection-test-result');
+            const btn = document.getElementById('btn-test-connection');
+
+            if (!geminiKey) {
+                resultEl.className = "text-[11px] font-semibold text-red-600";
+                resultEl.innerText = "⚠️ 테스트할 Gemini API Key를 입력하세요.";
+                return;
+            }
+
+            resultEl.className = "text-[11px] font-semibold text-amber-600 animate-pulse";
+            resultEl.innerText = "⏳ Gemini API 연결 상태 테스트 중...";
+            btn.disabled = true;
+
+            const startTime = performance.now();
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${geminiKey}`;
+
+            const testPayload = {
+                contents: [{ parts: [{ text: "Hello, reply 'OK' if working." }] }]
+            };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testPayload)
+                });
+
+                const endTime = performance.now();
+                const latency = Math.round(endTime - startTime);
+
+                if (response.ok) {
+                    resultEl.className = "text-[11px] font-semibold text-emerald-600";
+                    resultEl.innerHTML = `<i class="fa-solid fa-check-circle mr-1"></i>연결 성공! (${latency}ms)`;
+                } else {
+                    const errData = await response.json();
+                    resultEl.className = "text-[11px] font-semibold text-red-600";
+                    resultEl.innerText = `❌ 실패 (${response.status}): ${errData.error?.message || '인증 오류'}`;
+                }
+            } catch (err) {
+                resultEl.className = "text-[11px] font-semibold text-red-600";
+                resultEl.innerText = `❌ 네트워크/연결 실패: ${err.message}`;
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function applyAndCloseModal() {
+            const geminiKey = document.getElementById('modal-gemini-key').value.trim();
+            const naverKey = document.getElementById('modal-naver-key').value.trim();
+
+            activeKeys.geminiKey = geminiKey;
+            activeKeys.naverKey = naverKey;
+
+            sessionStorage.setItem('ext_gemini_key', geminiKey);
+            sessionStorage.setItem('ext_naver_key', naverKey);
+
+            updateApiKeyBadge();
+            closeApiKeyModal();
+        }
+
+        function getApiKey() {
+            return activeKeys.geminiKey;
+        }
+
+        function initDragAndDrop() {
+            const overlay = document.getElementById('drag-drop-overlay');
+
+            window.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                if (currentState === STATES.COLLECT_IMAGES) {
+                    overlay.classList.remove('hidden');
+                }
+            });
+
+            window.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                if (e.clientX <= 0 || e.clientY <= 0 || e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) {
+                    overlay.classList.add('hidden');
+                }
+            });
+
+            window.addEventListener('drop', (e) => {
+                e.preventDefault();
+                overlay.classList.add('hidden');
+
+                if (currentState !== STATES.COLLECT_IMAGES) return;
+
+                const files = e.dataTransfer?.files;
+                if (files && files.length > 0) {
+                    Array.from(files).forEach(file => {
+                        if (file.type.startsWith('image/')) {
+                            processImageFile(file);
+                        }
+                    });
+                }
+            });
+        }
+
+        function updateStepIndicator() {
+            for (let i = 1; i <= 5; i++) {
+                const el = document.getElementById(`step-${i}-indicator`);
+                if (i === currentState) {
+                    el.className = "py-1 px-1 rounded-md transition-all duration-300 bg-naver text-white shadow-sm border-naver font-bold";
+                } else if (i < currentState) {
+                    el.className = "py-1 px-1 rounded-md transition-all duration-300 bg-emerald-50 text-naver border-emerald-200 font-semibold";
+                } else {
+                    el.className = "py-1 px-1 rounded-md transition-all duration-300 border font-medium text-slate-400 border-transparent";
+                }
+            }
+
+            const btnLabel = document.getElementById('btn-send-label');
+            btnLabel.innerText = currentState === STATES.COLLECT_IMAGES ? "분석하기" : "전송";
+        }
+
+        function addAiMessage(htmlContent, customId = null) {
+            const chatWindow = document.getElementById('chat-window');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'flex items-start gap-3 my-3 animate-fade-in';
+            if (customId) messageDiv.id = customId;
+
+            messageDiv.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-naver text-white flex items-center justify-center font-bold text-sm shrink-0 shadow">
+                    N
+                </div>
+                <div class="chat-bubble-ai bg-white border border-slate-200 text-slate-800 p-4 rounded-2xl shadow-sm max-w-2xl text-sm leading-relaxed overflow-x-auto">
+                    ${htmlContent}
+                </div>
+            `;
+            chatWindow.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        function addUserMessage(text, images = []) {
+            const chatWindow = document.getElementById('chat-window');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'flex items-end justify-end gap-2 my-3';
+
+            let imageHtml = '';
+            if (images.length > 0) {
+                imageHtml = `<div class="flex flex-wrap gap-1.5 mb-2 justify-end">`;
+                images.forEach(imgData => {
+                    imageHtml += `<img src="${imgData}" class="w-20 h-20 object-cover rounded-lg border border-slate-200 shadow-sm">`;
+                });
+                imageHtml += `</div>`;
+            }
+
+            messageDiv.innerHTML = `
+                <div class="chat-bubble-user bg-naver text-white p-3.5 rounded-2xl shadow-sm max-w-md text-sm leading-relaxed">
+                    ${imageHtml}
+                    ${text ? `<div>${escapeHtml(text)}</div>` : ''}
+                </div>
+            `;
+            chatWindow.appendChild(messageDiv);
+            scrollToBottom();
+        }
+
+        function showTypingIndicator(message = "AI가 이미지를 분석하는 중입니다...") {
+            const chatWindow = document.getElementById('chat-window');
+            const indicatorDiv = document.createElement('div');
+            indicatorDiv.id = 'typing-indicator';
+            indicatorDiv.className = 'flex items-start gap-3 my-3';
+
+            indicatorDiv.innerHTML = `
+                <div class="w-8 h-8 rounded-full bg-naver text-white flex items-center justify-center font-bold text-sm shrink-0 shadow">
+                    N
+                </div>
+                <div class="chat-bubble-ai bg-white border border-slate-200 text-slate-700 p-3.5 rounded-2xl shadow-sm flex items-center gap-3 text-xs">
+                    <div class="flex items-center gap-1">
+                        <span class="w-2 h-2 bg-naver rounded-full dot-1"></span>
+                        <span class="w-2 h-2 bg-naver rounded-full dot-2"></span>
+                        <span class="w-2 h-2 bg-naver rounded-full dot-3"></span>
+                    </div>
+                    <span>${message}</span>
+                </div>
+            `;
+            chatWindow.appendChild(indicatorDiv);
+            scrollToBottom();
+        }
+
+        function hideTypingIndicator() {
+            const el = document.getElementById('typing-indicator');
+            if (el) el.remove();
+        }
+
+        function scrollToBottom() {
+            const chatWindow = document.getElementById('chat-window');
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text.toString()
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        async function callGeminiApi(payload, retries = 3, delay = 1000) {
+            const key = getApiKey();
+            if (!key) {
+                openApiKeyModal();
+                throw new Error('Gemini API Key가 설정되어 있지 않습니다. 팝업창에서 키를 설정하거나 암호화 파일(.enc)을 로드하세요.');
+            }
+
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${key}`;
+
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errData = await response.json();
+                        throw new Error(errData.error?.message || `API HTTP 오류 (${response.status})`);
+                    }
+
+                    const result = await response.json();
+                    const text = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (!text) {
+                        throw new Error("AI 응답이 전달되지 않았거나 빈 답변이 반환되었습니다.");
+                    }
+                    return text;
+                } catch (error) {
+                    if (i === retries - 1) throw error;
+                    await new Promise(res => setTimeout(res, delay * Math.pow(2, i)));
+                }
+            }
+        }
+
+        function handlePasteEvent(e) {
+            if (currentState !== STATES.COLLECT_IMAGES) return;
+            const items = e.clipboardData?.items;
+            if (!items) return;
+
+            for (let item of items) {
+                if (item.type.indexOf('image') !== -1) {
+                    const file = item.getAsFile();
+                    processImageFile(file);
+                }
+            }
+        }
+
+        function handleFileSelect(e) {
+            if (currentState !== STATES.COLLECT_IMAGES) return;
+            const files = e.target.files;
+            if (!files || files.length === 0) return;
+
+            Array.from(files).forEach(file => {
+                if (file.type.startsWith('image/')) {
+                    processImageFile(file);
+                }
+            });
+            e.target.value = '';
+        }
+
+        function processImageFile(file) {
+            const reader = new FileReader();
+            reader.onload = function (evt) {
+                const base64Data = evt.target.result;
+                uploadedImages.push(base64Data);
+                renderThumbnails();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removeImage(index) {
+            uploadedImages.splice(index, 1);
+            renderThumbnails();
+        }
+
+        function renderThumbnails() {
+            const container = document.getElementById('thumbnail-preview-container');
+            const list = document.getElementById('thumbnail-list');
+            const countEl = document.getElementById('thumb-count');
+            list.innerHTML = '';
+
+            countEl.innerText = uploadedImages.length;
+
+            if (uploadedImages.length === 0) {
+                container.classList.add('hidden');
+                return;
+            }
+
+            container.classList.remove('hidden');
+            uploadedImages.forEach((imgData, idx) => {
+                const thumb = document.createElement('div');
+                thumb.className = 'relative shrink-0 group';
+                thumb.innerHTML = `
+                    <img src="${imgData}" class="w-14 h-14 object-cover rounded-lg border border-slate-300 shadow-sm">
+                    <button onclick="removeImage(${idx})" class="absolute -top-1.5 -right-1.5 bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs shadow transition-colors" title="삭제">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                `;
+                list.appendChild(thumb);
+            });
+        }
+
+        function initCurrentState() {
+            updateStepIndicator();
+
+            if (currentState === STATES.COLLECT_IMAGES) {
+                addAiMessage(`
+                    👋 안녕하세요! <b>네이버 여행 커넥트 블로그 원고 생성기</b>입니다.<br><br>
+                    여행 커넥트 원고 작성을 위해 <b>반드시 필요한 필수 정보</b>가 포함된 상세페이지 스크린샷 <b>3~5장</b>을 첨부해주세요.<br>
+                    <div class="mt-2 text-xs bg-emerald-50 text-emerald-800 p-3 rounded-lg border border-emerald-200 space-y-1.5">
+                        <div class="font-bold text-naver-dark flex items-center gap-1">
+                            <i class="fa-solid fa-camera"></i> [네이버 여행 커넥트 필수 캡처 가이드]
+                        </div>
+                        <div><b>1. [상품명 및 할인가격 화면]:</b> 네이버 여행 커넥트 공식 상품명, 정가 대비 할인율, 최저가 조건</div>
+                        <div><b>2. [핵심 일정 및 코스 소개]:</b> 주요 관광지, 대표 포함 체험, 일정별 이동 동선</div>
+                        <div><b>3. [포함 / 불포함 및 유의사항]:</b> 바우처 사용 방법, 연령 기준, 취소/환불 규정 등 필독 정보</div>
+                    </div>
+                    <p class="mt-2.5 text-xs font-semibold text-naver">
+                        ✨ 이미지 파일 <b>드래그 앤 드롭(Drag & Drop)</b>, 클립보드 <b>Ctrl+V</b> 붙여넣기 또는 📎 파일 첨부를 이용한 후 <b>[분석하기]</b> 버튼을 누르세요.
+                    </p>
+                `);
+            }
+        }
+
+        async function handleSendAction() {
+            const userInputEl = document.getElementById('user-input');
+            const textValue = userInputEl.value.trim();
+
+            switch (currentState) {
+                case STATES.COLLECT_IMAGES:
+                    await handleState1Action(textValue);
+                    break;
+                case STATES.CONFIRM_INFO:
+                    await handleState2Action(textValue);
+                    break;
+                case STATES.CHOOSE_TITLE:
+                    await handleState3Action(textValue);
+                    break;
+                case STATES.INPUT_LINK:
+                    await handleState4Action(textValue);
+                    break;
+                default:
+                    break;
+            }
+
+            userInputEl.value = '';
+        }
+
+        async function handleState1Action(userText) {
+            if (uploadedImages.length === 0) {
+                alert('상품 상세페이지 스크린샷 이미지를 1장 이상 끌어다 놓거나 붙여넣어주세요!');
+                return;
+            }
+
+            addUserMessage(userText || `${uploadedImages.length}장의 상세페이지 이미지 분석 요청`, uploadedImages);
+            const currentImages = [...uploadedImages];
+            
+            uploadedImages = [];
+            renderThumbnails();
+
+            currentState = STATES.CONFIRM_INFO;
+            updateStepIndicator();
+            showTypingIndicator("AI가 첨부된 이미지에서 네이버 여행 커넥트 원고에 필요한 핵심 정보를 추출하는 중입니다...");
+
+            const promptText = `
+당신은 네이버 여행 커넥트 홍보용 스크린샷 이미지를 분석하는 전문가입니다.
+첨부된 이미지에서 아래 JSON 포맷으로 정보를 정확히 추출하세요. 
+설명 문구 없이 순수 JSON만 출력하세요.
+
+{
+  "destination": "여행지명",
+  "product_name": "상품명",
+  "price": "가격 및 할인가 정보",
+  "duration": "여행 기간",
+  "highlights": ["핵심 포인트 3~5개"],
+  "included": ["포함 사항 목록"],
+  "excluded": ["불포함 및 주의사항 목록"]
+}
+            `;
+
+            const inlineParts = currentImages.map(base64Str => {
+                const cleanBase64 = base64Str.split(',')[1] || base64Str;
+                const mimeMatch = base64Str.match(/data:(.*?);base64/);
+                const mimeType = mimeMatch ? mimeMatch[1] : "image/jpeg";
+                return {
+                    inlineData: {
+                        mimeType: mimeType,
+                        data: cleanBase64
+                    }
+                };
+            });
+
+            const payload = {
+                contents: [{
+                    parts: [
+                        { text: promptText },
+                        ...inlineParts
+                    ]
+                }]
+            };
+
+            try {
+                const responseText = await callGeminiApi(payload);
+                hideTypingIndicator();
+
+                let jsonString = responseText;
+                const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+                if (jsonMatch) {
+                    jsonString = jsonMatch[0];
+                }
+
+                extractedData = JSON.parse(jsonString);
+                renderConfirmInfoCard();
+
+            } catch (err) {
+                hideTypingIndicator();
+                addAiMessage(`
+                    <div class="text-red-600 font-semibold mb-1"><i class="fa-solid fa-triangle-exclamation mr-1"></i>이미지 분석 실패</div>
+                    <p class="text-xs text-slate-600 mb-2">${escapeHtml(err.message)}</p>
+                    <button onclick="retryState1()" class="px-3 py-1 bg-naver text-white text-xs rounded hover:bg-naver-dark">
+                        <i class="fa-solid fa-rotate-left mr-1"></i>다시 이미지 첨부하기
+                    </button>
+                `);
+                currentState = STATES.COLLECT_IMAGES;
+                updateStepIndicator();
+            }
+        }
+
+        function retryState1() {
+            currentState = STATES.COLLECT_IMAGES;
+            initCurrentState();
+        }
+
+        function renderConfirmInfoCard() {
+            const data = extractedData;
+            const highlightsHtml = (data.highlights || []).map(h => `<li class="text-slate-700">• ${escapeHtml(h)}</li>`).join('');
+            const includedHtml = (data.included || []).map(i => `<span class="bg-emerald-50 text-emerald-800 text-xs px-2 py-0.5 rounded border border-emerald-200 mr-1 inline-block mb-1">${escapeHtml(i)}</span>`).join('');
+
+            const cardHtml = `
+                <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 my-1">
+                    <div class="font-bold text-base text-slate-800 mb-2 border-b border-slate-200 pb-2 flex items-center justify-between">
+                        <span><i class="fa-solid fa-plane-departure text-naver mr-1.5"></i>추출된 상품 정보</span>
+                        <span class="text-xs bg-naver-light text-naver px-2 py-0.5 rounded-full font-medium">검토 단계</span>
+                    </div>
+                    <div class="space-y-2 text-xs">
+                        <div><strong class="text-slate-500">📍 여행지:</strong> <span class="font-semibold text-slate-800">${escapeHtml(data.destination || '미확인')}</span></div>
+                        <div><strong class="text-slate-500">🏷️ 상품명:</strong> <span class="font-semibold text-slate-800">${escapeHtml(data.product_name || '미확인')}</span></div>
+                        <div><strong class="text-slate-500">💰 가격:</strong> <span class="text-slate-800">${escapeHtml(data.price || '정보 없음')}</span></div>
+                        <div><strong class="text-slate-500">🗓️ 여행기간:</strong> <span class="text-slate-800">${escapeHtml(data.duration || '정보 없음')}</span></div>
+                        
+                        <div class="pt-1"><strong class="text-slate-500 block mb-1">✨ 핵심 포인트:</strong>
+                            <ul class="pl-1 space-y-0.5">${highlightsHtml}</ul>
+                        </div>
+                        <div class="pt-1"><strong class="text-slate-500 block mb-1">✅ 포함 사항:</strong>
+                            <div>${includedHtml}</div>
+                        </div>
+                    </div>
+                </div>
+                <p class="mt-3">
+                    이 정보로 상위 노출 제목을 제안할까요?<br>
+                    수정이 필요하면 수정 내용을 입력하시고, <b>그대로 진행하려면 "1"을 입력해주세요.</b>
+                </p>
+            `;
+            addAiMessage(cardHtml);
+        }
+
+        async function handleState2Action(userText) {
+            addUserMessage(userText);
+
+            if (userText === "1" || userText.toLowerCase() === "네" || userText.toLowerCase() === "좋아요") {
+                // Keep extracted data
+            } else if (userText) {
+                extractedData.product_name = userText;
+                extractedData.destination = userText.split(' ')[0] || extractedData.destination;
+            }
+
+            currentState = STATES.CHOOSE_TITLE;
+            updateStepIndicator();
+            await generateTitleOptions();
+        }
+
+        async function generateTitleOptions() {
+            showTypingIndicator("네이버 블로그 상위 노출용 키워드 조합 제목 5개를 생성 중입니다...");
+
+            const promptText = `
+아래 정보를 바탕으로 네이버 검색 상위 노출에 유리한 블로그 원고 제목 5개를 제안하세요.
+큰따옴표('"')는 절대로 사용하지 마세요.
+
+여행지: ${extractedData.destination}
+상품명: ${extractedData.product_name}
+핵심 포인트: ${(extractedData.highlights || []).join(', ')}
+
+출력 형식:
+1. 제목 (연관키워드: 키워드1, 키워드2)
+2. 제목 (연관키워드: 키워드1, 키워드2)
+3. 제목 (연관키워드: 키워드1, 키워드2)
+4. 제목 (연관키워드: 키워드1, 키워드2)
+5. 제목 (연관키워드: 키워드1, 키워드2)
+            `;
+
+            const payload = {
+                contents: [{ parts: [{ text: promptText }] }]
+            };
+
+            try {
+                const responseText = await callGeminiApi(payload);
+                hideTypingIndicator();
+
+                const lines = responseText.split('\n').filter(line => line.trim().length > 0 && /^\d[\.\)]/.test(line.trim()));
+                
+                let titleButtonsHtml = `<div class="space-y-2 my-2">`;
+                lines.slice(0, 5).forEach((line, idx) => {
+                    const cleanTitle = line.replace(/^\d[\.\)]\s*/, '').replace(/"/g, '').trim();
+                    titleButtonsHtml += `
+                        <button onclick="selectTitleByClick('${escapeHtml(cleanTitle)}')" 
+                                class="w-full text-left p-3 rounded-xl border border-slate-200 hover:border-naver hover:bg-emerald-50/60 transition-all group bg-white shadow-sm flex items-start gap-2.5">
+                            <span class="w-6 h-6 rounded-full bg-slate-100 group-hover:bg-naver group-hover:text-white text-slate-600 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">
+                                ${idx + 1}
+                            </span>
+                            <span class="text-xs text-slate-800 group-hover:text-slate-900 font-medium leading-relaxed">
+                                ${escapeHtml(cleanTitle)}
+                            </span>
+                        </button>
+                    `;
+                });
+                titleButtonsHtml += `</div>`;
+
+                addAiMessage(`
+                    <b>마음에 드는 블로그 제목을 클릭하거나 번호(1~5)를 입력하세요:</b><br>
+                    ${titleButtonsHtml}
+                `);
+
+            } catch (err) {
+                hideTypingIndicator();
+                addAiMessage(`제목 제안 생성 실패: ${escapeHtml(err.message)}`);
+            }
+        }
+
+        function selectTitleByClick(titleText) {
+            selectedTitle = titleText;
+            addUserMessage(`[선택한 제목] ${titleText}`);
+            
+            currentState = STATES.INPUT_LINK;
+            updateStepIndicator();
+            initCurrentState4();
+        }
+
+        async function handleState3Action(userText) {
+            addUserMessage(userText);
+            const num = parseInt(userText);
+            
+            const titleButtons = document.querySelectorAll('#chat-window button[onclick*="selectTitleByClick"]');
+            if (!isNaN(num) && num >= 1 && num <= titleButtons.length) {
+                const targetBtn = titleButtons[num - 1];
+                const onclickStr = targetBtn.getAttribute('onclick');
+                const titleMatch = onclickStr.match(/'([^']+)'/);
+                if (titleMatch) {
+                    selectedTitle = titleMatch[1];
+                }
+            } else {
+                selectedTitle = userText.replace(/"/g, '');
+            }
+
+            currentState = STATES.INPUT_LINK;
+            updateStepIndicator();
+            initCurrentState4();
+        }
+
+        function initCurrentState4() {
+            addAiMessage(`
+                🔗 네이버 여행 커넥트에서 발급받은 <b>할인 예약 링크(URL)</b>를 입력해주세요.<br>
+                <span class="text-xs text-slate-500">예시: https://m.booking.naver.com/... 또는 https://naver.me/...</span>
+            `);
+        }
+
+        async function handleState4Action(userText) {
+            addUserMessage(userText);
+
+            if (!userText.startsWith('http://') && !userText.startsWith('https://')) {
+                addAiMessage(`⚠️ 링크는 <b>http://</b> 또는 <b>https://</b> 로 시작해야 합니다. 올바른 URL 주소를 입력해 주세요.`);
+                return;
+            }
+
+            reservationLink = userText;
+
+            currentState = STATES.RESULT;
+            updateStepIndicator();
+            await generateFinalArticle();
+        }
+
+        async function generateFinalArticle() {
+            showTypingIndicator("네이버 블로그(HTML 변환용) 맞춤 순수 HTML 원고를 작성 중입니다. (약 15~20초 소요)");
+
+            const promptText = `
+너는 네이버 여행커넥트 수익화를 목표로 하는 여행 블로그 전문 작가야.
+아래 상위노출 및 저품질 방지 조건과 스타일 규격을 완벽히 충족하는 네이버 블로그용 원고 전체를 순수 HTML 인라인 스타일로 작성해줘.
+
+[상위노출 및 저품질 방지 조건]
+1. 광고성 문구로 시작하지 말고, 여행을 결심하게 된 개인적 계기나 상황으로 도입부를 시작할 것.
+2. 서두 또는 정보 요약 부분에 "<span style=\"color:red; font-weight:bold;\">이 글은 네이버 여행커넥트를 통해 예약 시 소정의 수수료를 제공받을 수 있음을 안내드립니다</span>"라는 대가성 표시 문구를 자연스러운 어투로 반드시 포함할 것.
+3. 소제목은 독자가 네이버에서 직접 검색할 만한 질문형 문구로 3~5개 구성할 것 (예: "OO 여행 패키지 실제 가격은 얼마일까?", "숙소와 식사 구성은 만족스러울까?").
+4. 전체 분량은 2,000~3,000자 내외로 풍성하게 작성하고, 문단은 3~4문장 이내로 짧게 끊어 가독성을 높일 것.
+5. 본문 적재적소(3~5곳)에 사진이 들어갈 위치와 상세한 사진 설명(캡션)을 네이버 블로그 스마트에디터에 어울리는 아래 HTML 양식으로 반드시 삽입할 것:
+   <p style="text-align:center; color:#02b350; font-weight:bold; background-color:#e6f9ef; padding:12px; border:1px dashed #03C75A; border-radius:8px; margin:20px 0;">📷 [사진 첨부 위치: 대표 메인 컷/일정표/숙소 등] - (사진 설명: 블로그 독자를 위한 생생하고 디테일한 설명 문구)</p>
+6. 본문 맨 마지막에는 관련 연관 검색 키워드 및 인기 해시태그 6~10개를 아래 HTML 양식으로 반드시 포함할 것:
+   <p style="margin-top:30px; font-weight:bold; color:#03C75A;"><span style="font-size:16px;">#해시태그1 #해시태그2 #해시태그3 #해시태그4 #해시태그5 ...</span></p>
+7. 공식 제공 정보(일정, 숙소, 식사, 포함사항, 불포함사항, 취소규정)를 구체적으로 인용하되, 직접 경험한 듯한 자연스러운 디테일과 꿀팁을 덧붙여 차별화할 것.
+8. 할인 예약 링크(예약 버튼 및 링크 주소: ${reservationLink})는 본문 전체에서 2~3회만 맥락(가격 안내, 일정표 소개, 예약 안내 문단 근처)에 자연스럽게 배치할 것. (CTA 남발 금지)
+9. 마무리는 예약을 강요하지 않고 여행 계획 수립에 참고가 되길 바란다는 따뜻한 톤으로 정리할 것.
+
+[스타일 조건]
+- 마크다운 문법(#, *, -, **, 큰따옴표 등)은 절대 사용하지 말고, 오직 pure HTML 태그와 인라인 스타일만 사용할 것.
+- 본문 전체 텍스트는 <span style=\"font-size:16px;\"> 태그로 감싸서 16px 크기로 기본 표시할 것.
+- 중요한 문장이나 단어는 <b>태그</b>로 굵게 표시할 것.
+- 독자가 반드시 알아야 할 핵심 정보(가격, 취소 마감일, 대가성 표시 문구, 필독 유의사항 등)는 <span style=\"color:red; font-weight:bold;\">로 표시할 것.
+- 최종 결과는 \`\`\`html 코드블록으로 출력할 것.
+
+[상품 정보]
+- 제목: ${selectedTitle}
+- 여행지: ${extractedData.destination}
+- 상품명: ${extractedData.product_name}
+- 가격: ${extractedData.price}
+- 기간: ${extractedData.duration}
+- 핵심 포인트: ${(extractedData.highlights || []).join(', ')}
+- 포함사항: ${(extractedData.included || []).join(', ')}
+- 불포함사항: ${(extractedData.excluded || []).join(', ')}
+- 예약 링크: ${reservationLink}
+
+출력은 반드시 아래 구분자 구조로 작성하세요:
+
+===제목===
+(제목 내용)
+
+===본문===
+\`\`\`html
+(상기 조건과 사진 위치/설명, 맨 끝 해시태그, 인라인 스타일 규칙을 완벽히 준수한 순수 HTML 코드 전체)
+\`\`\`
+
+===서식가이드===
+(네이버 블로그 HTML 변환 적용 방법, 사진 삽입 및 해시태그 활용 팁)
+            `;
+
+            const payload = {
+                contents: [{ parts: [{ text: promptText }] }]
+            };
+
+            try {
+                const responseText = await callGeminiApi(payload);
+                hideTypingIndicator();
+
+                const titleBlock = extractBlock(responseText, '===제목===', '===본문===');
+                const bodyBlock = extractBlock(responseText, '===본문===', '===서식가이드===');
+                const formatBlock = extractBlock(responseText, '===서식가이드===', '$');
+
+                const rawBody = bodyBlock.trim() || responseText;
+                const cleanBody = cleanHtmlCode(rawBody);
+
+                generatedResult = {
+                    title: (titleBlock.trim() || selectedTitle).replace(/"/g, ''),
+                    body: cleanBody,
+                    formatGuide: formatBlock.trim() || '네이버 블로그 에디터의 [HTML] 탭을 클릭한 뒤 복사한 코드를 붙여넣으세요.',
+                    destination: extractedData.destination,
+                    date: new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+                };
+
+                saveToHistory(generatedResult);
+                renderFinalOutputCards();
+
+            } catch (err) {
+                hideTypingIndicator();
+                addAiMessage(`원고 생성 중 오류 발생: ${escapeHtml(err.message)}`);
+            }
+        }
+
+        function cleanHtmlCode(raw) {
+            if (!raw) return '';
+            return raw
+                .replace(/^```html\s*/i, '')
+                .replace(/^```\s*/i, '')
+                .replace(/\s*```$/i, '')
+                .trim();
+        }
+
+        function extractBlock(fullText, startMarker, endMarker) {
+            const startIndex = fullText.indexOf(startMarker);
+            if (startIndex === -1) return '';
+            
+            const contentStart = startIndex + startMarker.length;
+            if (endMarker === '$') {
+                return fullText.substring(contentStart);
+            }
+            const endIndex = fullText.indexOf(endMarker, contentStart);
+            if (endIndex === -1) {
+                return fullText.substring(contentStart);
+            }
+            return fullText.substring(contentStart, endIndex);
+        }
+
+        function renderFinalOutputCards() {
+            const res = generatedResult;
+            const pureHtml = res.body;
+
+            const html = `
+                <div class="space-y-4 my-2">
+                    <div class="bg-naver-light border border-naver/30 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-2 text-slate-800 text-xs shadow-sm">
+                        <div class="flex items-center gap-2">
+                            <span class="w-6 h-6 rounded-full bg-naver text-white flex items-center justify-center font-bold text-xs">✓</span>
+                            <span><b>네이버 블로그 HTML 원고 완성!</b> 아래 HTML 코드를 복사하여 블로그 에디터 'HTML' 탭에 붙여넣으세요.</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="copyHtmlCode(this)" class="px-3.5 py-1.5 bg-naver hover:bg-naver-dark text-white font-bold rounded-lg shadow-sm transition-all flex items-center gap-1.5">
+                                <i class="fa-solid fa-code"></i>
+                                <span>HTML 코드 복사</span>
+                            </button>
+                            <button onclick="resetApp()" class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium rounded-lg transition-colors">
+                                <i class="fa-solid fa-rotate-right mr-1"></i>새 상품
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Title Card -->
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm relative">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
+                            <span class="font-bold text-xs text-slate-500 uppercase tracking-wider"><i class="fa-solid fa-heading text-naver mr-1"></i>1. 블로그 제목</span>
+                            <button onclick="copyToClipboard('title-content', this)" class="px-2.5 py-1 text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 rounded transition-colors flex items-center gap-1">
+                                <i class="fa-regular fa-copy"></i>
+                                <span>제목 복사</span>
+                            </button>
+                        </div>
+                        <div id="title-content" class="text-sm font-bold text-slate-900 leading-snug p-1">${escapeHtml(res.title)}</div>
+                    </div>
+
+                    <!-- HTML Code Card (For Direct Paste into Naver Blog HTML Tab) -->
+                    <div class="bg-slate-900 text-slate-100 border border-slate-800 rounded-xl p-4 shadow-lg relative">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold text-xs text-emerald-400 uppercase tracking-wider"><i class="fa-solid fa-code text-naver mr-1"></i>2. 네이버 블로그용 HTML 코드</span>
+                                <span class="text-[10px] bg-emerald-950 text-emerald-300 px-2 py-0.5 rounded border border-emerald-800 font-mono">16px / pure HTML</span>
+                            </div>
+                            <button onclick="copyHtmlCode(this)" class="px-3 py-1 text-xs font-bold bg-naver hover:bg-naver-dark text-white rounded transition-colors flex items-center gap-1 shadow">
+                                <i class="fa-regular fa-copy"></i>
+                                <span>HTML 코드 복사</span>
+                            </button>
+                        </div>
+
+                        <div class="relative font-mono text-xs">
+                            <pre class="bg-slate-950 p-3 rounded-lg overflow-x-auto text-emerald-300 max-h-80 whitespace-pre-wrap break-all border border-slate-800 leading-relaxed"><code id="raw-html-code">\`\`\`html
+${escapeHtml(pureHtml)}
+\`\`\`</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- Visual Rendered Preview Card -->
+                    <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm relative">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-2 mb-2">
+                            <span class="font-bold text-xs text-slate-500 uppercase tracking-wider"><i class="fa-solid fa-eye text-naver mr-1"></i>3. 결과물 시각적 미리보기</span>
+                            <button onclick="toggleTextAlignment()" class="px-2 py-1 text-[11px] font-medium bg-slate-100 hover:bg-slate-200 text-slate-600 rounded">
+                                <i class="fa-solid fa-align-center mr-1"></i>정렬 전환
+                            </button>
+                        </div>
+
+                        <div id="body-preview-container" class="text-xs text-slate-800 leading-relaxed max-h-96 overflow-y-auto pr-1 p-3 bg-slate-50/50 rounded-lg border border-slate-100 space-y-2">
+                            ${pureHtml}
+                        </div>
+                    </div>
+
+                    <!-- Formatting Guide Card -->
+                    <div class="bg-amber-50/70 border border-amber-200 rounded-xl p-4 shadow-sm relative">
+                        <div class="flex items-center justify-between border-b border-amber-200/80 pb-2 mb-2">
+                            <span class="font-bold text-xs text-amber-800 uppercase tracking-wider"><i class="fa-solid fa-wand-magic-sparkles text-amber-600 mr-1"></i>4. 네이버 블로그 에디터 사용법</span>
+                            <button onclick="copyToClipboard('guide-content', this)" class="px-2.5 py-1 text-xs font-medium bg-amber-100 hover:bg-amber-200 text-amber-800 rounded transition-colors flex items-center gap-1">
+                                <i class="fa-regular fa-copy"></i>
+                                <span>가이드 복사</span>
+                            </button>
+                        </div>
+                        <div id="guide-content" class="text-xs text-amber-900 whitespace-pre-wrap leading-relaxed">${escapeHtml(res.formatGuide)}
+
+📌 [네이버 블로그 붙여넣기 방법]
+1. 위 "2. 네이버 블로그용 HTML 코드" 상단의 [HTML 코드 복사] 버튼을 누릅니다.
+2. 네이버 블로그 스마트에디터 작성 창 우측 하단(또는 메뉴)에서 'HTML' 편집 모드를 클릭합니다.
+3. 복사한 HTML 코드를 붙여넣은 후, 다시 '글감/기본 에디터' 모드로 돌아오면 16px 크기 및 빨간색 볼드 서식이 적용된 상태로 완성됩니다.</div>
+                    </div>
+                </div>
+            `;
+
+            addAiMessage(html);
+        }
+
+        function copyHtmlCode(btnElement) {
+            if (!generatedResult || !generatedResult.body) return;
+            executeCopyText(generatedResult.body, btnElement, "HTML 코드 복사완료!");
+        }
+
+        function toggleTextAlignment() {
+            const preview = document.getElementById('body-preview-container');
+            if (preview) {
+                preview.classList.toggle('text-center');
+            }
+        }
+
+        function copyFullBlogArticle(btnElement) {
+            if (!generatedResult) return;
+            const fullContent = `[제목]\n${generatedResult.title}\n\n[본문]\n${generatedResult.body}`;
+            executeCopyText(fullContent, btnElement, "전체 복사됨!");
+        }
+
+        function copyToClipboard(elementId, btnElement) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            const textToCopy = el.innerText || el.textContent;
+            executeCopyText(textToCopy, btnElement, "복사됨!");
+        }
+
+        function executeCopyText(textToCopy, btnElement, successMsg = "복사 완료!") {
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(textToCopy)
+                    .then(() => showCopySuccess(btnElement, successMsg))
+                    .catch(() => fallbackCopy(textToCopy, btnElement, successMsg));
+            } else {
+                fallbackCopy(textToCopy, btnElement, successMsg);
+            }
+        }
+
+        function fallbackCopy(textToCopy, btnElement, successMsg) {
+            const textArea = document.createElement("textarea");
+            textArea.value = textToCopy;
+            textArea.style.position = "fixed";
+            textArea.style.left = "-999999px";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            try {
+                document.execCommand('copy');
+                showCopySuccess(btnElement, successMsg);
+            } catch (err) {
+                alert('클립보드 복사에 실패했습니다. 수동으로 선택해서 복사해 주세요.');
+            }
+            document.body.removeChild(textArea);
+        }
+
+        function showCopySuccess(btnElement, message = "복사됨!") {
+            const span = btnElement.querySelector('span');
+            const originalText = span ? span.innerText : '';
+            
+            if (span) span.innerText = message;
+            btnElement.classList.add('ring-2', 'ring-offset-1', 'ring-naver');
+
+            setTimeout(() => {
+                if (span) span.innerText = originalText;
+                btnElement.classList.remove('ring-2', 'ring-offset-1', 'ring-naver');
+            }, 2000);
+        }
+
+        function saveToHistory(resultObj) {
+            let history = [];
+            try {
+                history = JSON.parse(localStorage.getItem('naver_travel_history') || '[]');
+            } catch (e) { history = []; }
+
+            history.unshift(resultObj);
+            if (history.length > 20) history = history.slice(0, 20);
+
+            localStorage.setItem('naver_travel_history', JSON.stringify(history));
+            renderHistoryList();
+        }
+
+        function renderHistoryList() {
+            const listEl = document.getElementById('history-list');
+            if (!listEl) return;
+
+            let history = [];
+            try {
+                history = JSON.parse(localStorage.getItem('naver_travel_history') || '[]');
+            } catch (e) { history = []; }
+
+            if (history.length === 0) {
+                listEl.innerHTML = `
+                    <div class="text-center text-slate-400 text-xs py-10">
+                        <i class="fa-solid fa-box-open text-3xl mb-2 block"></i>
+                        저장된 이전 작성 내역이 없습니다.
+                    </div>
+                `;
+                return;
+            }
+
+            listEl.innerHTML = '';
+            history.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-50 border border-slate-200 hover:border-naver rounded-xl p-3 text-xs shadow-sm transition-all relative group";
+                card.innerHTML = `
+                    <div class="flex items-center justify-between text-[11px] text-slate-400 mb-1">
+                        <span class="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">${escapeHtml(item.destination || '여행지')}</span>
+                        <span>${item.date || ''}</span>
+                    </div>
+                    <div class="font-bold text-slate-800 line-clamp-2 mb-2">${escapeHtml(item.title)}</div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="loadHistoryItem(${index})" class="bg-white hover:bg-slate-100 border border-slate-200 px-2.5 py-1 rounded text-slate-700 font-medium transition-colors">
+                            <i class="fa-solid fa-eye mr-1"></i>원고 불러오기
+                        </button>
+                        <button onclick="deleteHistoryItem(${index})" class="text-slate-400 hover:text-red-500 p-1">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                `;
+                listEl.appendChild(card);
+            });
+        }
+
+        function loadHistoryItem(index) {
+            let history = JSON.parse(localStorage.getItem('naver_travel_history') || '[]');
+            const item = history[index];
+            if (!item) return;
+
+            toggleHistoryDrawer();
+
+            generatedResult = item;
+            selectedTitle = item.title;
+            currentState = STATES.RESULT;
+            updateStepIndicator();
+
+            addAiMessage(`<b>[히스토리 불러오기]</b> ${escapeHtml(item.date)} 에 작성된 네이버 블로그 원고입니다.`);
+            renderFinalOutputCards();
+        }
+
+        function deleteHistoryItem(index) {
+            let history = JSON.parse(localStorage.getItem('naver_travel_history') || '[]');
+            history.splice(index, 1);
+            localStorage.setItem('naver_travel_history', JSON.stringify(history));
+            renderHistoryList();
+        }
+
+        function toggleHistoryDrawer() {
+            const drawer = document.getElementById('history-drawer');
+            const backdrop = document.getElementById('history-backdrop');
+
+            if (drawer.classList.contains('translate-x-full')) {
+                drawer.classList.remove('translate-x-full');
+                backdrop.classList.remove('opacity-0');
+                backdrop.classList.add('opacity-100');
+            } else {
+                drawer.classList.add('translate-x-full');
+                backdrop.classList.remove('opacity-100');
+                backdrop.classList.add('opacity-0');
+            }
+        }
+
+        function resetApp() {
+            if (confirm('현재 대화와 작성 중인 원고가 초기화됩니다. 새 상품을 작성하시겠습니까?')) {
+                currentState = STATES.COLLECT_IMAGES;
+                uploadedImages = [];
+                extractedData = null;
+                selectedTitle = '';
+                reservationLink = '';
+                generatedResult = null;
+
+                document.getElementById('chat-window').innerHTML = '';
+                renderThumbnails();
+                initCurrentState();
+            }
+        }
+    </script>
+</body>
+</html>

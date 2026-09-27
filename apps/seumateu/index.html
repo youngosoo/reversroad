@@ -1,0 +1,1530 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>스마트 영수증 일괄 분석기</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- SheetJS CDN -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <!-- CryptoJS CDN (AES 암호화용) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'media',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              500: '#2563eb',
+              600: '#1d4ed8',
+              700: '#1e40af',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.05);
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 3px;
+    }
+    [contenteditable="true"]:focus {
+      outline: 2px solid #2563eb;
+      background-color: rgba(37, 99, 235, 0.05);
+      border-radius: 4px;
+    }
+    /* 다크모드 대응 인라인 수정 셀 */
+    @media (prefers-color-scheme: dark) {
+      [contenteditable="true"]:focus {
+        background-color: rgba(59, 130, 246, 0.15);
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen pb-16 transition-colors">
+
+  <!-- Top Navigation & API Key Banner -->
+  <header class="sticky top-0 z-30 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2 bg-brand-500 text-white rounded-xl shadow-md">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold leading-tight">스마트 영수증 일괄 분석기</h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400">Gemini AI 비전 기반 표 자동 생성</p>
+        </div>
+      </div>
+
+      <!-- API Key Controller -->
+      <div id="apiKeySection" class="flex items-center gap-2">
+        <!-- JS로 동적 렌더링됨 -->
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 space-y-8">
+
+    <!-- SECTION 1: 업로드 & 파일 목록 -->
+    <section class="space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h2 class="text-xl font-bold">1. 영수증 업로드</h2>
+          <p class="text-sm text-slate-500 dark:text-slate-400">드래그앤드롭, 파일 선택, 카메라 촬영 또는 클립보드 붙여넣기(Ctrl+V)</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <!-- 숨겨진 파일 인풋들 -->
+          <input type="file" id="fileInputSelect" multiple accept="image/*" class="hidden" />
+          <input type="file" id="fileInputCamera" accept="image/*" capture="environment" class="hidden" />
+
+          <button id="btnSelectFiles" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition flex items-center gap-2 shadow-sm" aria-label="파일 선택">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+            파일 선택
+          </button>
+          <button id="btnCamera" class="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition flex items-center gap-2 sm:hidden shadow-sm" aria-label="카메라 촬영">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h0.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
+            카메라
+          </button>
+          <button id="btnClearQueue" class="px-3 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-xl text-sm font-medium transition hidden" aria-label="전체 삭제">
+            전체 삭제
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Dropzone -->
+      <div id="dropZone" class="relative group border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-brand-500 dark:hover:border-brand-500 rounded-2xl p-8 text-center bg-white dark:bg-slate-800/50 transition-all cursor-pointer shadow-sm overflow-hidden">
+        <div class="flex flex-col items-center justify-center space-y-3 pointer-events-none">
+          <div class="p-4 bg-brand-50 dark:bg-slate-700 text-brand-500 dark:text-brand-400 rounded-2xl group-hover:scale-110 transition-transform">
+            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+          </div>
+          <div>
+            <p class="text-base font-semibold">이곳에 영수증 이미지를 끌어다 놓으세요</p>
+            <p class="text-xs text-slate-400 mt-1">최대 30장 | 장당 10MB 이하 | JPG, PNG, WEBP 지원 | 클립보드(Ctrl+V) 붙여넣기 가능</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Uploaded Files Grid & Progress Header -->
+      <div id="fileListContainer" class="space-y-4 hidden">
+        <div class="flex items-center justify-between bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+          <div class="flex items-center gap-4 flex-1">
+            <span id="queueStatusText" class="text-sm font-medium">대기 중: 0건</span>
+            <div class="flex-1 max-w-md bg-slate-100 dark:bg-slate-700 h-2 rounded-full overflow-hidden hidden" id="progressBarBg">
+              <div id="progressBarFill" class="bg-brand-500 h-full w-0 transition-all duration-300"></div>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="btnRetryFailed" class="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold rounded-lg transition shadow-sm hidden" aria-label="실패 건 재분석">
+              실패 건 재분석
+            </button>
+            <button id="btnStartAnalyze" class="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white font-medium text-sm rounded-xl shadow-md transition flex items-center gap-2" aria-label="일괄 분석 시작">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              일괄 분석 시작
+            </button>
+          </div>
+        </div>
+
+        <!-- File Thumbnails Grid -->
+        <div id="fileGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          <!-- JS로 동적 생성 -->
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: 분석 요약 카드 -->
+    <section id="summarySection" class="hidden">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          <p class="text-xs text-slate-500 dark:text-slate-400">총 영수증 수</p>
+          <p id="sumReceiptCount" class="text-2xl font-extrabold mt-1 text-brand-600 dark:text-brand-400">0건</p>
+        </div>
+        <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          <p class="text-xs text-slate-500 dark:text-slate-400">총 품목 수</p>
+          <p id="sumItemCount" class="text-2xl font-extrabold mt-1">0개</p>
+        </div>
+        <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          <p class="text-xs text-slate-500 dark:text-slate-400">총 합계 금액</p>
+          <p id="sumTotalAmount" class="text-2xl font-extrabold mt-1 text-emerald-600 dark:text-emerald-400">0 원</p>
+        </div>
+        <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+          <p class="text-xs text-slate-500 dark:text-slate-400">기간 (최소 ~ 최대)</p>
+          <p id="sumDateRange" class="text-sm font-bold mt-2 truncate text-slate-700 dark:text-slate-300">-</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 3: 데이터 결과 표 및 필터/다운로드 바 -->
+    <section id="tableSection" class="space-y-4 hidden">
+      <!-- Toolbar -->
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+        <div class="flex flex-wrap items-center gap-2">
+          <!-- Search -->
+          <div class="relative">
+            <input type="text" id="filterVendorInput" placeholder="업체명 검색..." class="w-40 sm:w-52 pl-8 pr-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
+            <svg class="w-4 h-4 text-slate-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          </div>
+          <!-- Sort -->
+          <select id="sortBySelect" class="py-1.5 px-3 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500">
+            <option value="default">정렬: 분석순</option>
+            <option value="date-asc">날짜 오름차순</option>
+            <option value="date-desc">날짜 내림차순</option>
+            <option value="vendor">업체명순</option>
+            <option value="amount-desc">금액 높은순</option>
+          </select>
+          <button id="btnAddRow" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-xl text-xs font-semibold transition flex items-center gap-1" aria-label="행 추가">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            행 추가
+          </button>
+          <button id="btnDeleteSelected" class="px-3 py-1.5 bg-red-50 dark:bg-red-950/50 hover:bg-red-100 text-red-600 dark:text-red-400 rounded-xl text-xs font-semibold transition flex items-center gap-1" aria-label="선택 삭제">
+            선택 삭제
+          </button>
+        </div>
+
+        <!-- Downloads & Options -->
+        <div class="flex flex-wrap items-center gap-2">
+          <label class="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 mr-2 cursor-pointer select-none">
+            <input type="checkbox" id="exportSelectedOnly" class="rounded text-brand-600 focus:ring-brand-500" />
+            선택한 행만 내보내기
+          </label>
+          <button id="btnCopyClipboard" class="px-3 py-1.5 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-xs font-semibold rounded-xl transition flex items-center gap-1" title="엑셀에 붙여넣기 가능한 TSV 형태로 복사" aria-label="클립보드 복사">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+            복사
+          </button>
+          <button id="btnExportCSV" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-xl transition shadow-sm flex items-center gap-1" aria-label="CSV 다운로드">
+            CSV
+          </button>
+          <button id="btnExportXLSX" class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold rounded-xl transition shadow-sm flex items-center gap-1" aria-label="XLSX 다운로드">
+            Excel(.xlsx)
+          </button>
+          <button id="btnExportJSON" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 dark:bg-slate-600 dark:hover:bg-slate-500 text-white text-xs font-semibold rounded-xl transition shadow-sm flex items-center gap-1" aria-label="JSON 다운로드">
+            JSON
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Data Table Container -->
+      <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead class="bg-slate-100/80 dark:bg-slate-700/80 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-700 sticky top-0">
+              <tr>
+                <th class="p-3 text-center w-10"><input type="checkbox" id="selectAllRows" class="rounded text-brand-600" /></th>
+                <th class="p-3 text-center w-12">번호</th>
+                <th class="p-3 min-w-[100px]">날짜</th>
+                <th class="p-3 min-w-[120px]">업체명</th>
+                <th class="p-3 min-w-[160px]">품목명</th>
+                <th class="p-3 text-right w-16">수량</th>
+                <th class="p-3 text-right w-24">단가</th>
+                <th class="p-3 text-right w-24">금액</th>
+                <th class="p-3 text-right w-28">영수증 합계</th>
+                <th class="p-3 text-center w-16">원본</th>
+              </tr>
+            </thead>
+            <tbody id="receiptTableBody" class="divide-y divide-slate-100 dark:divide-slate-700/50">
+              <!-- JS 동적 생성 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Image Viewer Modal -->
+  <div id="imageModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="relative max-w-4xl max-h-[90vh] bg-slate-900 rounded-2xl overflow-hidden flex flex-col items-center p-4">
+      <div class="absolute top-4 right-4 flex items-center gap-2 z-10">
+        <button id="btnRotateImage" class="p-2 bg-slate-800 hover:bg-slate-700 text-white rounded-full transition" title="회전" aria-label="이미지 회전">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+        </button>
+        <button id="btnCloseModal" class="p-2 bg-slate-800 hover:bg-slate-700 text-white rounded-full transition" title="닫기" aria-label="모달 닫기">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="w-full h-full flex items-center justify-center overflow-auto p-4">
+        <img id="modalImage" src="" alt="영수증 원본" class="max-h-[80vh] object-contain transition-transform duration-200" />
+      </div>
+    </div>
+  </div>
+
+  <!-- API Key Management & Encrypted Storage Modal -->
+  <div id="apiKeyModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="relative w-full max-w-md bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col">
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between bg-slate-50 dark:bg-slate-800/80">
+        <div class="flex items-center gap-2">
+          <div class="p-1.5 bg-brand-500 text-white rounded-lg">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 0121 9z"/></svg>
+          </div>
+          <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base">API 키 관리 & 외장 보안 저장소</h3>
+        </div>
+        <button id="btnCloseKeyModal" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 text-xl font-bold p-1">✕</button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6 space-y-5 text-xs text-slate-600 dark:text-slate-300">
+        <!-- Input & Test Connection -->
+        <div class="space-y-2">
+          <label class="block font-semibold text-slate-700 dark:text-slate-200">Gemini API 키 입력</label>
+          <div class="flex gap-2">
+            <input type="password" id="modalApiKeyInput" placeholder="AIzaSy..." class="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono text-xs" />
+            <button id="btnToggleKeyVisibility" class="px-2.5 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-xl hover:bg-slate-200" title="비밀번호 표시/숨기기">👁️</button>
+          </div>
+          <div class="flex justify-between items-center pt-1">
+            <button id="btnTestConnection" class="px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-medium transition flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              연결 테스트
+            </button>
+            <span id="testStatusBadge" class="text-[11px] font-semibold px-2 py-0.5 rounded hidden"></span>
+          </div>
+        </div>
+
+        <hr class="border-slate-200 dark:border-slate-700" />
+
+        <!-- Encrypted Local Storage Options -->
+        <div class="space-y-3">
+          <h4 class="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+            <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+            로컬 드라이브 암호화 저장 / 불러오기
+          </h4>
+          <p class="text-[11px] text-slate-400 leading-normal">
+            설정한 비밀번호(AES-256)로 API 키를 암호화하여 로컬 파일(.enc)로 내보내거나, 파일에서 즉시 복원합니다.
+          </p>
+
+          <div class="space-y-1.5">
+            <label class="block text-[11px] font-medium text-slate-600 dark:text-slate-400">암호화/복호화 비밀번호</label>
+            <input type="password" id="modalEncryptPassword" placeholder="파일 보호용 비밀번호 입력" class="w-full px-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-brand-500 text-xs" />
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <button id="btnExportEncryptedKey" class="px-3 py-2 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-medium rounded-xl transition text-center shadow-sm">
+              💾 암호화 저장 (.enc)
+            </button>
+            <label class="px-3 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-200 font-medium rounded-xl transition text-center cursor-pointer select-none">
+              📂 파일 불러오기
+              <input type="file" id="inputImportEncryptedKey" accept=".enc,.json" class="hidden" />
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="px-6 py-3 bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-2">
+        <button id="btnSaveKeyToMemory" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl transition text-xs shadow-sm">
+          적용 및 저장
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+  <script>
+    /**
+     * 상구 및 핵심 구성
+     */
+    const MODEL = "gemini-3.6-flash";
+    const MAX_FILES = 30;
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    const MAX_LONG_EDGE = 1600;
+    const CONCURRENCY = 3;
+    const MAX_RETRIES = 3;
+
+    // 추출 프롬프트
+    const EXTRACTION_PROMPT = `
+한국 영수증/간이영수증/카드전표 이미지에서 거래 정보를 추출하세요.
+[추출 규칙]
+1. date: 날짜는 YYYY-MM-DD 형식으로 정규화 (예: 25.01.05, 2025년 1월 5일 -> 2025-01-05). 읽을 수 없으면 "".
+2. vendor: 상호명/업체명. 읽을 수 없으면 "".
+3. items: 품목 목록 배열.
+   - name: 품목명
+   - qty: 수량 (기본값 1)
+   - unit_price: 단가 (미표기 시 amount/qty로 계산)
+   - amount: 금액 (수량 * 단가)
+   - 할인, 포인트적립, 봉사료, 부가세 단독 줄은 품목에서 제외.
+4. total: 최종 결제/합계 금액.
+5. currency: 기본 "KRW".
+6. confidence: 인식 신뢰도 (0.0 ~ 1.0). 영수증이 아니거나 훼손되어 읽을 수 없으면 0.3 이하.
+ 모든 금액 숫자에서 콤마(,), '원', '₩' 제거 후 순수 숫자만 반환하세요.
+`;
+
+    /**
+     * 상태 관리 (State)
+     */
+    const state = {
+      apiKey: localStorage.getItem('gemini_api_key') || '',
+      files: [], // { id, file, base64, status: 'pending'|'analyzing'|'completed'|'failed', error?: string }
+      receipts: [], // { id, fileId, date, vendor, total, currency, confidence, items: [{ id, name, qty, unit_price, amount }] }
+      selectedReceiptRowIds: new Set(),
+      isAnalyzing: false,
+      rotationDeg: 0
+    };
+
+    /**
+     * DOM 엘리먼트 래퍼
+     */
+    const $ = (id) => document.getElementById(id);
+
+    // 초기화
+    window.addEventListener('DOMContentLoaded', () => {
+      initApiKeySection();
+      setupEventListeners();
+      setupApiKeyModalEvents();
+      restoreSessionStorage();
+    });
+
+    // 작업 중 페이지 이탈 경고
+    window.addEventListener('beforeunload', (e) => {
+      if (state.isAnalyzing) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    });
+
+    /**
+     * STREAMING_CHUNK:API 키 상단 UI 및 팝업 컨트롤러 업데이트...
+     * API 키 UI 관리
+     */
+    function initApiKeySection() {
+      const container = $('apiKeySection');
+      if (state.apiKey) {
+        container.innerHTML = `
+          <div class="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-3 py-1.5 rounded-xl">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="text-xs font-semibold text-emerald-700 dark:text-emerald-300">API 키 연동 완료</span>
+            <button id="btnOpenKeyModal" class="text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-2 py-0.5 rounded-lg transition ml-1">설정 / 암호화 관리</button>
+            <button id="btnDeleteKey" class="text-xs text-red-500 hover:text-red-700 ml-1">삭제</button>
+          </div>
+        `;
+        $('btnOpenKeyModal').onclick = openApiKeyModal;
+        $('btnDeleteKey').onclick = () => {
+          localStorage.removeItem('gemini_api_key');
+          state.apiKey = '';
+          initApiKeySection();
+          showToast('API 키가 삭제되었습니다.', 'info');
+        };
+      } else {
+        container.innerHTML = `
+          <button id="btnOpenKeyModal" class="px-3 py-1.5 bg-brand-50 hover:bg-brand-100 dark:bg-slate-700 dark:hover:bg-slate-600 text-brand-600 dark:text-brand-300 text-xs font-semibold rounded-xl transition flex items-center gap-1 border border-brand-200 dark:border-slate-600">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 0121 9z"/></svg>
+            🔑 API 키 관리 & 외장 저장
+          </button>
+        `;
+        $('btnOpenKeyModal').onclick = openApiKeyModal;
+      }
+    }
+
+    /**
+     * STREAMING_CHUNK:API 키 모달 로직 및 암호화 파일 내보내기/불러오기 처리...
+     * API 키 팝업 모달 관리 및 연결 테스트 / CryptoJS 로컬 암호화
+     */
+    function openApiKeyModal() {
+      $('modalApiKeyInput').value = state.apiKey || '';
+      $('modalEncryptPassword').value = '';
+      hideStatusBadge();
+      $('apiKeyModal').classList.remove('hidden');
+    }
+
+    function closeApiKeyModal() {
+      $('apiKeyModal').classList.add('hidden');
+    }
+
+    function hideStatusBadge() {
+      const badge = $('testStatusBadge');
+      badge.classList.add('hidden');
+      badge.innerText = '';
+    }
+
+    function showStatusBadge(msg, isSuccess) {
+      const badge = $('testStatusBadge');
+      badge.classList.remove('hidden', 'bg-emerald-100', 'text-emerald-700', 'bg-red-100', 'text-red-700', 'bg-amber-100', 'text-amber-700');
+      if (isSuccess) {
+        badge.classList.add('bg-emerald-100', 'text-emerald-700');
+      } else {
+        badge.classList.add('bg-red-100', 'text-red-700');
+      }
+      badge.innerText = msg;
+    }
+
+    function setupApiKeyModalEvents() {
+      $('btnCloseKeyModal').onclick = closeApiKeyModal;
+      $('apiKeyModal').onclick = (e) => {
+        if (e.target === $('apiKeyModal')) closeApiKeyModal();
+      };
+
+      // 비밀번호/키 가시성 토글
+      $('btnToggleKeyVisibility').onclick = () => {
+        const input = $('modalApiKeyInput');
+        input.type = input.type === 'password' ? 'text' : 'password';
+      };
+
+      // 연결 테스트
+      $('btnTestConnection').onclick = async () => {
+        const testKey = $('modalApiKeyInput').value.trim();
+        if (!testKey) {
+          showToast('테스트할 API 키를 입력하세요.', 'error');
+          return;
+        }
+
+        const badge = $('testStatusBadge');
+        badge.classList.remove('hidden');
+        badge.className = 'text-[11px] font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-700 animate-pulse';
+        badge.innerText = '연결 확인 중...';
+
+        try {
+          // Gemini API 경량 모델 목록 조회로 연결성 체크
+          const testUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(testKey)}`;
+          const res = await fetch(testUrl);
+
+          if (res.ok) {
+            showStatusBadge('✓ 정상 연결 확인', true);
+            showToast('Gemini API 서버와 정상적으로 통신되었습니다.', 'success');
+          } else if (res.status === 400 || res.status === 401 || res.status === 403) {
+            showStatusBadge('✕ 유효하지 않은 키', false);
+            showToast('API 키가 올바르지 않거나 권한이 없습니다.', 'error');
+          } else {
+            showStatusBadge(`✕ 서버 응답 에러 (${res.status})`, false);
+          }
+        } catch (err) {
+          showStatusBadge('✕ 네트워크 연결 오류', false);
+          showToast('서버와의 통신에 실패했습니다.', 'error');
+        }
+      };
+
+      // 적용 및 브라우저 메모리 저장
+      $('btnSaveKeyToMemory').onclick = () => {
+        const key = $('modalApiKeyInput').value.trim();
+        state.apiKey = key;
+        if (key) {
+          localStorage.setItem('gemini_api_key', key);
+          showToast('API 키가 성공적으로 적용되었습니다.', 'success');
+        } else {
+          localStorage.removeItem('gemini_api_key');
+          showToast('API 키 설정이 해제되었습니다.', 'info');
+        }
+        initApiKeySection();
+        closeApiKeyModal();
+      };
+
+      // AES 암호화 후 파일(.enc)로 로컬 드라이브에 저장
+      $('btnExportEncryptedKey').onclick = () => {
+        const key = $('modalApiKeyInput').value.trim();
+        const pass = $('modalEncryptPassword').value.trim();
+
+        if (!key) {
+          showToast('저장할 API 키를 입력해 주세요.', 'error');
+          return;
+        }
+        if (!pass) {
+          showToast('암호화에 사용될 비밀번호를 입력해 주세요.', 'error');
+          return;
+        }
+
+        try {
+          const payload = JSON.stringify({
+            apiKey: key,
+            createdAt: new Date().toISOString(),
+            app: "SmartReceiptAnalyzer"
+          });
+
+          // CryptoJS AES 암호화
+          const encrypted = CryptoJS.AES.encrypt(payload, pass).toString();
+          const blob = new Blob([encrypted], { type: 'application/octet-stream' });
+          const fileName = `gemini_key_encrypted_${Date.now()}.enc`;
+
+          downloadBlob(blob, fileName);
+          showToast('API 키가 사용자 로컬 드라이브에 암호화 저장되었습니다.', 'success');
+        } catch (err) {
+          showToast('암호화 처리 중 오류가 발생했습니다.', 'error');
+        }
+      };
+
+      // 로컬 암호화 파일(.enc) 불러오기
+      $('inputImportEncryptedKey').onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const pass = $('modalEncryptPassword').value.trim();
+        if (!pass) {
+          showToast('파일을 복호화할 비밀번호를 먼저 입력해 주세요.', 'error');
+          e.target.value = '';
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          try {
+            const encryptedContent = evt.target.result;
+            // CryptoJS AES 복호화
+            const decryptedBytes = CryptoJS.AES.decrypt(encryptedContent, pass);
+            const decryptedStr = decryptedBytes.toString(CryptoJS.enc.Utf8);
+
+            if (!decryptedStr) {
+              throw new Error('복호화 실패');
+            }
+
+            const data = JSON.parse(decryptedStr);
+            if (data && data.apiKey) {
+              state.apiKey = data.apiKey;
+              localStorage.setItem('gemini_api_key', state.apiKey);
+              $('modalApiKeyInput').value = state.apiKey;
+              showStatusBadge('✓ 파일 복원 성공', true);
+              showToast('로컬 암호화 파일에서 API 키를 불러왔습니다!', 'success');
+              initApiKeySection();
+            } else {
+              throw new Error('유효하지 않은 데이터 구조');
+            }
+          } catch (err) {
+            showStatusBadge('✕ 복호화 실패', false);
+            showToast('복호화 실패: 비밀번호가 올바르지 않거나 파일이 손상되었습니다.', 'error');
+          } finally {
+            e.target.value = '';
+          }
+        };
+
+        reader.readAsText(file);
+      };
+    }
+
+    /**
+     * 이벤트 리스너 설정
+     */
+    function setupEventListeners() {
+      const dropZone = $('dropZone');
+      const fileSelect = $('fileInputSelect');
+      const fileCamera = $('fileInputCamera');
+
+      // DropZone 드래그 연동
+      dropZone.onclick = () => fileSelect.click();
+      $('btnSelectFiles').onclick = () => fileSelect.click();
+      $('btnCamera').onclick = () => fileCamera.click();
+
+      ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropZone.classList.add('border-brand-500', 'bg-brand-50/50');
+        });
+      });
+
+      ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropZone.classList.remove('border-brand-500', 'bg-brand-50/50');
+        });
+      });
+
+      dropZone.addEventListener('drop', (e) => {
+        const files = Array.from(e.dataTransfer.files);
+        handleFilesAdded(files);
+      });
+
+      fileSelect.onchange = (e) => {
+        handleFilesAdded(Array.from(e.target.files));
+        fileSelect.value = '';
+      };
+
+      fileCamera.onchange = (e) => {
+        handleFilesAdded(Array.from(e.target.files));
+        fileCamera.value = '';
+      };
+
+      // Ctrl+V 클립보드 붙여넣기
+      window.addEventListener('paste', (e) => {
+        const items = e.clipboardData?.items;
+        if (!items) return;
+        const pastedFiles = [];
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf('image') !== -1) {
+            const blob = items[i].getAsFile();
+            if (blob) pastedFiles.push(blob);
+          }
+        }
+        if (pastedFiles.length > 0) {
+          handleFilesAdded(pastedFiles);
+          showToast(`클립보드에서 ${pastedFiles.length}개의 이미지를 불러왔습니다.`, 'info');
+        }
+      });
+
+      // 전체 삭제 및 분석 동작
+      $('btnClearQueue').onclick = clearFileQueue;
+      $('btnStartAnalyze').onclick = startBatchAnalysis;
+      $('btnRetryFailed').onclick = retryFailedAnalysis;
+
+      // 테이블 필터 / 정렬
+      $('filterVendorInput').oninput = renderTable;
+      $('sortBySelect').onchange = renderTable;
+      $('btnAddRow').onclick = addNewRow;
+      $('btnDeleteSelected').onclick = deleteSelectedRows;
+      $('selectAllRows').onchange = (e) => {
+        const checked = e.target.checked;
+        const checkboxes = document.querySelectorAll('.row-checkbox');
+        checkboxes.forEach(cb => {
+          cb.checked = checked;
+          const rowId = cb.dataset.id;
+          if (checked) state.selectedReceiptRowIds.add(rowId);
+          else state.selectedReceiptRowIds.delete(rowId);
+        });
+      };
+
+      // Export Buttons
+      $('btnExportCSV').onclick = () => exportData('csv');
+      $('btnExportXLSX').onclick = () => exportData('xlsx');
+      $('btnExportJSON').onclick = () => exportData('json');
+      $('btnCopyClipboard').onclick = copyToClipboardTSV;
+
+      // Modal Events
+      $('btnCloseModal').onclick = closeModal;
+      $('btnRotateImage').onclick = () => {
+        state.rotationDeg = (state.rotationDeg + 90) % 360;
+        $('modalImage').style.transform = `rotate(${state.rotationDeg}deg)`;
+      };
+      $('imageModal').onclick = (e) => {
+        if (e.target === $('imageModal')) closeModal();
+      };
+    }
+
+    /**
+     * 파일 추가 및 전처리
+     */
+    async function handleFilesAdded(newFiles) {
+      if (state.files.length + newFiles.length > MAX_FILES) {
+        showToast(`최대 ${MAX_FILES}장까지만 한 번에 업로드할 수 있습니다.`, 'error');
+        return;
+      }
+
+      for (const file of newFiles) {
+        if (!file.type.startsWith('image/')) {
+          showToast(`'${file.name}'은(는) 이미지 파일이 아닙니다.`, 'error');
+          continue;
+        }
+        if (file.size > MAX_FILE_SIZE) {
+          showToast(`'${file.name}' 용량이 10MB를 초과합니다.`, 'error');
+          continue;
+        }
+
+        const id = 'f_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+        const fileObj = {
+          id,
+          file,
+          base64: null,
+          previewUrl: URL.createObjectURL(file),
+          status: 'pending'
+        };
+
+        state.files.push(fileObj);
+        renderFileGrid();
+
+        // 비동기 이미지 압축 및 Base64 변환
+        try {
+          fileObj.base64 = await resizeAndCompressImage(file);
+        } catch (err) {
+          fileObj.status = 'failed';
+          fileObj.error = '압축 실패';
+          showToast(`'${file.name}' 이미지 처리 중 오류가 발생했습니다.`, 'error');
+          renderFileGrid();
+        }
+      }
+    }
+
+    /**
+     * Canvas 기반 1600px 리사이즈 및 JPEG 0.8 압축
+     */
+    function resizeAndCompressImage(file) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+
+          if (width > MAX_LONG_EDGE || height > MAX_LONG_EDGE) {
+            if (width > height) {
+              height = Math.round((height * MAX_LONG_EDGE) / width);
+              width = MAX_LONG_EDGE;
+            } else {
+              width = Math.round((width * MAX_LONG_EDGE) / height);
+              height = MAX_LONG_EDGE;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+          // prefix 제거 (data:image/jpeg;base64,)
+          const base64Data = dataUrl.split(',')[1];
+          resolve(base64Data);
+        };
+        img.onerror = reject;
+        img.src = URL.createObjectURL(file);
+      });
+    }
+
+    /**
+     * 파일 큐 렌더링 및 삭제
+     */
+    function renderFileGrid() {
+      const grid = $('fileGrid');
+      const container = $('fileListContainer');
+      const btnClear = $('btnClearQueue');
+
+      if (state.files.length === 0) {
+        container.classList.add('hidden');
+        btnClear.classList.add('hidden');
+        return;
+      }
+
+      container.classList.remove('hidden');
+      btnClear.classList.remove('hidden');
+
+      grid.innerHTML = state.files.map((item, index) => {
+        let badgeColor = 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300';
+        let badgeText = '대기';
+
+        if (item.status === 'analyzing') {
+          badgeColor = 'bg-brand-100 text-brand-700 animate-pulse';
+          badgeText = '분석중';
+        } else if (item.status === 'completed') {
+          badgeColor = 'bg-emerald-100 text-emerald-700';
+          badgeText = '완료';
+        } else if (item.status === 'failed') {
+          badgeColor = 'bg-red-100 text-red-700';
+          badgeText = '실패';
+        }
+
+        return `
+          <div class="relative group bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2 shadow-sm flex flex-col justify-between">
+            <div class="relative aspect-square rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-900 mb-2">
+              <img src="${item.previewUrl}" class="w-full h-full object-cover" alt="썸네일" />
+              <span class="absolute top-1 left-1 text-[10px] font-bold px-1.5 py-0.5 rounded ${badgeColor}">${badgeText}</span>
+              <button onclick="removeFile('${item.id}')" class="absolute top-1 right-1 p-1 bg-black/60 hover:bg-black text-white rounded-full transition opacity-0 group-hover:opacity-100" title="삭제" aria-label="파일 삭제">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+            <div class="truncate text-[11px] font-medium" title="${item.file.name}">${item.file.name}</div>
+            <div class="text-[10px] text-slate-400">${(item.file.size / 1024 / 1024).toFixed(1)}MB</div>
+          </div>
+        `;
+      }).join('');
+
+      updateProgressText();
+    }
+
+    function removeFile(fileId) {
+      state.files = state.files.filter(f => f.id !== fileId);
+      state.receipts = state.receipts.filter(r => r.fileId !== fileId);
+      renderFileGrid();
+      renderTable();
+      saveSessionStorage();
+    }
+
+    function clearFileQueue() {
+      state.files = [];
+      state.receipts = [];
+      renderFileGrid();
+      renderTable();
+      saveSessionStorage();
+    }
+
+    function updateProgressText() {
+      const completed = state.files.filter(f => f.status === 'completed').length;
+      const failed = state.files.filter(f => f.status === 'failed').length;
+      const total = state.files.length;
+
+      $('queueStatusText').innerText = `총 ${total}장 중 ${completed}장 완료` + (failed > 0 ? ` (${failed}장 실패)` : '');
+      $('btnRetryFailed').classList.toggle('hidden', failed === 0);
+
+      const fill = $('progressBarFill');
+      const bg = $('progressBarBg');
+      if (state.isAnalyzing) {
+        bg.classList.remove('hidden');
+        const pct = total > 0 ? Math.round(((completed + failed) / total) * 100) : 0;
+        fill.style.width = `${pct}%`;
+      } else {
+        bg.classList.add('hidden');
+      }
+    }
+
+    /**
+     * 일괄 분석 시작 및 Concurrency Queue
+     */
+    async function startBatchAnalysis() {
+      if (!state.apiKey) {
+        showToast('Gemini API 키를 먼저 등록해 주세요.', 'error');
+        promptApiKey();
+        return;
+      }
+
+      const pendingList = state.files.filter(f => f.status === 'pending' || f.status === 'failed');
+      if (pendingList.length === 0) {
+        showToast('분석할 대상 파일이 없습니다.', 'info');
+        return;
+      }
+
+      state.isAnalyzing = true;
+      $('btnStartAnalyze').disabled = true;
+      updateProgressText();
+
+      // 병렬 제어 큐
+      let queue = [...pendingList];
+      let activeWorkers = 0;
+
+      return new Promise((resolve) => {
+        const nextWorker = () => {
+          if (queue.length === 0 && activeWorkers === 0) {
+            state.isAnalyzing = false;
+            $('btnStartAnalyze').disabled = false;
+            updateProgressText();
+            showToast('일괄 분석이 완료되었습니다.', 'success');
+            saveSessionStorage();
+            resolve();
+            return;
+          }
+
+          while (activeWorkers < CONCURRENCY && queue.length > 0) {
+            const item = queue.shift();
+            activeWorkers++;
+            item.status = 'analyzing';
+            renderFileGrid();
+
+            analyzeReceiptItem(item)
+              .finally(() => {
+                activeWorkers--;
+                renderFileGrid();
+                renderTable();
+                nextWorker();
+              });
+          }
+        };
+
+        nextWorker();
+      });
+    }
+
+    async function retryFailedAnalysis() {
+      await startBatchAnalysis();
+    }
+
+    /**
+     * 단일 파일 Gemini Vision API 호출 (지수 백오프 재시도 포함)
+     */
+    async function analyzeReceiptItem(item) {
+      if (!item.base64) {
+        item.status = 'failed';
+        item.error = '이미지 데이터 없음';
+        return;
+      }
+
+      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+      const payload = {
+        contents: [{
+          parts: [
+            { text: EXTRACTION_PROMPT },
+            { inline_data: { mime_type: "image/jpeg", data: item.base64 } }
+          ]
+        }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              date: { type: "STRING" },
+              vendor: { type: "STRING" },
+              items: {
+                type: "ARRAY",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    name: { type: "STRING" },
+                    qty: { type: "NUMBER" },
+                    unit_price: { type: "NUMBER" },
+                    amount: { type: "NUMBER" }
+                  },
+                  required: ["name", "qty", "unit_price", "amount"]
+                }
+              },
+              total: { type: "NUMBER" },
+              currency: { type: "STRING" },
+              confidence: { type: "NUMBER" }
+            },
+            required: ["date", "vendor", "items", "total", "currency", "confidence"]
+          },
+          temperature: 0
+        }
+      };
+
+      let attempt = 0;
+      let delay = 1000;
+
+      while (attempt < MAX_RETRIES) {
+        try {
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'x-goog-api-key': state.apiKey,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+          });
+
+          if (res.status === 401) {
+            throw new Error('API 키가 올바르지 않습니다.');
+          }
+
+          if (res.status === 429 || res.status >= 500) {
+            attempt++;
+            if (attempt < MAX_RETRIES) {
+              await new Promise(r => setTimeout(r, delay));
+              delay *= 2;
+              continue;
+            } else {
+              throw new Error(`서버 오류 (${res.status})`);
+            }
+          }
+
+          if (!res.ok) {
+            throw new Error(`HTTP Error ${res.status}`);
+          }
+
+          const data = await res.json();
+          const jsonText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (!jsonText) throw new Error('응답 데이터를 파싱할 수 없습니다.');
+
+          const parsed = JSON.parse(jsonText);
+          
+          // 기존에 이 파일에 대응하는 데이터가 있었다면 제거 후 추가
+          state.receipts = state.receipts.filter(r => r.fileId !== item.id);
+
+          const receiptId = 'r_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6);
+          const formattedReceipt = {
+            id: receiptId,
+            fileId: item.id,
+            previewUrl: item.previewUrl,
+            date: parsed.date || '',
+            vendor: parsed.vendor || '',
+            total: Number(parsed.total) || 0,
+            currency: parsed.currency || 'KRW',
+            confidence: Number(parsed.confidence) || 0,
+            items: (parsed.items && parsed.items.length > 0) ? parsed.items.map((it, idx) => ({
+              id: `${receiptId}_item_${idx}`,
+              name: it.name || '품목',
+              qty: Number(it.qty) || 1,
+              unit_price: Number(it.unit_price) || Number(it.amount) || 0,
+              amount: Number(it.amount) || 0
+            })) : [{
+              id: `${receiptId}_item_0`,
+              name: '상세 미인식 품목',
+              qty: 1,
+              unit_price: Number(parsed.total) || 0,
+              amount: Number(parsed.total) || 0
+            }]
+          };
+
+          state.receipts.push(formattedReceipt);
+          item.status = 'completed';
+          return;
+
+        } catch (err) {
+          if (attempt >= MAX_RETRIES - 1 || err.message.includes('API 키')) {
+            item.status = 'failed';
+            item.error = err.message;
+            console.error(`Analysis failed for file ${item.id}:`, err);
+            return;
+          }
+          attempt++;
+          await new Promise(r => setTimeout(r, delay));
+          delay *= 2;
+        }
+      }
+    }
+
+    /**
+     * 결과 표 및 요약 정보 렌더링
+     */
+    function renderTable() {
+      const tbody = $('receiptTableBody');
+      const tableSection = $('tableSection');
+      const summarySection = $('summarySection');
+
+      if (state.receipts.length === 0) {
+        tableSection.classList.add('hidden');
+        summarySection.classList.add('hidden');
+        return;
+      }
+
+      tableSection.classList.remove('hidden');
+      summarySection.classList.remove('hidden');
+
+      // 필터 및 정렬
+      const vendorQuery = $('filterVendorInput').value.trim().toLowerCase();
+      const sortMode = $('sortBySelect').value;
+
+      let filteredReceipts = state.receipts.filter(r => 
+        !vendorQuery || r.vendor.toLowerCase().includes(vendorQuery)
+      );
+
+      // 정렬 처리
+      if (sortMode === 'date-asc') {
+        filteredReceipts.sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+      } else if (sortMode === 'date-desc') {
+        filteredReceipts.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+      } else if (sortMode === 'vendor') {
+        filteredReceipts.sort((a, b) => a.vendor.localeCompare(b.vendor, 'ko'));
+      } else if (sortMode === 'amount-desc') {
+        filteredReceipts.sort((a, b) => b.total - a.total);
+      }
+
+      // 요약 카드 계산
+      let totalItemsCount = 0;
+      let totalAmountSum = 0;
+      let dates = [];
+
+      filteredReceipts.forEach(r => {
+        totalAmountSum += r.total;
+        if (r.date) dates.push(r.date);
+        totalItemsCount += r.items.length;
+      });
+
+      dates.sort();
+      const dateRangeStr = dates.length > 0 ? `${dates[0]} ~ ${dates[dates.length - 1]}` : '-';
+
+      $('sumReceiptCount').innerText = `${filteredReceipts.length}건`;
+      $('sumItemCount').innerText = `${totalItemsCount}개`;
+      $('sumTotalAmount').innerText = `${totalAmountSum.toLocaleString()} 원`;
+      $('sumDateRange').innerText = dateRangeStr;
+
+      // 테이블 행 생성 (영수증 교차 배경색 적용)
+      let html = '';
+      let globalRowIndex = 1;
+
+      filteredReceipts.forEach((receipt, rIdx) => {
+        const bgClass = rIdx % 2 === 0 ? 'bg-white dark:bg-slate-800' : 'bg-slate-50/70 dark:bg-slate-800/40';
+        
+        // 항목 금액 합계 검증
+        const itemsSum = receipt.items.reduce((acc, cur) => acc + (cur.amount || 0), 0);
+        const isSumMismatch = itemsSum !== receipt.total;
+        const diffAmount = itemsSum - receipt.total;
+
+        receipt.items.forEach((item, iIdx) => {
+          const isFirstRowOfReceipt = iIdx === 0;
+          const rowSpan = receipt.items.length;
+
+          html += `<tr class="${bgClass} hover:bg-brand-50/30 dark:hover:bg-slate-700/30 transition-colors" data-receipt-id="${receipt.id}" data-item-id="${item.id}">`;
+
+          // 체크박스 & 번호 (영수증 단위 or 행 단위)
+          html += `
+            <td class="p-3 text-center">
+              <input type="checkbox" class="row-checkbox rounded text-brand-600" data-id="${receipt.id}" ${state.selectedReceiptRowIds.has(receipt.id) ? 'checked' : ''} onchange="toggleRowSelection('${receipt.id}', this.checked)" />
+            </td>
+            <td class="p-3 text-center text-slate-400 font-mono">${globalRowIndex++}</td>
+          `;
+
+          // 날짜, 업체명 (영수증의 첫 행에만 표시)
+          if (isFirstRowOfReceipt) {
+            html += `
+              <td class="p-3 font-medium ${receipt.confidence < 0.6 ? 'text-amber-600 dark:text-amber-400 flex items-center gap-1' : ''}" rowspan="${rowSpan}">
+                ${receipt.confidence < 0.6 ? '<span title="인식 신뢰도 낮음 (0.6 미만)">⚠️</span>' : ''}
+                <span contenteditable="true" onblur="updateReceiptField('${receipt.id}', 'date', this.innerText)">${receipt.date}</span>
+              </td>
+              <td class="p-3 font-medium" rowspan="${rowSpan}">
+                <span contenteditable="true" onblur="updateReceiptField('${receipt.id}', 'vendor', this.innerText)">${receipt.vendor}</span>
+              </td>
+            `;
+          }
+
+          // 품목정보 (수량, 단가, 금액)
+          html += `
+            <td class="p-3">
+              <span contenteditable="true" onblur="updateItemField('${receipt.id}', '${item.id}', 'name', this.innerText)">${item.name}</span>
+            </td>
+            <td class="p-3 text-right font-mono">
+              <span contenteditable="true" onblur="updateItemNumericField('${receipt.id}', '${item.id}', 'qty', this.innerText)">${item.qty}</span>
+            </td>
+            <td class="p-3 text-right font-mono">
+              <span contenteditable="true" onblur="updateItemNumericField('${receipt.id}', '${item.id}', 'unit_price', this.innerText)">${item.unit_price.toLocaleString()}</span>
+            </td>
+            <td class="p-3 text-right font-mono font-medium">
+              <span contenteditable="true" onblur="updateItemNumericField('${receipt.id}', '${item.id}', 'amount', this.innerText)">${item.amount.toLocaleString()}</span>
+            </td>
+          `;
+
+          // 영수증 합계 금액 (첫 행에만 표시 및 차액 경고)
+          if (isFirstRowOfReceipt) {
+            html += `
+              <td class="p-3 text-right font-mono font-bold text-slate-900 dark:text-slate-100" rowspan="${rowSpan}">
+                <div class="flex items-center justify-end gap-1">
+                  ${isSumMismatch ? `<span class="cursor-help text-amber-500" title="품목 금액 합계(${itemsSum.toLocaleString()})와 총액 차이: ${diffAmount > 0 ? '+' : ''}${diffAmount.toLocaleString()}원">⚠️</span>` : ''}
+                  <span contenteditable="true" onblur="updateReceiptField('${receipt.id}', 'total', this.innerText)">${receipt.total.toLocaleString()}</span>
+                </div>
+              </td>
+              <td class="p-3 text-center" rowspan="${rowSpan}">
+                <button onclick="openModal('${receipt.previewUrl}')" class="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded transition" title="원본 보기" aria-label="원본 이미지 보기">
+                  <img src="${receipt.previewUrl}" class="w-7 h-7 object-cover rounded border border-slate-300" alt="썸네일" />
+                </button>
+              </td>
+            `;
+          }
+
+          html += `</tr>`;
+        });
+      });
+
+      tbody.innerHTML = html;
+    }
+
+    /**
+     * 데이터 인라인 수정 및 실시간 자동 계산
+     */
+    function updateReceiptField(receiptId, field, rawValue) {
+      const receipt = state.receipts.find(r => r.id === receiptId);
+      if (!receipt) return;
+
+      if (field === 'total') {
+        const val = Number(rawValue.replace(/[^0-9-]/g, '')) || 0;
+        receipt.total = val;
+      } else {
+        receipt[field] = rawValue.trim();
+      }
+
+      renderTable();
+      saveSessionStorage();
+    }
+
+    function updateItemField(receiptId, itemId, field, rawValue) {
+      const receipt = state.receipts.find(r => r.id === receiptId);
+      if (!receipt) return;
+      const item = receipt.items.find(i => i.id === itemId);
+      if (!item) return;
+
+      item[field] = rawValue.trim();
+      saveSessionStorage();
+    }
+
+    function updateItemNumericField(receiptId, itemId, field, rawValue) {
+      const receipt = state.receipts.find(r => r.id === receiptId);
+      if (!receipt) return;
+      const item = receipt.items.find(i => i.id === itemId);
+      if (!item) return;
+
+      const numVal = Number(rawValue.replace(/[^0-9-]/g, '')) || 0;
+      item[field] = numVal;
+
+      // 수량 x 단가 = 금액 자동 계산
+      if (field === 'qty' || field === 'unit_price') {
+        item.amount = item.qty * item.unit_price;
+      } else if (field === 'amount') {
+        if (item.qty > 0) item.unit_price = Math.round(item.amount / item.qty);
+      }
+
+      renderTable();
+      saveSessionStorage();
+    }
+
+    function toggleRowSelection(receiptId, isChecked) {
+      if (isChecked) state.selectedReceiptRowIds.add(receiptId);
+      else state.selectedReceiptRowIds.delete(receiptId);
+    }
+
+    /**
+     * 수동 행 추가 및 선택 행 삭제
+     */
+    function addNewRow() {
+      const newReceiptId = 'r_manual_' + Date.now();
+      const newItemId = newReceiptId + '_item_0';
+
+      const newReceipt = {
+        id: newReceiptId,
+        fileId: null,
+        previewUrl: 'https://placehold.co/100x100/2563eb/ffffff?text=Manual',
+        date: new Date().toISOString().substring(0, 10),
+        vendor: '신규 업체',
+        total: 0,
+        currency: 'KRW',
+        confidence: 1.0,
+        items: [{
+          id: newItemId,
+          name: '새 품목',
+          qty: 1,
+          unit_price: 0,
+          amount: 0
+        }]
+      };
+
+      state.receipts.unshift(newReceipt);
+      renderTable();
+      showToast('새 행이 추가되었습니다.', 'info');
+      saveSessionStorage();
+    }
+
+    function deleteSelectedRows() {
+      if (state.selectedReceiptRowIds.size === 0) {
+        showToast('삭제할 행을 선택해 주세요.', 'info');
+        return;
+      }
+
+      state.receipts = state.receipts.filter(r => !state.selectedReceiptRowIds.has(r.id));
+      state.selectedReceiptRowIds.clear();
+      renderTable();
+      showToast('선택한 항목이 삭제되었습니다.', 'success');
+      saveSessionStorage();
+    }
+
+    /**
+     * 내보내기 (Export) 기능
+     */
+    function getExportTargetData() {
+      const exportOnlySelected = $('exportSelectedOnly').checked;
+      let targetReceipts = state.receipts;
+
+      if (exportOnlySelected) {
+        if (state.selectedReceiptRowIds.size === 0) {
+          showToast('선택된 항목이 없습니다. 전체를 내보냅니다.', 'info');
+        } else {
+          targetReceipts = state.receipts.filter(r => state.selectedReceiptRowIds.has(r.id));
+        }
+      }
+
+      const rows = [];
+      let index = 1;
+
+      targetReceipts.forEach(r => {
+        r.items.forEach((it, idx) => {
+          rows.push({
+            no: index++,
+            date: r.date,
+            vendor: r.vendor,
+            itemName: it.name,
+            qty: it.qty,
+            unitPrice: it.unit_price,
+            amount: it.amount,
+            receiptTotal: idx === 0 ? r.total : ''
+          });
+        });
+      });
+
+      return { targetReceipts, rows };
+    }
+
+    function generateFilename(ext) {
+      const now = new Date();
+      const pad = (n) => String(n).padStart(2, '0');
+      const timeStr = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+      return `receipts_${timeStr}.${ext}`;
+    }
+
+    function exportData(type) {
+      const { targetReceipts, rows } = getExportTargetData();
+      if (rows.length === 0) {
+        showToast('내보낼 데이터가 없습니다.', 'error');
+        return;
+      }
+
+      const fileName = generateFilename(type);
+
+      if (type === 'json') {
+        const jsonStr = JSON.stringify(targetReceipts, null, 2);
+        downloadBlob(new Blob([jsonStr], { type: 'application/json' }), fileName);
+      } else if (type === 'csv') {
+        exportCSV(rows, fileName);
+      } else if (type === 'xlsx') {
+        exportXLSX(rows, fileName);
+      }
+    }
+
+    function exportCSV(rows, fileName) {
+      const headers = ['번호', '날짜', '업체명', '품목명', '수량', '단가', '금액', '영수증 합계'];
+      let csvContent = '\uFEFF'; // UTF-8 BOM
+
+      csvContent += headers.map(h => `"${h}"`).join(',') + '\n';
+
+      rows.forEach(r => {
+        const rowArr = [
+          r.no,
+          `"${(r.date || '').replace(/"/g, '""')}"`,
+          `"${(r.vendor || '').replace(/"/g, '""')}"`,
+          `"${(r.itemName || '').replace(/"/g, '""')}"`,
+          r.qty,
+          r.unitPrice,
+          r.amount,
+          r.receiptTotal !== '' ? r.receiptTotal : ''
+        ];
+        csvContent += rowArr.join(',') + '\n';
+      });
+
+      downloadBlob(new Blob([csvContent], { type: 'text/csv;charset=utf-8;' }), fileName);
+    }
+
+    function exportXLSX(rows, fileName) {
+      if (typeof XLSX === 'undefined') {
+        showToast('SheetJS 라이브러리를 로드하지 못했습니다. CSV로 다운로드합니다.', 'error');
+        exportCSV(rows, fileName.replace('.xlsx', '.csv'));
+        return;
+      }
+
+      const headers = ['번호', '날짜', '업체명', '품목명', '수량', '단가', '금액', '영수증 합계'];
+      const dataMatrix = [headers];
+
+      rows.forEach(r => {
+        dataMatrix.push([
+          r.no,
+          r.date,
+          r.vendor,
+          r.itemName,
+          r.qty,
+          r.unitPrice,
+          r.amount,
+          r.receiptTotal
+        ]);
+      });
+
+      const ws = XLSX.utils.aoa_to_sheet(dataMatrix);
+
+      // 열 너비 설정
+      ws['!cols'] = [
+        { wch: 6 },  // 번호
+        { wch: 12 }, // 날짜
+        { wch: 18 }, // 업체명
+        { wch: 24 }, // 품목명
+        { wch: 8 },  // 수량
+        { wch: 12 }, // 단가
+        { wch: 12 }, // 금액
+        { wch: 14 }  // 영수증 합계
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '영수증 내역');
+      XLSX.writeFile(wb, fileName);
+    }
+
+    function copyToClipboardTSV() {
+      const { rows } = getExportTargetData();
+      if (rows.length === 0) {
+        showToast('복사할 데이터가 없습니다.', 'error');
+        return;
+      }
+
+      const headers = ['번호', '날짜', '업체명', '품목명', '수량', '단가', '금액', '영수증 합계'];
+      let tsv = headers.join('\t') + '\n';
+
+      rows.forEach(r => {
+        tsv += [r.no, r.date, r.vendor, r.itemName, r.qty, r.unitPrice, r.amount, r.receiptTotal].join('\t') + '\n';
+      });
+
+      const textarea = document.createElement('textarea');
+      textarea.value = tsv;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+
+      try {
+        document.execCommand('copy');
+        showToast('클립보드에 복사되었습니다. (엑셀에 붙여넣기 가능)', 'success');
+      } catch (err) {
+        showToast('클립보드 복사에 실패했습니다.', 'error');
+      } finally {
+        document.body.removeChild(textarea);
+      }
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    /**
+     * 이미지 모달 및 회전
+     */
+    function openModal(imgUrl) {
+      state.rotationDeg = 0;
+      $('modalImage').style.transform = 'rotate(0deg)';
+      $('modalImage').src = imgUrl;
+      $('imageModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      $('imageModal').classList.add('hidden');
+      $('modalImage').src = '';
+    }
+
+    /**
+     * 토스트 알림 (alert 대체)
+     */
+    function showToast(message, type = 'info') {
+      const container = $('toastContainer');
+      const toast = document.createElement('div');
+
+      let bg = 'bg-slate-800 text-white';
+      if (type === 'error') bg = 'bg-red-600 text-white';
+      if (type === 'success') bg = 'bg-emerald-600 text-white';
+
+      toast.className = `p-3 rounded-xl shadow-lg text-xs font-semibold flex items-center gap-2 transform transition-all duration-300 translate-y-2 opacity-0 pointer-events-auto ${bg}`;
+      toast.innerText = message;
+
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      }, 10);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    /**
+     * SessionStorage 복구 및 저장
+     */
+    function saveSessionStorage() {
+      try {
+        sessionStorage.setItem('receipt_app_data', JSON.stringify(state.receipts));
+      } catch (e) {
+        console.warn('SessionStorage 저장 한도 초과:', e);
+      }
+    }
+
+    function restoreSessionStorage() {
+      try {
+        const saved = sessionStorage.getItem('receipt_app_data');
+        if (saved) {
+          state.receipts = JSON.parse(saved);
+          if (state.receipts.length > 0) {
+            renderTable();
+            showToast('이전 작업 복원됨', 'info');
+          }
+        }
+      } catch (e) {
+        console.error('SessionStorage 복원 오류:', e);
+      }
+    }
+  </script>
+</body>
+</html>

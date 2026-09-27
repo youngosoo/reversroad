@@ -1,0 +1,22 @@
+{
+  "name": "리버스로드",
+  "tagline": "직접 만든 웹앱을 한 곳에 모아 두는 홈페이지",
+  "description": "설치 없이 브라우저에서 바로 실행되는 단일 파일 웹앱을 모아 소개하는 사이트입니다. 각 앱은 인터넷이 없어도 동작하며, 입력한 내용은 서버가 아니라 사용자의 브라우저에만 저장됩니다.",
+  "owner": "박영수",
+  "email": "jademol@naver.com",
+  "domain": "",
+  "locale": "ko",
+  "adsense": {
+    "client": "ca-pub-7170278463678851",
+    "slotInline": ""
+  },
+  "analytics": {
+    "ga4": ""
+  },
+  "social": {
+    "github": "",
+    "youtube": "",
+    "threads": ""
+  },
+  "updatedAt": "2026-09-27T09:21:01.283Z"
+}

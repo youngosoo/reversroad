@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>로그인</title>
+<script src="/assets/theme.js"></script>
+<link rel="stylesheet" href="/assets/style.css" />
+</head>
+<body>
+<div class="wrap">
+  <div class="card login-card">
+    <img class="brand-logo login-logo" src="/assets/logo.png" width="52" height="52" alt="" />
+    <h1>관리자 로그인</h1>
+    <p>앱을 추가하거나 삭제하려면 로그인하세요.</p>
+    <div id="providers"></div>
+    <div id="dev" hidden>
+      <div class="divider">개발용 로그인</div>
+      <form id="devForm" class="row">
+        <input id="devAs" type="text" placeholder="ADMIN_LOGINS 값" />
+        <button class="btn" type="submit">개발 로그인</button>
+      </form>
+    </div>
+    <p class="muted" style="margin-top:18px"><a href="/">← 홈으로 돌아가기</a></p>
+  </div>
+  <p style="text-align:center;margin-top:14px"><button class="theme-toggle" type="button" data-theme-toggle aria-pressed="false" title="테마 전환" aria-label="테마 전환"></button></p>
+</div>
+<script>
+const next = new URLSearchParams(location.search).get('next') || '/admin.html';
+const box = document.getElementById('providers');
+
+fetch('/api/site').then((r) => r.json()).then(({ site }) => {
+  document.title = `로그인 · ${site.name || '사이트'}`;
+}).catch(() => {});
+
+fetch('/auth/me').then((r) => r.json()).then(({ providers, allowDevLogin, user }) => {
+  if (user) { location.href = next; return; }
+  const buttons = Object.entries(providers || {})
+    .filter(([, p]) => p.enabled)
+    .map(([key, p]) => `<a class="btn" href="/auth/${key}">${p.label}(으)로 로그인</a>`);
+  box.innerHTML = buttons.join('') ||
+    '<p class="notice err" style="display:block">설정된 로그인 제공자가 없습니다. <span class="mono">.env</span> 에 GITHUB_CLIENT_ID/SECRET 또는 GOOGLE_CLIENT_ID/SECRET 을 넣고 서버를 다시 시작하세요.</p>';
+  if (allowDevLogin) document.getElementById('dev').hidden = false;
+});
+
+document.getElementById('devForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const as = document.getElementById('devAs').value.trim();
+  location.href = `/auth/dev-login?as=${encodeURIComponent(as)}&next=${encodeURIComponent(next)}`;
+});
+</script>
+</body>
+</html>

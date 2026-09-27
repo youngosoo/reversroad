@@ -52,7 +52,9 @@ if (!fs.existsSync(DIST)) {
 }
 
 const files = walk(DIST);
-const htmlFiles = files.filter((f) => f.endsWith('.html'));
+// 관리자·로그인 화면은 공개 페이지가 아니므로 점검 대상에서 제외합니다 (검색엔진 비노출)
+const PRIVATE_PAGES = ['/admin.html', '/login.html'];
+const htmlFiles = files.filter((f) => f.endsWith('.html') && !PRIVATE_PAGES.includes('/' + rel(f).split(path.sep).join('/')));
 const existing = new Set(files.map((f) => '/' + rel(f).split(path.sep).join('/')));
 
 // ---------- 1) 페이지별 점검

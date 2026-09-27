@@ -17,10 +17,7 @@ const path = require('path');
 
 const manifest = require('../src/manifest');
 const siteStore = require('../src/site');
-const seo = require('../src/seo');
-const pages = require('../src/views/pages');
-const { GUIDES, findGuide } = require('../src/content/guides');
-const categories = require('../src/categories');
+const build = require('../src/build');
 
 const ROOT = path.join(__dirname, '..');
 const PUBLIC_DIR = path.join(ROOT, 'public');
@@ -44,6 +41,12 @@ async function writeFile(rel, contents) {
   await fsp.mkdir(path.dirname(target), { recursive: true });
   await fsp.writeFile(target, contents, 'utf8');
   return target;
+}
+
+async function copyFile(from, to) {
+  await fsp.mkdir(path.dirname(to), { recursive: true });
+  await fsp.copyFile(from, to);
+  return to;
 }
 
 async function copyDir(from, to, { skip = [] } = {}) {
@@ -137,38 +140,17 @@ function injectAppHead(html, { app, site }) {
   await fsp.rm(OUT, { recursive: true, force: true });
   await fsp.mkdir(OUT, { recursive: true });
 
-  // 1) 페이지
+  // 1~3) 페이지·검색엔진 파일 렌더링 (Worker 와 같은 함수를 씁니다)
+  const rendered = build.renderSite({ site, apps });
   const written = [];
-  written.push(await writeFile('index.html', pages.homePage({ site, apps, guides: GUIDES })));
-  written.push(await writeFile('apps/index.html', pages.appsPage({ site, apps })));
-  for (const app of apps) {
-    written.push(await writeFile(path.join('app', app.id, 'index.html'), pages.appDetailPage({ site, app, apps })));
+  for (const [rel, contents] of Object.entries(rendered)) {
+    written.push(await writeFile(rel, contents));
   }
-  written.push(await writeFile('guide/index.html', pages.guideIndexPage({ site, apps, guides: GUIDES })));
-  for (const guide of GUIDES) {
-    written.push(await writeFile(path.join('guide', guide.slug, 'index.html'), pages.guideDetailPage({ site, guide, apps })));
-  }
-  written.push(await writeFile('categories/index.html', pages.categoriesPage({ site, apps })));
-  const usedCategories = new Set(apps.map((a) => a.category).filter(Boolean));
-  for (const category of categories.listCategories()) {
-    if (!usedCategories.has(category.slug)) continue; // 앱이 없는 분야는 빈 페이지가 되므로 만들지 않습니다
-    written.push(await writeFile(path.join('category', category.slug, 'index.html'), pages.categoryPage({ site, apps, category })));
-  }
-  written.push(await writeFile('about/index.html', pages.aboutPage({ site, apps, guides: GUIDES })));
-  written.push(await writeFile('contact/index.html', pages.contactPage({ site })));
-  written.push(await writeFile('privacy/index.html', pages.policyPage({ site, doc: pages.privacyPolicy(site) })));
-  written.push(await writeFile('terms/index.html', pages.policyPage({ site, doc: pages.termsOfService(site) })));
-  written.push(await writeFile('disclaimer/index.html', pages.policyPage({ site, doc: pages.disclaimer(site) })));
-  written.push(await writeFile('404.html', pages.notFoundPage({ site })));
+  written.push(await writeFile('_headers', build.HEADERS));
 
-  // 2) 검색엔진·광고용 파일
-  written.push(await writeFile('robots.txt', seo.robots({ site })));
-  written.push(await writeFile('sitemap.xml', seo.sitemap({ site, apps })));
-  const ads = seo.adsTxt({ site });
-  if (ads) written.push(await writeFile('ads.txt', ads));
-
-  // 3) Cloudflare 설정 파일
-  written.push(await writeFile('_headers', HEADERS));
+  // 관리자·로그인 화면도 함께 올립니다 (Worker 가 인증을 걸고 내려보냅니다)
+  await copyFile(path.join(PUBLIC_DIR, 'admin.html'), path.join(OUT, 'admin.html'));
+  await copyFile(path.join(PUBLIC_DIR, 'login.html'), path.join(OUT, 'login.html'));
 
   // 4) 정적 자산과 앱 파일 복사 (관리자·로그인 화면은 제외)
   await copyDir(path.join(PUBLIC_DIR, 'assets'), path.join(OUT, 'assets'));

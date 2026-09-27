@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="ko"><head><script>(function(firebaseConfig, initialAuthToken, appId) {
+        window.__firebase_config = firebaseConfig;
+        window.__initial_auth_token = initialAuthToken;
+        window.__app_id = appId;
+            })("\n{\n  \"apiKey\": \"AIzaSyCqyCcs2R2e7AegGjvFAwG98wlamtbHvZY\",\n  \"authDomain\": \"bard-frontend.firebaseapp.com\",\n  \"projectId\": \"bard-frontend\",\n  \"storageBucket\": \"bard-frontend.firebasestorage.app\",\n  \"messagingSenderId\": \"175205271074\",\n  \"appId\": \"1:175205271074:web:2b7bd4d34d33bf38e6ec7b\"\n}\n","eyJhbGciOiJSUzI1NiIsImtpZCI6ImE1MTMzNTUyZGIzZmQ1ZWM5NjdlZWFkNjk3ZjNhZTgwYjliNzk1ZjQiLCJ0eXAiOiJKV1QifQ.eyJzdWIiOiJmaXJlYmFzZS1hZG1pbnNkay1mYnN2Y0BiYXJkLWZyb250ZW5kLmlhbS5nc2VydmljZWFjY291bnQuY29tIiwiYXVkIjoiaHR0cHM6Ly9pZGVudGl0eXRvb2xraXQuZ29vZ2xlYXBpcy5jb20vZ29vZ2xlLmlkZW50aXR5LmlkZW50aXR5dG9vbGtpdC52MS5JZGVudGl0eVRvb2xraXQiLCJ1aWQiOiIwMzcxNTg1MTQ5MDE3NjA1NTg3NCIsImlzcyI6ImZpcmViYXNlLWFkbWluc2RrLWZic3ZjQGJhcmQtZnJvbnRlbmQuaWFtLmdzZXJ2aWNlYWNjb3VudC5jb20iLCJjbGFpbXMiOnsiYXBwSWQiOiJjXzlhMmE4NWM5ZGVhN2QxN2Vfd2F2X3NwbGl0dGVyLmh0bWwtOTkxIn0sImV4cCI6MTc3OTE3NDY3NywiaWF0IjoxNzc5MTcxMDc3LCJhbGciOiJSUzI1NiJ9.kiZtF0K53mbb_qiPUiHa6V0EggcDytlG_uXzyuEIcA9Ns7Gjb1ackR_lBi-pl82zodj0rPJYIwUcOSfToyFTtaOuHCMIc-g0KtFDKpczklHL-Lbi5DnBX8mRzn9E0rT0Mjgfrf2Tu6N29-Pm6NNdfDWsf2h6WBxGnGDiv_8ebcFDEnb0ltteaZab_MWKn1F1o_nMqnmvKsMPnJ1ncauGaDQ1dSI-AVmra3eJB9oaltiN7hn7SqeDmCkkW94YMbD_x1few5oisZUL0nw6-e1t0T2z-00cd8IAzsKyXFsvAhZXUFTgUQlW8rcki19SgZcuMt3p39JEP_i3lYMNdUmE-A","c_9a2a85c9dea7d17e_wav_splitter.html-991")</script><script>(function(){'use strict';var h=typeof Object.defineProperties=="function"?Object.defineProperty:function(a,b,d){if(a==Array.prototype||a==Object.prototype)return a;a[b]=d.value;return a};function l(a){a=["object"==typeof globalThis&&globalThis,a,"object"==typeof window&&window,"object"==typeof self&&self,"object"==typeof global&&global];for(var b=0;b<a.length;++b){var d=a[b];if(d&&d.Math==Math)return d}throw Error("Cannot find global object");}var n=l(this);
+function p(a,b){if(b)a:{var d=n;a=a.split(".");for(var c=0;c<a.length-1;c++){var e=a[c];if(!(e in d))break a;d=d[e]}a=a[a.length-1];c=d[a];b=b(c);b!=c&&b!=null&&h(d,a,{configurable:!0,writable:!0,value:b})}}function r(a){function b(c){return a.next(c)}function d(c){return a.throw(c)}return new Promise(function(c,e){function f(g){g.done?c(g.value):Promise.resolve(g.value).then(b,d).then(f,e)}f(a.next())})}function t(a){return r(a())}
+p("Object.values",function(a){return a?a:function(b){var d=[],c;for(c in b)Object.prototype.hasOwnProperty.call(b,c)&&d.push(b[c]);return d}});p("Array.prototype.includes",function(a){return a?a:function(b,d){var c=this;c instanceof String&&(c=String(c));var e=c.length;d=d||0;for(d<0&&(d=Math.max(d+e,0));d<e;d++){var f=c[d];if(f===b||Object.is(f,b))return!0}return!1}});/*
+
+ MIT License
+
+ Copyright (c) 2017-2023 W.Y.
+
+ Permission is hereby granted, free of charge, to any person obtaining a copy
+ of this software and associated documentation files (the "Software"), to deal
+ in the Software without restriction, including without limitation the rights
+ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ copies of the Software, and to permit persons to whom the Software is
+ furnished to do so, subject to the following conditions:
+
+ The above copyright notice and this permission notice shall be included in
+ all copies or substantial portions of the Software.
+
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ SOFTWARE.
+
+*/
+function u(a,b){var d=a.style;b.backgroundColor&&(d.backgroundColor=b.backgroundColor);b.width&&(d.width=`${b.width}px`);b.height&&(d.height=`${b.height}px`);var c=b.style;c!=null&&Object.keys(c).forEach(e=>{d[e]=c[e]})};var v=(()=>{var a=0;return()=>{a+=1;return`u${`0000${(Math.random()*1679616<<0).toString(36)}`.slice(-4)}${a}`}})();function w(a){var b=[];for(let d=0,c=a.length;d<c;d++)b.push(a[d]);return b}let x=null;function y(a={}){return x?x:a.l?x=a.l:x=w(window.getComputedStyle(document.documentElement))}function z(a,b){return(a=(a.ownerDocument.defaultView||window).getComputedStyle(a).getPropertyValue(b))?parseFloat(a.replace("px","")):0}
+function A(a,b={}){var d;if(!(d=b.width)){d=z(a,"border-left-width");var c=z(a,"border-right-width");d=a.clientWidth+d+c}(b=b.height)||(b=z(a,"border-top-width"),c=z(a,"border-bottom-width"),b=a.clientHeight+b+c);return{width:d,height:b}}function B(a){return new Promise((b,d)=>{var c=new Image;c.onload=()=>{c.decode().then(()=>{requestAnimationFrame(()=>b(c))})};c.onerror=d;c.crossOrigin="anonymous";c.decoding="async";c.src=a})}
+function C(a){return t(function*(){return Promise.resolve().then(()=>(new XMLSerializer).serializeToString(a)).then(encodeURIComponent).then(b=>`data:image/svg+xml;charset=utf-8,${b}`)})}
+function D(a,b,d){return t(function*(){var c=document.createElementNS("http://www.w3.org/2000/svg","svg"),e=document.createElementNS("http://www.w3.org/2000/svg","foreignObject");c.setAttribute("width",`${b}`);c.setAttribute("height",`${d}`);c.setAttribute("viewBox",`0 0 ${b} ${d}`);e.setAttribute("width","100%");e.setAttribute("height","100%");e.setAttribute("x","0");e.setAttribute("y","0");e.setAttribute("externalResourcesRequired","true");c.appendChild(e);e.appendChild(a);return C(c)})}
+var E=(a,b)=>{if(a instanceof b)return!0;a=Object.getPrototypeOf(a);return a===null?!1:a.constructor.name===b.name||E(a,b)};function F(a,b){return y(b).map(d=>{var c=a.getPropertyValue(d),e=a.getPropertyPriority(d);return`${d}: ${c}${e?" !important":""};`}).join(" ")}
+function G(a,b,d,c){a=window.getComputedStyle(a,d);var e=a.getPropertyValue("content");if(e!==""&&e!=="none"){var f=v();try{b.className=`${b.className} ${f}`}catch(k){return}e=document.createElement("style");var g=e.appendChild;d=`.${f}:${d}`;a.cssText?(c=a.getPropertyValue("content"),c=`${a.cssText} content: '${c.replace(/'|"/g,"")}';`):c=F(a,c);g.call(e,document.createTextNode(`${d}{${c}}`));b.appendChild(e)}};function H(a){return a.search(/^(data:)/)!==-1}function I(a,b,d){return t(function*(){var c=yield fetch(a,b);if(c.status===404)throw Error(`Resource "${c.url}" not found`);var e=yield c.blob();return new Promise((f,g)=>{var k=new FileReader;k.onerror=g;k.onloadend=()=>{try{f(d({o:c,result:k.result}))}catch(m){g(m)}};k.readAsDataURL(e)})})}const J={};function K(a,b,d){var c=a.replace(/\?.*/,"");d&&(c=a);/ttf|otf|eot|woff2?/i.test(c)&&(c=c.replace(/.*\//,""));return b?`[${b}]${c}`:c}
+function L(a,b,d){return t(function*(){var c=K(a,b,d.C);if(J[c]!=null)return J[c];d.u&&(a+=(/\?/.test(a)?"&":"?")+(new Date).getTime());try{let f=yield I(a,d.i,({o:g,result:k})=>{b||(b=g.headers.get("Content-Type")||"");return k.split(/,/)[1]});var e=`data:${b};base64,${f}`}catch(f){e=d.B||""}return J[c]=e})};const M={P:"application/font-woff",R:"application/font-woff",N:"application/font-truetype",v:"application/vnd.ms-fontobject",H:"image/png",F:"image/jpeg",D:"image/jpeg",A:"image/gif",M:"image/tiff",L:"image/svg+xml",O:"image/webp"};function N(a){return(a=/\.([^./]*?)$/g.exec(a))?a[1]:""};function O(a){return t(function*(){var b=a.toDataURL();return b==="data:,"?a.cloneNode(!1):B(b)})}function aa(a,b){return t(function*(){if(a.currentSrc){var d=document.createElement("canvas");let c=d.getContext("2d");d.width=a.clientWidth;d.height=a.clientHeight;c==null||c.drawImage(a,0,0,d.width,d.height);d=d.toDataURL();return B(d)}d=a.poster;d=yield L(d,M[N(d).toLowerCase()]||"",b);return B(d)})}
+function ba(a,b){return t(function*(){try{let d;if(a==null?0:(d=a.contentDocument)==null?0:d.body)return yield P(a.contentDocument.body,b,!0)}catch(d){}return a.cloneNode(!1)})}function ca(a,b){return t(function*(){return E(a,HTMLCanvasElement)?O(a):E(a,HTMLVideoElement)?aa(a,b):E(a,HTMLIFrameElement)?ba(a,b):a.cloneNode(a.tagName!=null&&a.tagName.toUpperCase()==="SVG")})}
+function da(a,b,d){return t(function*(){if(b.tagName!=null&&b.tagName.toUpperCase()==="SVG")return b;var c=[];if(a.tagName!=null&&a.tagName.toUpperCase()==="SLOT"&&a.assignedNodes)c=w(a.assignedNodes());else{let e;if(E(a,HTMLIFrameElement)&&((e=a.contentDocument)==null?0:e.body))c=w(a.contentDocument.body.childNodes);else{let f;c=w(((f=a.shadowRoot)!=null?f:a).childNodes)}}if(c.length===0||E(a,HTMLVideoElement))return b;yield c.reduce((e,f)=>e.then(()=>P(f,d)).then(g=>{g&&b.appendChild(g)}),Promise.resolve());
+return b})}function ea(a,b,d){var c=b.style;if(c){var e=window.getComputedStyle(a);e.cssText?(c.cssText=e.cssText,c.transformOrigin=e.transformOrigin):y(d).forEach(f=>{var g=e.getPropertyValue(f);f==="font-size"&&g.endsWith("px")&&(g=`${Math.floor(parseFloat(g.substring(0,g.length-2)))-.1}px`);E(a,HTMLIFrameElement)&&f==="display"&&g==="inline"&&(g="block");f==="d"&&b.getAttribute("d")&&(g=`path(${b.getAttribute("d")})`);c.setProperty(f,g,e.getPropertyPriority(f))})}}
+function fa(a,b){E(a,HTMLSelectElement)&&(b=Array.from(b.children).find(d=>a.value===d.getAttribute("value")))&&b.setAttribute("selected","")}
+function ha(a,b){return t(function*(){var d=a.querySelectorAll?a.querySelectorAll("use"):[];if(d.length===0)return a;var c={};for(var e=0;e<d.length;e++){var f=d[e].getAttribute("xlink:href");if(f){let g=document.querySelector(f);a.querySelector(f)||!g||c[f]||(c[f]=yield P(g,b,!0))}}d=Object.values(c);if(d.length){c=document.createElementNS("http://www.w3.org/1999/xhtml","svg");c.setAttribute("xmlns","http://www.w3.org/1999/xhtml");c.style.position="absolute";c.style.width="0";c.style.height="0";
+c.style.overflow="hidden";c.style.display="none";e=document.createElementNS("http://www.w3.org/1999/xhtml","defs");c.appendChild(e);for(f=0;f<d.length;f++)e.appendChild(d[f]);a.appendChild(c)}return a})}
+function P(a,b,d){return t(function*(){return d||!b.filter||b.filter(a)?Promise.resolve(a).then(c=>ca(c,b)).then(c=>da(a,c,b)).then(c=>{E(c,Element)&&(ea(a,c,b),G(a,c,":before",b),G(a,c,":after",b),E(a,HTMLTextAreaElement)&&(c.textContent=a.value),E(a,HTMLInputElement)&&c.setAttribute("value",a.value),fa(a,c));return c}).then(c=>ha(c,b)):null})};const Q=/url\((['"]?)([^'"]+?)\1\)/g,ia=/url\([^)]+\)\s*format\((["']?)([^"']+)\1\)/g,ja=/src:\s*(?:url\([^)]+\)\s*format\([^)]+\)[,;]\s*)+/g;function ka(a){var b=[];a.replace(Q,(d,c,e)=>{b.push(e);return d});return b.filter(d=>!H(d))}
+function la(a,b,d,c){return t(function*(){try{let e=d?(new URL(b,d||void 0)).toString():b,f;f=yield L(e,M[N(b).toLowerCase()]||"",c);return a.replace(new RegExp(`(url\\(['"]?)(${b.replace(/([.*+?^${}()|\[\]\/\\])/g,"\\$1")})(['"]?\\))`,"g"),`$1${f}$3`)}catch(e){}return a})}function ma(a,{I:b}){return b?a.replace(ja,d=>{for(;;){let [c,,e]=ia.exec(d)||[];if(!e)return"";if(e===b)return`src: ${c};`}}):a}
+function R(a,b,d){return t(function*(){if(a.search(Q)===-1)return a;var c=ma(a,d);return ka(c).reduce((e,f)=>e.then(g=>la(g,f,b,d)),Promise.resolve(c))})};function S(a,b,d){return t(function*(){var c,e=(c=b.style)==null?void 0:c.getPropertyValue(a);return e?(c=yield R(e,null,d),b.style.setProperty(a,c,b.style.getPropertyPriority(a)),!0):!1})}function na(a,b){return t(function*(){(yield S("background",a,b))||(yield S("background-image",a,b));(yield S("mask",a,b))||(yield S("-webkit-mask",a,b))||(yield S("mask-image",a,b))||(yield S("-webkit-mask-image",a,b))})}
+function oa(a,b){return t(function*(){var d=E(a,HTMLImageElement);if(d&&!H(a.src)||E(a,SVGImageElement)&&!H(a.href.baseVal)){var c=d?a.src:a.href.baseVal,e=yield L(c,M[N(c).toLowerCase()]||"",b);yield new Promise((f,g)=>{a.onload=f;a.onerror=b.m?(...k)=>{try{f(b.m(...k))}catch(m){g(m)}}:g;a.decode&&(a.decode=f);a.loading==="lazy"&&(a.loading="eager");d?(a.srcset="",a.src=e):a.href.baseVal=e})}})}
+function pa(a,b){return t(function*(){var d=w(a.childNodes).map(c=>T(c,b));yield Promise.all(d).then(()=>a)})}function T(a,b){return t(function*(){E(a,Element)&&(yield na(a,b),yield oa(a,b),yield pa(a,b))})};const U={};function V(a){return t(function*(){var b=U[a];if(b!=null)return b;b=yield(yield fetch(a)).text();b={url:a,cssText:b};return U[a]=b})}function W(a,b){return t(function*(){var d=a.cssText,c=/url\(["']?([^"')]+)["']?\)/g,e=(d.match(/url\([^)]+\)/g)||[]).map(f=>t(function*(){var g=f.replace(c,"$1");g.startsWith("https://")||(g=(new URL(g,a.url)).href);return I(g,b.i,({result:k})=>{d=d.replace(f,`url(${k})`);return[f,k]})}));return Promise.all(e).then(()=>d)})}
+function X(a){if(a==null)return[];var b=[];a=a.replace(/(\/\*[\s\S]*?\*\/)/gi,"");for(var d=RegExp("((@.*?keyframes [\\s\\S]*?){([\\s\\S]*?}\\s*?)})","gi");;){var c=d.exec(a);if(c===null)break;b.push(c[0])}a=a.replace(d,"");d=/@import[\s\S]*?url\([^)]*\)[\s\S]*?;/gi;for(c=RegExp("((\\s*?(?:\\/\\*[\\s\\S]*?\\*\\/)?\\s*?@media[\\s\\S]*?){([\\s\\S]*?)}\\s*?})|(([\\s\\S]*?){([\\s\\S]*?)})","gi");;){let e=d.exec(a);if(e===null)if(e=c.exec(a),e===null)break;else d.lastIndex=c.lastIndex;else c.lastIndex=
+d.lastIndex;b.push(e[0])}return b}
+function qa(a,b){return t(function*(){var d=[],c=[];a.forEach(e=>{if("cssRules"in e)try{w(e.cssRules||[]).forEach((f,g)=>{if(f.type===CSSRule.IMPORT_RULE){let k=g+1;f=V(f.href).then(m=>W(m,b)).then(m=>X(m).forEach(q=>{try{e.insertRule(q,q.startsWith("@import")?k+=1:e.cssRules.length)}catch(Da){}})).catch(()=>{});c.push(f)}})}catch(f){let g=a.find(k=>k.href==null)||document.styleSheets[0];e.href!=null&&c.push(V(e.href).then(k=>W(k,b)).then(k=>X(k).forEach(m=>{g.insertRule(m,g.cssRules.length)})).catch(()=>
+{}))}});return Promise.all(c).then(()=>{a.forEach(e=>{if("cssRules"in e)try{w(e.cssRules||[]).forEach(f=>{d.push(f)})}catch(f){}});return d})})}function ra(a){return a.filter(b=>b.type===CSSRule.FONT_FACE_RULE).filter(b=>b.style.getPropertyValue("src").search(Q)!==-1)}function sa(a,b){return t(function*(){if(a.ownerDocument==null)throw Error("Provided element is not within a Document");var d=w(a.ownerDocument.styleSheets);d=yield qa(d,b);return ra(d)})}
+function ta(a){function b(c){(c.style.fontFamily||getComputedStyle(c).fontFamily).split(",").forEach(e=>{d.add(e.trim().replace(/["']/g,""))});Array.from(c.children).forEach(e=>{e instanceof HTMLElement&&b(e)})}var d=new Set;b(a);return d}function ua(a,b){return t(function*(){var d=yield sa(a,b),c=ta(a);return(yield Promise.all(d.filter(e=>c.has(e.style.fontFamily.trim().replace(/["']/g,""))).map(e=>R(e.cssText,e.parentStyleSheet?e.parentStyleSheet.href:null,b)))).join("\n")})}
+function va(a,b){return t(function*(){var d=b.j!=null?b.j:b.K?null:yield ua(a,b);if(d){let c=document.createElement("style");c.appendChild(document.createTextNode(d));a.firstChild?a.insertBefore(c,a.firstChild):a.appendChild(c)}})};function wa(a,b={}){return t(function*(){var {width:d,height:c}=A(a,b),e=yield P(a,b,!0);yield va(e,b);yield T(e,b);u(e,b);return yield D(e,d,c)})}
+function xa(a,b={}){return t(function*(){var {width:d,height:c}=A(a,b),e=yield wa(a,b);e=yield B(e);var f=document.createElement("canvas"),g=f.getContext("2d"),k=b.G||window.devicePixelRatio||1,m=b.h||d,q=b.g||c;f.width=m*k;f.height=q*k;!b.J&&(f.width>16384||f.height>16384)&&(f.width>16384&&f.height>16384?f.width>f.height?(f.height*=16384/f.width,f.width=16384):(f.width*=16384/f.height,f.height=16384):f.width>16384?(f.height*=16384/f.width,f.width=16384):(f.width*=16384/f.height,f.height=16384));
+f.style.width=`${m}`;f.style.height=`${q}`;b.backgroundColor&&(g.fillStyle=b.backgroundColor,g.fillRect(0,0,f.width,f.height));g.drawImage(e,0,0,f.width,f.height);return f})}function ya(a,b={}){return t(function*(){return(yield xa(a,b)).toDataURL()})};const za=["gemini.google.com","corp.google.com","proxy.googlers.com"];function Y(){return document.body.querySelectorAll('[class*="animate"]').length>0}function Z(a){return t(function*(){try{return yield ya(a,{h:a.offsetWidth,g:a.offsetHeight})}catch(d){var b=a.offsetHeight;let c=document.createElement("canvas");c.width=a.offsetWidth;c.height=b;return c.toDataURL("image/png")}})}
+function Aa(){return t(function*(){var a=document.body.offsetWidth,b=document.body.offsetHeight,d=document.body.cloneNode(!0);d.querySelectorAll('[class*="animate"]').forEach(c=>{c.classList.remove(...Array.from(c.classList).filter(e=>e.startsWith("animate")))});d.style.width=`${a}px`;d.style.height=`${b}px`;return d})}
+function Ba(a){return t(function*(){var b=document.body;if(Y()){var d=yield Aa();b=d;document.body.appendChild(d)}d=yield Z(b);Y()&&document.body.removeChild(b);window.parent.postMessage({type:"SEND_SCREENSHOT",image:d,topOffset:document.documentElement.scrollTop},a.origin)})}function Ca(a){return t(function*(){var b={type:"SEND_SCREENSHOT_FOR_DATA_VISUALIZATION",image:yield Z(document.body),topOffset:0};window.parent.postMessage(b,a.origin)})}
+window.addEventListener("message",a=>t(function*(){if(za.some(d=>a.origin.includes(d))){var b=a.data;b&&(b.type==="MAKE_SCREENSHOT"&&(yield Ba(a)),b.type==="MAKE_SCREENSHOT_FOR_DATA_VISUALIZATION"&&(yield Ca(a)))}}));
+})();</script><script>(function() {
+  // Ensure this script is executed only once
+  if (window.firebaseAuthBridgeScriptLoaded) {
+    return;
+  }
+  window.firebaseAuthBridgeScriptLoaded = true;
+
+  let nextTokenPromiseId = 0;
+
+  // Stores { resolve, reject } for ongoing token requests
+  const pendingTokenPromises = {};
+
+  // Listen for messages from the Host Application
+  window.addEventListener('message', function(event) {
+
+    const messageData = event.data;
+
+  if (messageData && messageData.type === 'RESOLVE_NEW_FIREBASE_TOKEN') {
+      const { success, token, error, promiseId } = messageData ?? {};
+      if (pendingTokenPromises[promiseId]) {
+        if (success) {
+          pendingTokenPromises[promiseId].resolve(token);
+        } else {
+          pendingTokenPromises[promiseId].reject(new Error(error || 'Token refresh failed from host.'));
+        }
+        delete pendingTokenPromises[promiseId];
+      }
+    }
+  });
+
+  // Expose a function for the Generated App to request a new Firebase token
+  window.requestNewFirebaseToken = function() {
+    const currentPromiseId = nextTokenPromiseId++;
+    const promise = new Promise((resolve, reject) => {
+      pendingTokenPromises[currentPromiseId] = { resolve, reject };
+    });
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({
+        type: 'REQUEST_NEW_FIREBASE_TOKEN',
+        promiseId: currentPromiseId
+      }, '*');
+    } else {
+      pendingTokenPromises[currentPromiseId].reject(new Error('No parent window to request token from.'));
+      delete pendingTokenPromises[currentPromiseId];
+    }
+    return promise;
+  };
+})();</script><script>
+let realOriginalGetUserMedia = null;
+if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+  realOriginalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+}
+
+(function() {
+  if (navigator.mediaDevices && navigator.mediaDevices.__proto__) {
+    try {
+      Object.defineProperty(navigator.mediaDevices.__proto__, 'getUserMedia', {
+        get: function() {
+          return undefined; // Or throw an error
+        },
+        configurable: false
+      });
+    } catch (error) {
+      console.error("Error defining prototype getter:", error);
+    }
+  }
+})();
+
+(function() {
+  const pendingMediaResolvers = {};
+  let nextMediaPromiseId = 0;
+
+  function requestMediaPermissions(constraints) {
+    const mediaPromiseId = nextMediaPromiseId++;
+    const promise = new Promise((resolve, reject) => {
+      pendingMediaResolvers[mediaPromiseId] = (granted) => {
+        delete pendingMediaResolvers[mediaPromiseId];
+        resolve(granted);
+      };
+    });
+
+    window.parent.postMessage({
+      type: 'requestMediaPermission',
+      constraints: constraints,
+      promiseId: mediaPromiseId,
+    }, '*');
+
+    return promise;
+  }
+
+  let originalGetUserMedia = realOriginalGetUserMedia;
+
+  function interceptGetUserMedia() {
+    if (navigator.mediaDevices) {
+      Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {
+        value: function(constraints) {
+          return requestMediaPermissions(constraints).then((granted) => {
+            if (granted) {
+              if (originalGetUserMedia) {
+                return originalGetUserMedia(constraints);
+              } else {
+                throw new Error("Original getUserMedia not available.");
+              }
+            } else {
+              throw new DOMException('Permission denied', 'NotAllowedError');
+            }
+          });
+        },
+        writable: false,
+        configurable: false
+      });
+    }
+  }
+
+  interceptGetUserMedia();
+
+  const observer = new MutationObserver(function(mutationsList, observer) {
+    for (const mutation of mutationsList) {
+      if (mutation.type === 'reconfigured' && mutation.name === 'getUserMedia' && mutation.object === navigator.mediaDevices) {
+        interceptGetUserMedia();
+      } else if (mutation.type === 'attributes' && mutation.attributeName === 'getUserMedia' && mutation.target === navigator.mediaDevices) {
+        interceptGetUserMedia();
+      } else if (mutation.type === 'childList' && mutation.addedNodes) {
+        mutation.addedNodes.forEach(node => {
+          if (node === navigator.mediaDevices) {
+            interceptGetUserMedia();
+          }
+        });
+      }
+    }
+  });
+
+  function interceptSpeechRecognition() {
+    if (!window.SpeechRecognition && !window.webkitSpeechRecognition) {
+      return;
+    }
+
+    const OriginalSpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    const SpeechRecognitionWrapper = function(...args) {
+      const recognizer = new OriginalSpeechRecognition(...args);
+      const originalStart = recognizer.start.bind(recognizer);
+
+      recognizer.start = function() {
+        requestMediaPermissions({ audio: true }).then(granted => {
+          if (granted) {
+            originalStart();
+          } else {
+            const errorEvent = new SpeechRecognitionErrorEvent('error');
+            errorEvent.error = 'not-allowed'; // This is the standard error for permission denial.
+            recognizer.dispatchEvent(errorEvent);
+          }
+        });
+      };
+
+      return recognizer;
+    };
+
+    SpeechRecognitionWrapper.prototype = OriginalSpeechRecognition.prototype;
+    SpeechRecognitionWrapper.prototype.constructor = SpeechRecognitionWrapper;
+
+    if (window.SpeechRecognition) {
+      window.SpeechRecognition = SpeechRecognitionWrapper;
+    }
+    if (window.webkitSpeechRecognition) {
+      window.webkitSpeechRecognition = SpeechRecognitionWrapper;
+    }
+  }
+
+  interceptSpeechRecognition();
+
+  window.addEventListener('message', function(event) {
+    if (event.data) {
+      if (event.data.type === 'resolveMediaPermission') {
+        const { promiseId, granted } = event.data;
+        if (pendingMediaResolvers[promiseId]) {
+          pendingMediaResolvers[promiseId](granted);
+        }
+      }
+    }
+  });
+
+})();</script><script ws-interception-config="{&quot;parentOrigin&quot;:&quot;https://gemini.google.com&quot;,&quot;proxiedDomains&quot;:[]}">(function(){'use strict';var u=typeof Object.defineProperties=="function"?Object.defineProperty:function(b,d,e){if(b==Array.prototype||b==Object.prototype)return b;b[d]=e.value;return b};function v(b){b=["object"==typeof globalThis&&globalThis,b,"object"==typeof window&&window,"object"==typeof self&&self,"object"==typeof global&&global];for(var d=0;d<b.length;++d){var e=b[d];if(e&&e.Math==Math)return e}throw Error("Cannot find global object");}var w=v(this);
+function y(b,d){if(d)a:{var e=w;b=b.split(".");for(var h=0;h<b.length-1;h++){var k=b[h];if(!(k in e))break a;e=e[k]}b=b[b.length-1];h=e[b];d=d(h);d!=h&&d!=null&&u(e,b,{configurable:!0,writable:!0,value:d})}}function z(b){function d(h){return b.next(h)}function e(h){return b.throw(h)}return new Promise(function(h,k){function m(n){n.done?h(n.value):Promise.resolve(n.value).then(d,e).then(m,k)}m(b.next())})}y("globalThis",function(b){return b||w});/*
+
+ Copyright The Closure Library Authors.
+ SPDX-License-Identifier: Apache-2.0
+*/
+function A(b,d){function e(){}e.prototype=d.prototype;b.i=d.prototype;b.prototype=new e;b.prototype.constructor=b;b.g=function(h,k,m){for(var n=Array(arguments.length-2),p=2;p<arguments.length;p++)n[p-2]=arguments[p];return d.prototype[k].apply(h,n)}};function B(b,d,e="*"){function h(a){if(typeof a==="string")return F.encode(a).buffer;if(a instanceof ArrayBuffer)return a.slice(0);if(ArrayBuffer.isView(a))return a.buffer.slice(a.byteOffset,a.byteOffset+a.byteLength);throw Error("Invalid data type");}function k(a){a=h(a);var f={type:"send",data:new Uint8Array(a)},g;(g=r)==null||g.postMessage(f,[a])}function m(){if(!r)throw Error("Data port not captured yet.");r.onmessage=a=>{if(a.data.type==="message"){a=new MessageEvent("message",{data:G.decode(a.data.data)});
+let f;(f=c.onmessage)==null||f.call(c,a);c.dispatchEvent(a)}}}function n(){if(!t)throw Error("Control port not captured yet.");t.onmessage=a=>{switch(a.data.type){case "open":l=1;var f=new Event("open"),g;(g=c.onopen)==null||g.call(c,f);c.dispatchEvent(f);q.forEach(H=>{k(H)});q=[];break;case "close":g=a.data;l=3;g=new CloseEvent("close",{code:g.code,reason:g.reason,wasClean:g.wasClean});(f=c.onclose)==null||f.call(c,g);c.dispatchEvent(g);break;case "error":l=3;f=new Event("error");let x;(x=c.onerror)==
+null||x.call(c,f);c.dispatchEvent(f)}}}function p(a){return z(function*(){var f=new MessageChannel;t=f.port1;var g=new MessageChannel;r=g.port1;n();m();window.parent.postMessage({type:"websocket_open",portOrdering:["control","data"],url:b,protocols:a||[],connectionId:I},e,[f.port2,g.port2])}())}var c=Reflect.construct(EventTarget,[],new.target);c.CONNECTING=0;c.OPEN=1;c.CLOSING=2;c.CLOSED=3;c.url=b;c.binaryType="arraybuffer";c.protocol="";c.h="";var l=0,t=null,r=null,q=[],F=new TextEncoder,G=new TextDecoder;
+c.onopen=null;c.onmessage=null;c.onclose=null;c.onerror=null;Object.defineProperty(c,"readyState",{get:()=>l,enumerable:!0,configurable:!0});Object.defineProperty(c,"bufferedAmount",{get:()=>{var a=0;q.forEach(f=>{a+=typeof f==="string"?f.length:f.byteLength});return a},enumerable:!0,configurable:!0});var I=function(){var a;return((a=globalThis.crypto)==null?0:a.randomUUID)?globalThis.crypto.randomUUID():"xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,f=>{var g=Math.random()*16|0;return(f===
+"x"?g:g&3|8).toString(16)})}();c.send=a=>{if(l===1)a instanceof Blob?a.arrayBuffer().then(f=>{k(f)}):k(a);else if(l===0)if(typeof a==="string")q.push(a);else if(a instanceof ArrayBuffer||ArrayBuffer.isView(a))q.push(h(a));else throw Error("Sending Blob is not supported before the connection is open.");else console.debug("WebSocket send called in CLOSING or CLOSED state; ignored.")};c.close=(a=1E3,f="")=>{if(l!==2&&l!==3){l=2;a={type:"close",code:a,reason:f,wasClean:a===1E3};var g;(g=t)==null||g.postMessage(a)}};
+Promise.resolve().then(()=>p(d));return c}A(B,EventTarget);var C=document.currentScript,D=C==null?void 0:C.getAttribute("ws-interception-config");if(!D)throw Error("WebSocket Interceptor: Missing ws-interception-config attribute in the script tag.");var E=JSON.parse(D);if(!E.parentOrigin||typeof E.parentOrigin!=="string")throw Error("WebSocket Interceptor: Invalid parentOrigin in ws-interception-config");
+(function(b){var d=Object.getOwnPropertyDescriptor(window,"WebSocket");if(!d||d.writable||d.configurable)d=Object.assign(function(e,h){try{let k=(new URL(e)).hostname;if(b.proxiedDomains.some(m=>k===m||k.endsWith(`.${m}`)))return new B(e,h,b.parentOrigin)}catch(k){throw window.parent.postMessage({type:"websocket_blocked",url:e,reason:"blocked_invalid_url"},b.parentOrigin),new DOMException(`WebSocket connection to '${e}' is not allowed in Canvas.`,"SecurityError");}window.parent.postMessage({type:"websocket_blocked",
+url:e,reason:"blocked_domain_not_allowlisted"},b.parentOrigin);throw new DOMException(`WebSocket connection to '${e}' is not allowed in Canvas.`,"SecurityError");},{CONNECTING:0,OPEN:1,CLOSING:2,CLOSED:3}),Object.defineProperty(window,"WebSocket",{value:d,writable:!1,configurable:!1})})({proxiedDomains:E.proxiedDomains||[],parentOrigin:E.parentOrigin});}).call(this);
+</script><script>((function(modelInformation) {
+  const originalFetch = window.fetch;
+  // TODO: b/421908508 - Move these out of the script and match all generative AI model calls.
+  let googleLlmBaseApiUrls = [
+    'https://generativelanguage.googleapis.com/v1beta/models/' + modelInformation.textModelName + ':streamGenerateContent',
+    'https://generativelanguage.googleapis.com/v1beta/models/' + modelInformation.textModelName + ':generateContent',
+    'https://generativelanguage.googleapis.com/v1beta/models/' + modelInformation.imageModelName + ':predict',
+    'https://generativelanguage.googleapis.com/v1beta/models/' + modelInformation.imageModelName + ':predictLongRunning',
+    'https://generativelanguage.googleapis.com/v1beta/models/' + modelInformation.imageEditModelName + ':generateContent',
+    'https://generativelanguage.googleapis.com/v1beta/models/' + modelInformation.imageTransformModelName + ':generateContent',
+    'https://generativelanguage.googleapis.com/v1beta/models/' + modelInformation.videoModelName + ':predict',
+    'https://generativelanguage.googleapis.com/v1beta/models/' + modelInformation.videoModelName + ':predictLongRunning',
+    'https://generativelanguage.googleapis.com/v1beta/models/' + modelInformation.ttsModelName + ':generateContent',
+  ];
+  modelInformation.deprecatedTextModelNames.forEach((modelName) => {
+    googleLlmBaseApiUrls.push(
+      'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':streamGenerateContent',
+      'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent',
+    );
+  });
+  modelInformation.deprecatedImageModelNames.forEach((modelName) => {
+    googleLlmBaseApiUrls.push(
+      'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':predict',
+      'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':predictLongRunning',
+      'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent',
+      'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':streamGenerateContent',
+    );
+  });
+  modelInformation.deprecatedGenerateImageModelNames.forEach((modelName) => {
+    googleLlmBaseApiUrls.push(
+      'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':generateContent',
+      'https://generativelanguage.googleapis.com/v1beta/models/' + modelName + ':streamGenerateContent',
+    );
+  });
+
+  const pendingFetchResolvers = {};
+  let nextPromiseId = 0;
+
+  function handleStringInput(input, optionsArgument) {
+    const actualUrl = input;
+    const fetchCallArgs = [actualUrl, optionsArgument];
+    const effectiveOptions = optionsArgument || {};
+    const bodyForApiKeyCheck = effectiveOptions.body;
+    const bodyForPostMessage = effectiveOptions.body;
+    return { actualUrl, fetchCallArgs, effectiveOptions, bodyForApiKeyCheck, bodyForPostMessage };
+  }
+
+  function handleRequestInput(input, optionsArgument) {
+    const actualUrl = input.url;
+    const fetchCallArgs = [input, optionsArgument];
+    const effectiveOptions = { method: input.method, headers: new Headers(input.headers) };
+    let bodyForApiKeyCheck;
+    let bodyForPostMessage;
+
+    if (optionsArgument) {
+      if (optionsArgument.method) effectiveOptions.method = optionsArgument.method;
+      if (optionsArgument.headers) effectiveOptions.headers = new Headers(optionsArgument.headers);
+      if ('body' in optionsArgument) {
+        bodyForApiKeyCheck = optionsArgument.body;
+        bodyForPostMessage = optionsArgument.body;
+      } else {
+        bodyForApiKeyCheck = undefined;
+        bodyForPostMessage = input.body;
+      }
+    } else {
+      bodyForApiKeyCheck = undefined;
+      bodyForPostMessage = input.body;
+    }
+    return { actualUrl, fetchCallArgs, effectiveOptions, bodyForApiKeyCheck, bodyForPostMessage };
+  }
+
+  window.fetch = function(input, optionsArgument) {
+    let actualUrl;
+    let fetchCallArgs;
+    let effectiveOptions = {};
+    let bodyForApiKeyCheck;
+    let bodyForPostMessage;
+
+    if (typeof input === 'string') {
+      ({actualUrl, fetchCallArgs, effectiveOptions, bodyForApiKeyCheck, bodyForPostMessage} = handleStringInput(input, optionsArgument));
+    } else if (input instanceof Request) {
+      ({actualUrl, fetchCallArgs, effectiveOptions, bodyForApiKeyCheck, bodyForPostMessage} = handleRequestInput(input, optionsArgument));
+    } else {
+      return originalFetch.apply(window, [input, optionsArgument]);
+    }
+
+    effectiveOptions.method = effectiveOptions.method || 'GET';
+    if (!effectiveOptions.headers) {
+      effectiveOptions.headers = new Headers();
+    }
+
+
+    if (typeof actualUrl === 'string' && googleLlmBaseApiUrls.some((url) => actualUrl.startsWith(url))) {
+      let apiKeyIsNull = true;
+
+      const regex = new RegExp("models/([^:]+)");
+      const modelNameMatch = actualUrl.match(regex);
+      const modelName = modelNameMatch ? modelNameMatch[1] : 'unspecified';
+
+
+      try {
+        const urlObject = new URL(actualUrl);  // Use URL object for robust parsing
+        const apiKeyParam = urlObject.searchParams.get('key');
+        if (apiKeyParam) {
+          apiKeyIsNull = false;
+        }
+      } catch (e) {
+        // Continue checks even if URL parsing fails
+      }
+
+      if (apiKeyIsNull && effectiveOptions.headers) {
+        const h = new Headers(effectiveOptions.headers);
+        const apiKeyHeaderValue = h.get('X-API-Key') || h.get('x-api-key');
+        if (apiKeyHeaderValue) {
+          apiKeyIsNull = false;
+          return originalFetch.apply(window, fetchCallArgs);
+        }
+      }
+
+      if (apiKeyIsNull && effectiveOptions.method && ['POST', 'PUT', 'PATCH'].includes(effectiveOptions.method.toUpperCase()) && typeof bodyForApiKeyCheck === 'string') {
+        try {
+          const bodyData = JSON.parse(bodyForApiKeyCheck);
+          if (bodyData && bodyData.apiKey) {
+            apiKeyIsNull = false;
+            return originalFetch.apply(window, fetchCallArgs);
+          }
+        } catch (e) {
+          // Ignore JSON parsing errors
+        }
+      }
+
+      if(apiKeyIsNull) {
+        const promiseId = nextPromiseId++;
+        const promise = new Promise((resolve) => {
+          pendingFetchResolvers[promiseId] = (resolvedResponse) => {
+            delete pendingFetchResolvers[promiseId];
+            resolve(resolvedResponse);
+          };
+        });
+
+        let serializedBodyForPostMessage;
+        if (typeof bodyForPostMessage === 'string' || bodyForPostMessage == null) {
+            serializedBodyForPostMessage = bodyForPostMessage;
+        } else if (bodyForPostMessage instanceof ReadableStream) {
+            serializedBodyForPostMessage = null;
+        } else {
+            try {
+                serializedBodyForPostMessage = JSON.stringify(bodyForPostMessage);
+            } catch (e) {
+                serializedBodyForPostMessage = null;
+            }
+        }
+
+        const messageOptions = {
+            method: effectiveOptions.method,
+            headers: Object.fromEntries(new Headers(effectiveOptions.headers).entries()),
+            body: serializedBodyForPostMessage
+        };
+
+        window.parent.postMessage({
+          type: 'requestFetch',
+          url: actualUrl,
+          modelName: modelName,
+          options: messageOptions,
+          promiseId: promiseId,
+        }, '*');
+
+        return promise;
+      }
+      return originalFetch.apply(window, fetchCallArgs);
+    }
+    return originalFetch.apply(window, fetchCallArgs);
+  };
+
+  window.addEventListener('message', function(event) {
+    if (event.data && event.data.type === 'resolveFetch') {
+      const { promiseId, response } = event.data;
+      if (pendingFetchResolvers[promiseId]) {
+        try {
+          const reconstructedResponse = new Response(response.body, {
+            status: response.status,
+            statusText: response.statusText,
+            headers: new Headers(response.headers),
+          });
+          pendingFetchResolvers[promiseId](reconstructedResponse);
+        } catch (error) {
+          pendingFetchResolvers[promiseId](new Response(null, { status: 500, statusText: "Interceptor Response Reconstruction Error" }));
+        }
+      }
+    }
+  });
+
+}))({"textModelName":"gemini-3-flash-preview","imageModelName":"imagen-4.0-generate-001","imageEditModelName":"gemini-3.1-flash-image-preview","imageTransformModelName":"gemini-3-pro-image-preview-11-2025","videoModelName":"veo-2.0-generate-001","ttsModelName":"gemini-2.5-flash-preview-tts","deprecatedTextModelNames":["gemini-2.0-flash","gemini-2.5-flash","gemini-2.5-flash-preview-04-17","gemini-2.5-flash-preview-05-20","gemini-2.5-flash-preview-09-2025"],"deprecatedImageModelNames":["imagen-3.0-generate-001","imagen-3.0-generate-002"],"deprecatedGenerateImageModelNames":["gemini-2.5-flash-image-preview","gemini-2.5-flash-image"]})</script><script>(function(){'use strict';function a(){window.parent.postMessage({type:"interaction"},"*")}window.addEventListener("click",a,{capture:!0,passive:!0});window.addEventListener("touchstart",a,{capture:!0,passive:!0});window.addEventListener("keydown",a,{capture:!0,passive:!0});}).call(this);
+</script><script>(function() {
+  const originalConsoleLog = console.log;
+  const originalConsoleError = console.error;
+
+    /**
+   * Normalizes an error event or a promise rejection reason into a structured error object.
+   * @param {*} errorEventOrReason The error object or reason.
+   * @return {object} Structured error data { message, name, stack }.
+   */
+  function getErrorObject(errorEventOrReason) {
+    if (errorEventOrReason instanceof Error) {
+      return {
+        message: errorEventOrReason.message,
+        name: errorEventOrReason.name,
+        stack: errorEventOrReason.stack,
+      };
+    }
+    // Fallback for non-Error objects.
+    try {
+      return {
+        message: JSON.stringify(errorEventOrReason),
+        name: 'UnknownErrorType',
+        stack: null,
+      };
+    } catch (e) {
+      return {
+        message: String(errorEventOrReason),
+        name: 'UnknownErrorTypeNonStringifiable',
+        stack: null,
+      };
+    }
+  }
+
+  /**
+   * Converts an array of arguments (from log/error) into a single string.
+   * Handles Error objects specially to include their message and stack.
+   * @param {Array<*>} args - Arguments passed to console methods.
+   * @return {string} A string representation of the arguments.
+   */
+  function stringifyArgs(args) {
+    return args
+      .map((arg) => {
+        if (arg instanceof Error) {
+          const {message, stack} = arg;
+          return `Error: ${message}${stack ? ('\nStack: ' + stack) : ''}`;
+        }
+        if (typeof arg === 'object' && arg !== null) {
+          try {
+            return JSON.stringify(arg);
+          } catch (error) {
+            return '[Circular Object]';
+          }
+        } else {
+          return String(arg);
+        }
+      })
+      .join(' ');
+  }
+
+  console.log = function(...args) {
+    const logString = stringifyArgs(args);
+    window.parent.postMessage({ type: 'log', message: logString }, '*');
+    originalConsoleLog.apply(console, args);
+  };
+
+  console.error = function(...args) {
+    let errorData;
+    if (args.length > 0 && args[0] instanceof Error) {
+      const err = args[0];
+      // If the first arg is an Error, capture its details.
+      errorData = {
+        type: 'error',
+        source: 'CONSOLE_ERROR',
+        ...getErrorObject(err),
+        rawArgsString: stringifyArgs(args.slice(1)),
+        timestamp: new Date().toISOString(),
+      };
+    } else {
+      // If not an Error object, treat all args as a general error message.
+      errorData = {
+        type: 'error',
+        source: 'CONSOLE_ERROR',
+        message: stringifyArgs(args),
+        name: 'ConsoleLoggedError',
+        stack: null,
+        timestamp: new Date().toISOString(),
+      };
+    }
+    window.parent.postMessage(errorData, '*');
+    originalConsoleError.apply(console, args);
+  };
+
+  // Listen for global unhandled synchronous errors.
+  window.addEventListener('error', function(event) {
+    const errorDetails = event.error ? getErrorObject(event.error) : {
+      message: event.message,
+      name: 'GlobalError',
+      stack: null,
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno,
+    };
+
+    window.parent.postMessage({
+      type: 'error',
+      source: 'global',
+      ...errorDetails,
+      message: errorDetails.message || event.message,
+      timestamp: new Date().toISOString(),
+    }, '*');
+  });
+
+  // Listen for unhandled promise rejections (asynchronous errors).
+  window.addEventListener('unhandledrejection', function(event) {
+    const errorDetails = getErrorObject(event.reason);
+
+    window.parent.postMessage({
+      type: 'error',
+      source: 'unhandledrejection',
+      ...errorDetails,
+      message: errorDetails.message || 'Unhandled Promise Rejection',
+      timestamp: new Date().toISOString(),
+    }, '*');
+  });
+
+})();</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로컬 WAV to MP3 변환기</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- LameJS for client-side MP3 Encoding -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js" crossorigin="anonymous"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700&family=Noto+Sans+KR:wght=300;400;500;700&display=swap');
+        body {
+            font-family: 'Inter', 'Noto Sans KR', sans-serif;
+            background-color: #0f172a;
+        }
+    </style>
+<style>*, ::before, ::after{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }::backdrop{--tw-border-spacing-x:0;--tw-border-spacing-y:0;--tw-translate-x:0;--tw-translate-y:0;--tw-rotate:0;--tw-skew-x:0;--tw-skew-y:0;--tw-scale-x:1;--tw-scale-y:1;--tw-pan-x: ;--tw-pan-y: ;--tw-pinch-zoom: ;--tw-scroll-snap-strictness:proximity;--tw-gradient-from-position: ;--tw-gradient-via-position: ;--tw-gradient-to-position: ;--tw-ordinal: ;--tw-slashed-zero: ;--tw-numeric-figure: ;--tw-numeric-spacing: ;--tw-numeric-fraction: ;--tw-ring-inset: ;--tw-ring-offset-width:0px;--tw-ring-offset-color:#fff;--tw-ring-color:rgb(59 130 246 / 0.5);--tw-ring-offset-shadow:0 0 #0000;--tw-ring-shadow:0 0 #0000;--tw-shadow:0 0 #0000;--tw-shadow-colored:0 0 #0000;--tw-blur: ;--tw-brightness: ;--tw-contrast: ;--tw-grayscale: ;--tw-hue-rotate: ;--tw-invert: ;--tw-saturate: ;--tw-sepia: ;--tw-drop-shadow: ;--tw-backdrop-blur: ;--tw-backdrop-brightness: ;--tw-backdrop-contrast: ;--tw-backdrop-grayscale: ;--tw-backdrop-hue-rotate: ;--tw-backdrop-invert: ;--tw-backdrop-opacity: ;--tw-backdrop-saturate: ;--tw-backdrop-sepia: ;--tw-contain-size: ;--tw-contain-layout: ;--tw-contain-paint: ;--tw-contain-style: }/* ! tailwindcss v3.4.17 | MIT License | https://tailwindcss.com */*,::after,::before{box-sizing:border-box;border-width:0;border-style:solid;border-color:#e5e7eb}::after,::before{--tw-content:''}:host,html{line-height:1.5;-webkit-text-size-adjust:100%;-moz-tab-size:4;tab-size:4;font-family:ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";font-feature-settings:normal;font-variation-settings:normal;-webkit-tap-highlight-color:transparent}body{margin:0;line-height:inherit}hr{height:0;color:inherit;border-top-width:1px}abbr:where([title]){-webkit-text-decoration:underline dotted;text-decoration:underline dotted}h1,h2,h3,h4,h5,h6{font-size:inherit;font-weight:inherit}a{color:inherit;text-decoration:inherit}b,strong{font-weight:bolder}code,kbd,pre,samp{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;font-feature-settings:normal;font-variation-settings:normal;font-size:1em}small{font-size:80%}sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}sub{bottom:-.25em}sup{top:-.5em}table{text-indent:0;border-color:inherit;border-collapse:collapse}button,input,optgroup,select,textarea{font-family:inherit;font-feature-settings:inherit;font-variation-settings:inherit;font-size:100%;font-weight:inherit;line-height:inherit;letter-spacing:inherit;color:inherit;margin:0;padding:0}button,select{text-transform:none}button,input:where([type=button]),input:where([type=reset]),input:where([type=submit]){-webkit-appearance:button;background-color:transparent;background-image:none}:-moz-focusring{outline:auto}:-moz-ui-invalid{box-shadow:none}progress{vertical-align:baseline}::-webkit-inner-spin-button,::-webkit-outer-spin-button{height:auto}[type=search]{-webkit-appearance:textfield;outline-offset:-2px}::-webkit-search-decoration{-webkit-appearance:none}::-webkit-file-upload-button{-webkit-appearance:button;font:inherit}summary{display:list-item}blockquote,dd,dl,figure,h1,h2,h3,h4,h5,h6,hr,p,pre{margin:0}fieldset{margin:0;padding:0}legend{padding:0}menu,ol,ul{list-style:none;margin:0;padding:0}dialog{padding:0}textarea{resize:vertical}input::placeholder,textarea::placeholder{opacity:1;color:#9ca3af}[role=button],button{cursor:pointer}:disabled{cursor:default}audio,canvas,embed,iframe,img,object,svg,video{display:block;vertical-align:middle}img,video{max-width:100%;height:auto}[hidden]:where(:not([hidden=until-found])){display:none}.pointer-events-none{pointer-events:none}.relative{position:relative}.sticky{position:sticky}.top-0{top:0px}.z-50{z-index:50}.mx-auto{margin-left:auto;margin-right:auto}.mt-1{margin-top:0.25rem}.mt-12{margin-top:3rem}.mt-2{margin-top:0.5rem}.flex{display:flex}.grid{display:grid}.hidden{display:none}.h-10{height:2.5rem}.h-16{height:4rem}.h-2\.5{height:0.625rem}.h-full{height:100%}.min-h-screen{min-height:100vh}.w-16{width:4rem}.w-full{width:100%}.max-w-6xl{max-width:72rem}.max-w-xs{max-width:20rem}.flex-grow{flex-grow:1}@keyframes spin{to{transform:rotate(360deg)}}.animate-spin{animation:spin 1s linear infinite}.cursor-not-allowed{cursor:not-allowed}.cursor-pointer{cursor:pointer}.list-inside{list-style-position:inside}.list-decimal{list-style-type:decimal}.grid-cols-1{grid-template-columns:repeat(1, minmax(0, 1fr))}.grid-cols-2{grid-template-columns:repeat(2, minmax(0, 1fr))}.flex-col{flex-direction:column}.flex-wrap{flex-wrap:wrap}.items-start{align-items:flex-start}.items-center{align-items:center}.justify-center{justify-content:center}.justify-between{justify-content:space-between}.gap-1{gap:0.25rem}.gap-1\.5{gap:0.375rem}.gap-2{gap:0.5rem}.gap-3{gap:0.75rem}.gap-4{gap:1rem}.gap-8{gap:2rem}.space-x-2 > :not([hidden]) ~ :not([hidden]){--tw-space-x-reverse:0;margin-right:calc(0.5rem * var(--tw-space-x-reverse));margin-left:calc(0.5rem * calc(1 - var(--tw-space-x-reverse)))}.space-x-3 > :not([hidden]) ~ :not([hidden]){--tw-space-x-reverse:0;margin-right:calc(0.75rem * var(--tw-space-x-reverse));margin-left:calc(0.75rem * calc(1 - var(--tw-space-x-reverse)))}.space-y-1 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.25rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.25rem * var(--tw-space-y-reverse))}.space-y-2 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.5rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.5rem * var(--tw-space-y-reverse))}.space-y-3 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(0.75rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(0.75rem * var(--tw-space-y-reverse))}.space-y-4 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1rem * var(--tw-space-y-reverse))}.space-y-5 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1.25rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1.25rem * var(--tw-space-y-reverse))}.space-y-6 > :not([hidden]) ~ :not([hidden]){--tw-space-y-reverse:0;margin-top:calc(1.5rem * calc(1 - var(--tw-space-y-reverse)));margin-bottom:calc(1.5rem * var(--tw-space-y-reverse))}.overflow-hidden{overflow:hidden}.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rounded{border-radius:0.25rem}.rounded-2xl{border-radius:1rem}.rounded-full{border-radius:9999px}.rounded-lg{border-radius:0.5rem}.rounded-xl{border-radius:0.75rem}.border{border-width:1px}.border-2{border-width:2px}.border-b{border-bottom-width:1px}.border-t{border-top-width:1px}.border-dashed{border-style:dashed}.border-indigo-500\/10{border-color:rgb(99 102 241 / 0.1)}.border-indigo-500\/30{border-color:rgb(99 102 241 / 0.3)}.border-slate-700{--tw-border-opacity:1;border-color:rgb(51 65 85 / var(--tw-border-opacity, 1))}.border-slate-800{--tw-border-opacity:1;border-color:rgb(30 41 59 / var(--tw-border-opacity, 1))}.border-slate-800\/40{border-color:rgb(30 41 59 / 0.4)}.border-slate-800\/60{border-color:rgb(30 41 59 / 0.6)}.border-slate-800\/80{border-color:rgb(30 41 59 / 0.8)}.border-indigo-500{--tw-border-opacity:1;border-color:rgb(99 102 241 / var(--tw-border-opacity, 1))}.bg-emerald-500{--tw-bg-opacity:1;background-color:rgb(16 185 129 / var(--tw-bg-opacity, 1))}.bg-emerald-500\/15{background-color:rgb(16 185 129 / 0.15)}.bg-emerald-600{--tw-bg-opacity:1;background-color:rgb(5 150 105 / var(--tw-bg-opacity, 1))}.bg-indigo-500{--tw-bg-opacity:1;background-color:rgb(99 102 241 / var(--tw-bg-opacity, 1))}.bg-indigo-500\/20{background-color:rgb(99 102 241 / 0.2)}.bg-indigo-600{--tw-bg-opacity:1;background-color:rgb(79 70 229 / var(--tw-bg-opacity, 1))}.bg-indigo-600\/20{background-color:rgb(79 70 229 / 0.2)}.bg-indigo-950\/10{background-color:rgb(30 27 75 / 0.1)}.bg-slate-800{--tw-bg-opacity:1;background-color:rgb(30 41 59 / var(--tw-bg-opacity, 1))}.bg-slate-900{--tw-bg-opacity:1;background-color:rgb(15 23 42 / var(--tw-bg-opacity, 1))}.bg-slate-900\/40{background-color:rgb(15 23 42 / 0.4)}.bg-slate-900\/50{background-color:rgb(15 23 42 / 0.5)}.bg-slate-900\/60{background-color:rgb(15 23 42 / 0.6)}.bg-slate-950{--tw-bg-opacity:1;background-color:rgb(2 6 23 / var(--tw-bg-opacity, 1))}.bg-slate-950\/30{background-color:rgb(2 6 23 / 0.3)}.bg-slate-950\/40{background-color:rgb(2 6 23 / 0.4)}.bg-slate-950\/50{background-color:rgb(2 6 23 / 0.5)}.bg-indigo-950\/20{background-color:rgb(30 27 75 / 0.2)}.p-2{padding:0.5rem}.p-2\.5{padding:0.625rem}.p-3{padding:0.75rem}.p-3\.5{padding:0.875rem}.p-4{padding:1rem}.p-6{padding:1.5rem}.p-8{padding:2rem}.px-1\.5{padding-left:0.375rem;padding-right:0.375rem}.px-2{padding-left:0.5rem;padding-right:0.5rem}.px-3{padding-left:0.75rem;padding-right:0.75rem}.px-4{padding-left:1rem;padding-right:1rem}.py-0\.5{padding-top:0.125rem;padding-bottom:0.125rem}.py-1{padding-top:0.25rem;padding-bottom:0.25rem}.py-2\.5{padding-top:0.625rem;padding-bottom:0.625rem}.py-3\.5{padding-top:0.875rem;padding-bottom:0.875rem}.py-4{padding-top:1rem;padding-bottom:1rem}.py-6{padding-top:1.5rem;padding-bottom:1.5rem}.py-8{padding-top:2rem;padding-bottom:2rem}.pb-3{padding-bottom:0.75rem}.pb-4{padding-bottom:1rem}.pt-2{padding-top:0.5rem}.pt-3{padding-top:0.75rem}.text-center{text-align:center}.text-2xl{font-size:1.5rem;line-height:2rem}.text-\[10px\]{font-size:10px}.text-\[11px\]{font-size:11px}.text-base{font-size:1rem;line-height:1.5rem}.text-lg{font-size:1.125rem;line-height:1.75rem}.text-sm{font-size:0.875rem;line-height:1.25rem}.text-xl{font-size:1.25rem;line-height:1.75rem}.text-xs{font-size:0.75rem;line-height:1rem}.font-bold{font-weight:700}.font-extrabold{font-weight:800}.font-medium{font-weight:500}.font-semibold{font-weight:600}.uppercase{text-transform:uppercase}.leading-relaxed{line-height:1.625}.tracking-tight{letter-spacing:-0.025em}.tracking-wider{letter-spacing:0.05em}.text-amber-400{--tw-text-opacity:1;color:rgb(251 191 36 / var(--tw-text-opacity, 1))}.text-emerald-400{--tw-text-opacity:1;color:rgb(52 211 153 / var(--tw-text-opacity, 1))}.text-indigo-300{--tw-text-opacity:1;color:rgb(165 180 252 / var(--tw-text-opacity, 1))}.text-indigo-400{--tw-text-opacity:1;color:rgb(129 140 248 / var(--tw-text-opacity, 1))}.text-rose-400{--tw-text-opacity:1;color:rgb(251 113 133 / var(--tw-text-opacity, 1))}.text-slate-100{--tw-text-opacity:1;color:rgb(241 245 249 / var(--tw-text-opacity, 1))}.text-slate-200{--tw-text-opacity:1;color:rgb(226 232 240 / var(--tw-text-opacity, 1))}.text-slate-300{--tw-text-opacity:1;color:rgb(203 213 225 / var(--tw-text-opacity, 1))}.text-slate-400{--tw-text-opacity:1;color:rgb(148 163 184 / var(--tw-text-opacity, 1))}.text-slate-500{--tw-text-opacity:1;color:rgb(100 116 139 / var(--tw-text-opacity, 1))}.text-slate-950{--tw-text-opacity:1;color:rgb(2 6 23 / var(--tw-text-opacity, 1))}.text-white{--tw-text-opacity:1;color:rgb(255 255 255 / var(--tw-text-opacity, 1))}.accent-indigo-500{accent-color:#6366f1}.opacity-50{opacity:0.5}.shadow-2xl{--tw-shadow:0 25px 50px -12px rgb(0 0 0 / 0.25);--tw-shadow-colored:0 25px 50px -12px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-lg{--tw-shadow:0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);--tw-shadow-colored:0 10px 15px -3px var(--tw-shadow-color), 0 4px 6px -4px var(--tw-shadow-color);box-shadow:var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow)}.shadow-emerald-600\/20{--tw-shadow-color:rgb(5 150 105 / 0.2);--tw-shadow:var(--tw-shadow-colored)}.shadow-indigo-500\/30{--tw-shadow-color:rgb(99 102 241 / 0.3);--tw-shadow:var(--tw-shadow-colored)}.shadow-indigo-600\/30{--tw-shadow-color:rgb(79 70 229 / 0.3);--tw-shadow:var(--tw-shadow-colored)}.backdrop-blur{--tw-backdrop-blur:blur(8px);-webkit-backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);backdrop-filter:var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia)}.transition-all{transition-property:all;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.transition-colors{transition-property:color, background-color, border-color, fill, stroke, -webkit-text-decoration-color;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke;transition-property:color, background-color, border-color, text-decoration-color, fill, stroke, -webkit-text-decoration-color;transition-timing-function:cubic-bezier(0.4, 0, 0.2, 1);transition-duration:150ms}.duration-200{transition-duration:200ms}.hover\:border-indigo-500:hover{--tw-border-opacity:1;border-color:rgb(99 102 241 / var(--tw-border-opacity, 1))}.hover\:bg-emerald-500:hover{--tw-bg-opacity:1;background-color:rgb(16 185 129 / var(--tw-bg-opacity, 1))}.hover\:bg-indigo-600\/30:hover{background-color:rgb(79 70 229 / 0.3)}.hover\:bg-slate-700:hover{--tw-bg-opacity:1;background-color:rgb(51 65 85 / var(--tw-bg-opacity, 1))}.hover\:bg-indigo-500:hover{--tw-bg-opacity:1;background-color:rgb(99 102 241 / var(--tw-bg-opacity, 1))}.hover\:text-rose-300:hover{--tw-text-opacity:1;color:rgb(253 164 175 / var(--tw-text-opacity, 1))}.hover\:text-slate-300:hover{--tw-text-opacity:1;color:rgb(203 213 225 / var(--tw-text-opacity, 1))}.focus\:border-indigo-500:focus{--tw-border-opacity:1;border-color:rgb(99 102 241 / var(--tw-border-opacity, 1))}.focus\:outline-none:focus{outline:2px solid transparent;outline-offset:2px}.group:hover .group-hover\:bg-indigo-600\/10{background-color:rgb(79 70 229 / 0.1)}.group:hover .group-hover\:text-indigo-400{--tw-text-opacity:1;color:rgb(129 140 248 / var(--tw-text-opacity, 1))}@media (min-width: 768px){.md\:max-w-md{max-width:28rem}.md\:grid-cols-4{grid-template-columns:repeat(4, minmax(0, 1fr))}}@media (min-width: 1024px){.lg\:col-span-5{grid-column:span 5 / span 5}.lg\:col-span-7{grid-column:span 7 / span 7}.lg\:grid-cols-12{grid-template-columns:repeat(12, minmax(0, 1fr))}}</style></head>
+<body class="text-slate-100 min-h-screen flex flex-col justify-between">
+
+    <!-- Header Section -->
+    <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-600 text-white p-2.5 rounded-xl shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-arrows-rotate text-xl animate-spin-slow"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                        WAV to MP3 고음질 변환기 <span class="text-xs bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-500/30">Pro Local Converter</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">서버 업로드 없이 내 컴퓨터에서 안전하게 MP3 인코딩</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-2 text-xs text-slate-400">
+                <i class="fa-solid fa-lock text-emerald-400"></i>
+                <span>개인정보 안심 보호: 오디오 데이터 유출 걱정이 없습니다.</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-6xl mx-auto px-4 py-8 flex-grow w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- Left Section: File Upload, Config, Custom Helper (5 Columns) -->
+        <div class="lg:col-span-5 space-y-6">
+            
+            <!-- Drag & Drop Zone -->
+            <div id="drop-zone" class="border-2 border-dashed border-slate-700 hover:border-indigo-500 bg-slate-900/40 rounded-2xl p-8 text-center cursor-pointer transition-all group relative overflow-hidden">
+                <input type="file" id="file-input" accept=".wav" class="hidden">
+                <div class="space-y-4">
+                    <div class="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto group-hover:bg-indigo-600/10 group-hover:text-indigo-400 text-slate-400 transition-all">
+                        <i class="fa-solid fa-file-arrow-up text-2xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-slate-200">변환할 WAV 파일을 선택하세요</p>
+                        <p class="text-xs text-slate-500 mt-1">이곳에 파일을 드래그 앤 드롭 하거나 클릭하세요.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Configuration Card -->
+            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-5">
+                <h3 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                    <i class="fa-solid fa-gear text-indigo-400"></i> 변환 설정 (MP3 Bitrate)
+                </h3>
+                
+                <!-- MP3 Bitrate Control -->
+                <div class="space-y-3 bg-slate-950/40 p-4 rounded-xl border border-slate-800/80">
+                    <div class="flex justify-between items-center text-xs">
+                        <label for="bitrate-select" class="text-slate-400 font-medium">MP3 오디오 품질</label>
+                        <span id="bitrate-value" class="text-indigo-400 font-bold">192 kbps (표준 음질)</span>
+                    </div>
+                    <select id="bitrate-select" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer">
+                        <option value="128">128 kbps (일반 용량 최적화)</option>
+                        <option value="192" selected="">192 kbps (고품질 표준 추천)</option>
+                        <option value="256">256 kbps (초고음질 전송용)</option>
+                        <option value="320">320 kbps (스튜디오 원음급 품질)</option>
+                    </select>
+                </div>
+
+                <!-- Run Button -->
+                <button id="convert-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-indigo-600/30">
+                    <i class="fa-solid fa-play"></i> MP3로 변환하기
+                </button>
+            </div>
+
+            <!-- Notepad Save & Code Copy Helper Panel -->
+            <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-4">
+                <h3 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                    <i class="fa-solid fa-floppy-disk text-amber-400"></i> 메모장 저장 &amp; 앱 파일 소장하기
+                </h3>
+                <div class="text-xs text-slate-400 space-y-2 leading-relaxed">
+                    <p class="font-medium text-slate-300">💡 내 컴퓨터에 무설치 프로그램으로 보관하는 법:</p>
+                    <ol class="list-decimal list-inside space-y-1 text-slate-400">
+                        <li>아래 <strong class="text-slate-200">'전체 소스코드 복사'</strong> 버튼을 클릭합니다.</li>
+                        <li>메모장을 열고 <kbd class="px-1.5 py-0.5 bg-slate-800 text-slate-300 rounded text-[10px]">Ctrl + V</kbd>로 붙여넣습니다.</li>
+                        <li>파일 형식은 <strong class="text-slate-200">모든 파일 (*.*)</strong>로 변경합니다.</li>
+                        <li>이름을 <strong class="text-indigo-300">wav_to_mp3_converter.html</strong>로 입력합니다.</li>
+                        <li>인코딩 방식을 반드시 <strong class="text-amber-400 font-bold">UTF-8</strong>로 지정하고 저장해 주세요.</li>
+                    </ol>
+                </div>
+                <div class="grid grid-cols-2 gap-2 pt-2">
+                    <!-- Copy Source Button -->
+                    <button id="copy-source-btn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-colors border border-slate-700">
+                        <i class="fa-solid fa-copy"></i> 전체 소스코드 복사
+                    </button>
+                    <!-- Direct HTML Download Button -->
+                    <button id="download-app-btn" class="bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 text-xs font-semibold py-2.5 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-colors border border-indigo-500/30">
+                        <i class="fa-solid fa-file-arrow-down"></i> 앱(HTML) 바로 다운
+                    </button>
+                </div>
+            </div>
+
+            <!-- Toast alert message container (In-app custom modal) -->
+            <div id="status-toast" class="bg-slate-900 border border-slate-800 shadow-2xl rounded-xl p-4 flex items-start gap-3 text-xs transition-all">
+                <div id="toast-icon-bg" class="p-2 rounded-lg bg-emerald-500 text-white">
+                    <i id="toast-icon" class="fa-solid fa-circle-check"></i>
+                </div>
+                <div class="flex-grow space-y-1">
+                    <p id="toast-title" class="font-bold text-slate-200">MP3 변환 완료!</p>
+                    <p id="toast-desc" class="text-slate-400">고음질 단일 MP3 파일 생성이 완벽하게 종료되었습니다.</p>
+                </div>
+                <button onclick="hideToast()" class="text-slate-500 hover:text-slate-300"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+        </div>
+
+        <!-- Right Section: WAV Info, Converter Process, Converted Result (7 Columns) -->
+        <div class="lg:col-span-7 space-y-6">
+            
+            <!-- Original File Info Container (Initially Hidden) -->
+            <div id="file-info-card" class="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-4">
+                <div class="flex justify-between items-start pb-4 border-b border-slate-800">
+                    <div>
+                        <span class="text-[10px] bg-slate-800 text-indigo-300 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">입력 소스파일</span>
+                        <h2 id="info-filename" class="text-base font-bold text-white truncate max-w-xs md:max-w-md mt-2">supertonic3_20260519_113204_176.wav</h2>
+                        <span id="info-filesize" class="text-xs text-indigo-400 font-semibold">92.15 MB</span>
+                    </div>
+                    <button id="clear-file-btn" class="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 transition-colors">
+                        <i class="fa-solid fa-trash-can"></i> 파일 지우기
+                    </button>
+                </div>
+
+                <!-- Audio Technical details -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
+                    <div class="bg-slate-950/40 p-3 rounded-xl border border-slate-800/60">
+                        <p class="text-[10px] text-slate-500 uppercase tracking-wider">포맷 타입</p>
+                        <p id="tech-format" class="text-sm font-semibold text-slate-300 mt-1">Uncompressed PCM</p>
+                    </div>
+                    <div class="bg-slate-950/40 p-3 rounded-xl border border-slate-800/60">
+                        <p class="text-[10px] text-slate-500 uppercase tracking-wider">채널 사양</p>
+                        <p id="tech-channels" class="text-sm font-semibold text-slate-300 mt-1">Mono (1ch)</p>
+                    </div>
+                    <div class="bg-slate-950/40 p-3 rounded-xl border border-slate-800/60">
+                        <p class="text-[10px] text-slate-500 uppercase tracking-wider">샘플 레이트</p>
+                        <p id="tech-samplerate" class="text-sm font-semibold text-slate-300 mt-1">44,100 Hz</p>
+                    </div>
+                    <div class="bg-slate-950/40 p-3 rounded-xl border border-slate-800/60">
+                        <p class="text-[10px] text-slate-500 uppercase tracking-wider">비트 깊이</p>
+                        <p id="tech-bits" class="text-sm font-semibold text-slate-300 mt-1">16-bit</p>
+                    </div>
+                </div>
+
+                <!-- Approximate Duration Info -->
+                <div class="flex justify-between items-center p-3.5 bg-indigo-950/10 rounded-xl border border-indigo-500/10">
+                    <span class="text-xs text-indigo-300 font-medium">총 오디오 길이</span>
+                    <span id="tech-duration" class="text-sm font-bold text-indigo-400">00:18:15</span>
+                </div>
+            </div>
+
+            <!-- Converting Progress Panel (Initially Hidden) -->
+            <div id="processing-card" class="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-4 hidden">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-arrows-rotate animate-spin text-indigo-400"></i> 
+                        <span id="processing-title-text">MP3 인코딩 진행 중...</span>
+                    </h3>
+                    <span id="processing-percent" class="text-xs text-indigo-400 font-bold">100%</span>
+                </div>
+                <!-- Progress bar -->
+                <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                    <div id="processing-bar" class="bg-indigo-500 h-full transition-all duration-200" style="width: 100%;"></div>
+                </div>
+                <p id="processing-msg" class="text-[11px] text-slate-400">MP3 파일 캡슐화 완료!</p>
+            </div>
+
+            <!-- Single Output Result Card (Initially Hidden) -->
+            <div id="result-card" class="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-5">
+                <div class="pb-3 border-b border-slate-800 flex justify-between items-center">
+                    <div>
+                        <span class="text-[10px] bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">변환된 결과물</span>
+                        <h3 id="result-filename" class="text-base font-bold text-white truncate max-w-xs md:max-w-md mt-2">supertonic3_20260519_113204_176.mp3</h3>
+                    </div>
+                    <span id="saving-badge" class="bg-emerald-500 text-slate-950 font-extrabold text-[11px] px-2 py-1 rounded-lg">WAV 대비 -73% 절감</span>
+                </div>
+
+                <!-- File Sizes Comparison Dashboard -->
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-slate-950/30 p-3.5 rounded-xl border border-slate-800/80">
+                        <p class="text-[10px] text-slate-500">이전 용량 (WAV)</p>
+                        <p id="size-before" class="text-sm font-semibold text-slate-400 mt-1">92.15 MB</p>
+                    </div>
+                    <div class="bg-slate-950/30 p-3.5 rounded-xl border border-slate-800/80">
+                        <p class="text-[10px] text-slate-400 font-medium">현재 압축 용량 (MP3)</p>
+                        <p id="size-after" class="text-sm font-bold text-emerald-400 mt-1">25.07 MB</p>
+                    </div>
+                </div>
+
+                <!-- Embedded HTML Audio Player -->
+                <div class="bg-slate-950/50 p-4 rounded-xl border border-slate-800/80 space-y-2">
+                    <p class="text-xs font-semibold text-slate-300"><i class="fa-solid fa-volume-high text-indigo-400"></i> 오디오 미리 듣기</p>
+                    <audio id="result-audio-player" controls="" class="w-full h-10 accent-indigo-500 bg-slate-900 rounded-lg" src="blob:https://3c5szks9xe7ocxs0rodytug3cz6u1v66gptc7l16o99fnibnnk-h906969431.scf.usercontent.goog/817766b2-4d09-4655-a010-80cb36a7930b"></audio>
+                </div>
+
+                <!-- Download Trigger Button -->
+                <a id="download-mp3-btn" href="blob:https://3c5szks9xe7ocxs0rodytug3cz6u1v66gptc7l16o99fnibnnk-h906969431.scf.usercontent.goog/817766b2-4d09-4655-a010-80cb36a7930b" download="supertonic3_20260519_113204_176.mp3" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 text-sm">
+                    <i class="fa-solid fa-download"></i> MP3 파일 저장하기
+                </a>
+            </div>
+
+            <!-- Dynamic Guide Panel (Shows when no file loaded) -->
+            <div id="guide-card" class="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-6 space-y-4 hidden">
+                <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">안전 가이드 및 변환 정보</h3>
+                <div class="space-y-3 text-xs text-slate-400 leading-relaxed">
+                    <div class="flex gap-2">
+                        <span class="text-indigo-400 font-bold">Q1.</span>
+                        <p><strong>왜 MP3 변환기나 웹에 업로드하지 않고 로컬 변환을 해야 하나요?</strong><br>기업 미팅이나 개인 녹취 등 민감한 데이터가 포함된 오디오 파일을 미상의 해외 인코딩 사이트에 업로드할 경우 정보가 외부에 무단 수집될 리스크가 매우 큽니다. 이 변환 앱은 내부 메모리에서 변환하기에 데이터가 유출될 리스크가 완전히 차단됩니다.</p>
+                    </div>
+                    <div class="flex gap-2 border-t border-slate-800/40 pt-3">
+                        <span class="text-indigo-400 font-bold">Q2.</span>
+                        <p><strong>큰 파일도 변환에 렉이 걸리지 않나요?</strong><br>LameJS 인코더를 실행할 때, 긴 러닝타임의 WAV 음원을 변환하면 메모리와 CPU 점유율이 일시적으로 급증합니다. 저희 변환기는 타임 틱을 기반으로 한 **비동기 슬라이스 청크 렌더러**를 구축하여 변환 중에도 페이지가 버벅거리거나 꺼지지 않도록 정교하게 자원을 할당 제어합니다.</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer Section -->
+    <footer class="border-t border-slate-800 bg-slate-950 py-6 mt-12 text-center text-xs text-slate-500">
+        <p>© 2026 Local WAV to MP3 Converter. Absolutely private, incredibly fast.</p>
+    </footer>
+
+    <!-- Core Audio Processing Logic -->
+    <script>
+        // Global State
+        let selectedFile = null;
+        let originalWavHeader = null; // metadata extracted
+        let convertedMp3Blob = null;
+        let audioCtxInstance = null;
+
+        // DOM Elements
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const convertBtn = document.getElementById('convert-btn');
+        const clearFileBtn = document.getElementById('clear-file-btn');
+        
+        const fileInfoCard = document.getElementById('file-info-card');
+        const processingCard = document.getElementById('processing-card');
+        const resultCard = document.getElementById('result-card');
+        const guideCard = document.getElementById('guide-card');
+        
+        const infoFilename = document.getElementById('info-filename');
+        const infoFilesize = document.getElementById('info-filesize');
+        const techFormat = document.getElementById('tech-format');
+        const techChannels = document.getElementById('tech-channels');
+        const techSamplerate = document.getElementById('tech-samplerate');
+        const techBits = document.getElementById('tech-bits');
+        const techDuration = document.getElementById('tech-duration');
+        
+        const processingBar = document.getElementById('processing-bar');
+        const processingPercent = document.getElementById('processing-percent');
+        const processingMsg = document.getElementById('processing-msg');
+        
+        const resultFilename = document.getElementById('result-filename');
+        const savingBadge = document.getElementById('saving-badge');
+        const sizeBefore = document.getElementById('size-before');
+        const sizeAfter = document.getElementById('size-after');
+        const resultAudioPlayer = document.getElementById('result-audio-player');
+        const downloadMp3Btn = document.getElementById('download-mp3-btn');
+
+        const bitrateSelect = document.getElementById('bitrate-select');
+        const bitrateValue = document.getElementById('bitrate-value');
+        const copySourceBtn = document.getElementById('copy-source-btn');
+        const downloadAppBtn = document.getElementById('download-app-btn');
+
+        // Update Bitrate display text on change
+        bitrateSelect.addEventListener('change', (e) => {
+            const val = e.target.value;
+            let desc = '';
+            if (val === '128') desc = '128 kbps (일반 용량 최적화)';
+            else if (val === '192') desc = '192 kbps (고품질 표준 추천)';
+            else if (val === '256') desc = '256 kbps (초고음질 전송용)';
+            else if (val === '320') desc = '320 kbps (스튜디오 원음급 품질)';
+            bitrateValue.innerText = desc;
+        });
+
+        // Toast Helper
+        function showToast(title, desc, type = 'info') {
+            const toast = document.getElementById('status-toast');
+            const iconBg = document.getElementById('toast-icon-bg');
+            const icon = document.getElementById('toast-icon');
+            const tTitle = document.getElementById('toast-title');
+            const tDesc = document.getElementById('toast-desc');
+
+            tTitle.innerText = title;
+            tDesc.innerText = desc;
+
+            if (type === 'error') {
+                iconBg.className = "p-2 rounded-lg bg-rose-500 text-white animate-pulse";
+                icon.className = "fa-solid fa-circle-exclamation";
+            } else if (type === 'success') {
+                iconBg.className = "p-2 rounded-lg bg-emerald-500 text-white";
+                icon.className = "fa-solid fa-circle-check";
+            } else {
+                iconBg.className = "p-2 rounded-lg bg-indigo-500 text-white";
+                icon.className = "fa-solid fa-info";
+            }
+
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            }, 100);
+        }
+
+        function hideToast() {
+            document.getElementById('status-toast').classList.add('hidden');
+        }
+
+        // Helper: Format byte sizes nicely
+        function formatBytes(bytes, decimals = 2) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
+        // Helper: Convert seconds to HH:MM:SS
+        function formatSeconds(seconds) {
+            const secNum = parseInt(seconds, 10);
+            let hours   = Math.floor(secNum / 3600);
+            let minutes = Math.floor((secNum - (hours * 3600)) / 60);
+            let secs = secNum - (hours * 3600) - (minutes * 60);
+
+            if (hours   < 10) {hours   = "0"+hours;}
+            if (minutes < 10) {minutes = "0"+minutes;}
+            if (secs < 10) {secs = "0"+secs;}
+            return hours + ':' + minutes + ':' + secs;
+        }
+
+        // Drag & Drop event bindings
+        dropZone.addEventListener('click', () => fileInput.click());
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-indigo-500', 'bg-indigo-950/20');
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('border-indigo-500', 'bg-indigo-950/20');
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-indigo-500', 'bg-indigo-950/20');
+            if (e.dataTransfer.files.length > 0) {
+                handleFileSelection(e.dataTransfer.files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelection(e.target.files[0]);
+            }
+        });
+
+        // Handle uploaded file and read WAV metadata
+        function handleFileSelection(file) {
+            if (!file.name.toLowerCase().endsWith('.wav')) {
+                showToast("올바르지 않은 파일 형식", "확장자가 .wav인 웨이브 파일만 업로드가 가능합니다.", "error");
+                return;
+            }
+
+            selectedFile = file;
+            convertedMp3Blob = null;
+            resultCard.classList.add('hidden');
+            resultAudioPlayer.src = '';
+            
+            // UI elements update
+            infoFilename.innerText = file.name;
+            infoFilesize.innerText = formatBytes(file.size);
+            fileInfoCard.classList.remove('hidden');
+            guideCard.classList.add('hidden');
+            
+            // Enable processing button
+            convertBtn.disabled = false;
+            convertBtn.className = "w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-indigo-600/30";
+
+            // Parse WAV Header with a slice (reading up to 256KB to keep memory use minimal)
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const buffer = e.target.result;
+                parseWavHeader(buffer);
+            };
+            
+            const sliceSize = Math.min(file.size, 256 * 1024); // read first 256KB
+            reader.readAsArrayBuffer(file.slice(0, sliceSize));
+        }
+
+        // Clean file data
+        clearFileBtn.addEventListener('click', () => {
+            selectedFile = null;
+            originalWavHeader = null;
+            convertedMp3Blob = null;
+            fileInput.value = '';
+            
+            fileInfoCard.classList.add('hidden');
+            processingCard.classList.add('hidden');
+            resultCard.classList.add('hidden');
+            resultAudioPlayer.src = '';
+            guideCard.classList.remove('hidden');
+            
+            convertBtn.disabled = true;
+            convertBtn.className = "w-full bg-slate-800 text-slate-400 font-semibold py-3.5 px-4 rounded-xl transition-all flex items-center justify-center gap-2 cursor-not-allowed";
+        });
+
+        // WAV Header parser algorithm
+        function parseWavHeader(arrayBuffer) {
+            try {
+                const view = new DataView(arrayBuffer);
+                
+                // Verify RIFF & WAVE Identifiers
+                const isRIFF = view.getUint32(0, false) === 0x52494646; // "RIFF"
+                const isWAVE = view.getUint32(8, false) === 0x57415645; // "WAVE"
+                
+                if (!isRIFF || !isWAVE) {
+                    throw new Error("유효한 표준 WAV 형식이 아닙니다. 파일 구조 헤더를 읽지 못했습니다.");
+                }
+
+                let pos = 12;
+                let fmtChunk = null;
+                let dataChunk = null;
+
+                // Scan for 'fmt ' and 'data' subchunks
+                while (pos < view.byteLength - 8) {
+                    const id = String.fromCharCode(
+                        view.getUint8(pos),
+                        view.getUint8(pos+1),
+                        view.getUint8(pos+2),
+                        view.getUint8(pos+3)
+                    );
+                    const size = view.getUint32(pos + 4, true); // Little-endian
+
+                    if (id === 'fmt ') {
+                        fmtChunk = {
+                            offset: pos + 8,
+                            size: size,
+                            audioFormat: view.getUint16(pos + 8, true),
+                            numChannels: view.getUint16(pos + 10, true),
+                            sampleRate: view.getUint32(pos + 12, true),
+                            byteRate: view.getUint32(pos + 16, true),
+                            blockAlign: view.getUint16(pos + 20, true),
+                            bitsPerSample: view.getUint16(pos + 22, true)
+                        };
+                    } else if (id === 'data') {
+                        dataChunk = {
+                            offset: pos + 8,
+                            size: size
+                        };
+                    }
+                    
+                    pos += 8 + size;
+                    if (size % 2 !== 0) pos++; // Word boundaries alignment padding
+                }
+
+                if (!fmtChunk) {
+                    throw new Error("포맷 데이터 청크('fmt ')를 찾을 수 없습니다.");
+                }
+
+                if (!dataChunk) {
+                    const calculatedDataOffset = fmtChunk.offset + fmtChunk.size + 8;
+                    dataChunk = {
+                        offset: calculatedDataOffset,
+                        size: selectedFile.size - calculatedDataOffset
+                    };
+                }
+
+                if (dataChunk.size <= 0 || (dataChunk.offset + dataChunk.size) > selectedFile.size) {
+                    dataChunk.size = selectedFile.size - dataChunk.offset;
+                }
+
+                originalWavHeader = {
+                    fmt: fmtChunk,
+                    data: dataChunk
+                };
+
+                // Display info in UI
+                const formatLabel = fmtChunk.audioFormat === 1 ? "Uncompressed PCM" : (fmtChunk.audioFormat === 3 ? "IEEE Float" : "Compressed/Extended");
+                techFormat.innerText = formatLabel;
+                techChannels.innerText = fmtChunk.numChannels === 1 ? "Mono (1ch)" : (fmtChunk.numChannels === 2 ? "Stereo (2ch)" : `${fmtChunk.numChannels}ch`);
+                techSamplerate.innerText = `${fmtChunk.sampleRate.toLocaleString()} Hz`;
+                techBits.innerText = `${fmtChunk.bitsPerSample}-bit`;
+                
+                const durationSeconds = dataChunk.size / fmtChunk.byteRate;
+                techDuration.innerText = formatSeconds(durationSeconds);
+
+                hideToast();
+            } catch (error) {
+                showToast("WAV 메타 분석 실패", error.message || "파일 헤더가 손상되었거나 인코딩이 비표준입니다.", "error");
+                console.error(error);
+            }
+        }
+
+        // Action Trigger for MP3 Conversion
+        convertBtn.addEventListener('click', () => {
+            if (!selectedFile || !originalWavHeader) return;
+            startMp3Conversion();
+        });
+
+        // Direct full WAV to MP3 Conversion pipeline
+        async function startMp3Conversion() {
+            processingCard.classList.remove('hidden');
+            resultCard.classList.add('hidden');
+            resultAudioPlayer.src = '';
+            
+            // Adjust buttons status
+            convertBtn.disabled = true;
+            convertBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            clearFileBtn.classList.add('opacity-50', 'pointer-events-none');
+
+            // Lazy initialize Web Audio API Context
+            if (!audioCtxInstance) {
+                audioCtxInstance = new (window.AudioContext || window.webkitAudioContext)();
+            }
+
+            try {
+                processingBar.style.width = '5%';
+                processingPercent.innerText = '5%';
+                processingMsg.innerText = "WAV 미디어 데이터를 해석하는 중...";
+
+                // Read full file ArrayBuffer
+                const originalBuffer = await selectedFile.arrayBuffer();
+
+                processingBar.style.width = '15%';
+                processingPercent.innerText = '15%';
+                processingMsg.innerText = "음질 PCM 소스 디코딩 프로세스 진입...";
+
+                // Decode audio data to AudioBuffer
+                const decodedAudio = await audioCtxInstance.decodeAudioData(originalBuffer);
+
+                processingBar.style.width = '30%';
+                processingPercent.innerText = '30%';
+                processingMsg.innerText = "MP3 인코더 최적화 설정 구축...";
+
+                const bitrate = parseInt(bitrateSelect.value);
+                
+                // Asynchronous, UI-friendly chunked LameJS encoding
+                convertedMp3Blob = await encodeMP3Async(decodedAudio, bitrate, (percent) => {
+                    const mappedProgress = Math.round(30 + (percent * 0.7)); // scale progress from 30% to 100%
+                    processingBar.style.width = `${mappedProgress}%`;
+                    processingPercent.innerText = `${mappedProgress}%`;
+                    processingMsg.innerText = `MP3 압축 인코딩 데이터 프레임 전송 진행률: ${percent}%`;
+                });
+
+                // Display results on finish
+                finishConversion();
+
+            } catch (err) {
+                console.error("Conversion failed:", err);
+                showToast("변환 에러 발생", "브라우저 메모리 한계 혹은 손상된 WAV 오디오 주소 사유로 인하여 오류가 생성되었습니다.", "error");
+                resetProcessingUI();
+            }
+        }
+
+        /**
+         * Asynchronous and non-blocking LameJS MP3 Encoder implementation
+         */
+        async function encodeMP3Async(audioBuffer, bitrate, onProgress) {
+            const channels = audioBuffer.numberOfChannels;
+            const sampleRate = audioBuffer.sampleRate;
+            
+            // Initiate LameJS MP3 Encoder object
+            const mp3encoder = new lamejs.Mp3Encoder(channels, sampleRate, bitrate);
+            const mp3Data = [];
+            
+            // Extract PCM channels
+            const leftFloat = audioBuffer.getChannelData(0);
+            const rightFloat = channels > 1 ? audioBuffer.getChannelData(1) : null;
+            
+            const totalSamples = leftFloat.length;
+            const stepBlockSize = 115200; // Yield thread CPU time every ~2.6 seconds of audio block
+
+            let offset = 0;
+
+            while (offset < totalSamples) {
+                const end = Math.min(offset + stepBlockSize, totalSamples);
+                const stepLength = end - offset;
+
+                // Slice floats and transform directly to 16-bit PCM buffer array
+                const leftSub = leftFloat.subarray(offset, end);
+                const leftPCM = floatTo16BitPCM(leftSub);
+
+                let mp3buf;
+                if (channels > 1 && rightFloat) {
+                    const rightSub = rightFloat.subarray(offset, end);
+                    const rightPCM = floatTo16BitPCM(rightSub);
+                    
+                    // Encode stereo frame blocks
+                    mp3buf = mp3encoder.encodeBuffer(leftPCM, rightPCM);
+                } else {
+                    // Encode mono frame blocks
+                    mp3buf = mp3encoder.encodeBuffer(leftPCM);
+                }
+
+                if (mp3buf.length > 0) {
+                    mp3Data.push(mp3buf);
+                }
+
+                offset = end;
+
+                // Fire reactive UI progress trigger
+                if (onProgress) {
+                    onProgress(Math.round((offset / totalSamples) * 100));
+                }
+
+                // Yield JavaScript execution context
+                await new Promise(resolve => setTimeout(resolve, 8));
+            }
+
+            // Flush empty encoder buffer to conclude file structure
+            const mp3buf = mp3encoder.flush();
+            if (mp3buf.length > 0) {
+                mp3Data.push(mp3buf);
+            }
+
+            return new Blob(mp3Data, { type: 'audio/mp3' });
+        }
+
+        // Float to standard Signed Int16 conversion helper
+        function floatTo16BitPCM(input) {
+            const output = new Int16Array(input.length);
+            for (let i = 0; i < input.length; i++) {
+                const s = Math.max(-1, Math.min(1, input[i]));
+                output[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            }
+            return output;
+        }
+
+        // Finish conversion phase
+        function finishConversion() {
+            processingBar.style.width = `100%`;
+            processingPercent.innerText = `100%`;
+            processingMsg.innerText = "MP3 파일 캡슐화 완료!";
+            
+            setTimeout(() => {
+                processingCard.classList.add('hidden');
+                
+                // Show result card and details
+                const originalNameWithoutExt = selectedFile.name.substring(0, selectedFile.name.lastIndexOf('.')) || selectedFile.name;
+                const outName = `${originalNameWithoutExt}.mp3`;
+                
+                resultFilename.innerText = outName;
+                sizeBefore.innerText = formatBytes(selectedFile.size);
+                sizeAfter.innerText = formatBytes(convertedMp3Blob.size);
+
+                // Saving ratio calculation
+                const savings = Math.round(((selectedFile.size - convertedMp3Blob.size) / selectedFile.size) * 100);
+                if (savings > 0) {
+                    savingBadge.innerText = `WAV 대비 -${savings}% 절감`;
+                    savingBadge.className = "bg-emerald-500 text-slate-950 font-extrabold text-[11px] px-2 py-1 rounded-lg";
+                } else {
+                    savingBadge.innerText = `인코딩 정밀 필터 적용`;
+                    savingBadge.className = "bg-indigo-500 text-white font-bold text-[11px] px-2 py-1 rounded-lg";
+                }
+
+                // Attach sound Blob to built-in Audio Player
+                const blobUrl = URL.createObjectURL(convertedMp3Blob);
+                resultAudioPlayer.src = blobUrl;
+
+                // Configure Direct Download Link
+                downloadMp3Btn.href = blobUrl;
+                downloadMp3Btn.download = outName;
+
+                resultCard.classList.remove('hidden');
+                resetProcessingUI();
+                
+                showToast("MP3 변환 완료!", "고음질 단일 MP3 파일 생성이 완벽하게 종료되었습니다.", "success");
+            }, 600);
+        }
+
+        // Re-enable state triggers
+        function resetProcessingUI() {
+            convertBtn.disabled = false;
+            convertBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            clearFileBtn.classList.remove('opacity-50', 'pointer-events-none');
+        }
+
+        // Copy Entire App Source Code to Clipboard
+        copySourceBtn.addEventListener('click', () => {
+            try {
+                const fullHTML = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+                
+                const tempTextArea = document.createElement('textarea');
+                tempTextArea.value = fullHTML;
+                tempTextArea.style.top = "0";
+                tempTextArea.style.left = "0";
+                tempTextArea.style.position = "fixed";
+                tempTextArea.style.opacity = "0";
+                document.body.appendChild(tempTextArea);
+                
+                tempTextArea.focus();
+                tempTextArea.select();
+                
+                const isSuccessful = document.execCommand('copy');
+                document.body.removeChild(tempTextArea);
+
+                if (isSuccessful) {
+                    showToast(
+                        "클립보드 복사 성공!", 
+                        "코드가 복사되었습니다. 메모장을 열고 붙여넣은 뒤, 인코딩을 'UTF-8'로 설정하고 'wav_to_mp3_converter.html'로 저장하세요.", 
+                        "success"
+                    );
+                } else {
+                    throw new Error("브라우저 복사 트리거 오류");
+                }
+            } catch (error) {
+                console.error(error);
+                showToast("복사 실패", "단축키 사용 또는 우측 프리뷰의 원본 코드를 전체 복사해 주세요.", "error");
+            }
+        });
+
+        // Direct HTML Self-Download
+        downloadAppBtn.addEventListener('click', () => {
+            try {
+                const fullHTML = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+                const blob = new Blob([fullHTML], { type: 'text/html;charset=utf-8' });
+                const blobUrl = URL.createObjectURL(blob);
+                
+                const tempLink = document.createElement('a');
+                tempLink.href = blobUrl;
+                tempLink.download = 'wav_to_mp3_converter.html';
+                document.body.appendChild(tempLink);
+                tempLink.click();
+                
+                document.body.removeChild(tempLink);
+                URL.revokeObjectURL(blobUrl);
+
+                showToast("앱 다운로드 완료", "'wav_to_mp3_converter.html' 파일이 로컬 다운로드 폴더에 안전하게 저장되었습니다.", "success");
+            } catch (error) {
+                console.error(error);
+                showToast("다운로드 에러", "앱 파일을 내보내는 중 오류가 발생했습니다.", "error");
+            }
+        });
+    </script>
+
+</body></html>

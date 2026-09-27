@@ -3,9 +3,25 @@
   // 공개 사이트는 이 폴더(dist/)의 정적 파일로만 서비스하고, 관리자 화면은 이 PC에서만 씁니다.
   "name": "reversroad",
   "compatibility_date": "2026-09-27",
+  // 관리자 API·동적 페이지를 처리하는 Worker (정적 자산은 env.ASSETS 로 서빙)
+  "main": "worker/index.js",
+  // 도메인 연결: 기존 DNS 레코드는 그대로 두고 라우트로 Worker 에 연결합니다.
+  // (되돌리려면 이 routes 항목만 지우고 다시 배포하면 원래 서버로 돌아갑니다)
+  "routes": [
+    { "pattern": "www.reversroad.com/*", "zone_name": "reversroad.com" },
+    { "pattern": "reversroad.com/*", "zone_name": "reversroad.com" }
+  ],
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+  // 관리자 데이터(앱·설정·페이지) 저장소
+  "kv_namespaces": [
+    { "binding": "MYHOME", "id": "5a34f8926b674e57b7b94791b6fd6a40" }
+  ],
   "assets": {
     "directory": "./dist",
-    "html_handling": "drop-trailing-slash",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+    "html_handling": "none", // 정확한 파일 경로만 서빙 (깨끗한 주소는 Worker 가 KV 페이지로 처리)
     "not_found_handling": "404-page"
   }
 }

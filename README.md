@@ -11,6 +11,14 @@ myhome/
 ├─ src/analyze.js        # 업로드한 html/zip 을 읽어 이름·설명·태그·사용방법 생성
 ├─ src/auth.js           # 비밀번호·GitHub/Google OAuth 로그인 + 관리자 허용목록
 ├─ src/password.js       # 관리자 비밀번호(scrypt 해시) 저장·검증
+├─ worker/               # Cloudflare Worker (배포 사이트의 관리자 백엔드)
+│  ├─ index.js           # 라우팅: API · 관리자 화면 · 동적 페이지 · 정적 자산
+│  ├─ api.js             # 관리자 API (로컬 서버와 같은 주소 체계)
+│  ├─ apps.js            # 앱 추가·수정·삭제 (KV 저장소)
+│  ├─ auth.js            # 비밀번호 로그인 + 서명 쿠키 세션
+│  ├─ store.js           # KV 저장소 + 페이지 재생성
+│  └─ zip.js             # zip 업로드 해제 / 다운로드
+├─ src/build.js          # 사이트 전체 렌더링 (Node 빌드와 Worker 가 공유)
 ├─ src/categories.js     # 앱 분야(카테고리) 정의 + 자동 분류기
 ├─ src/site.js           # 사이트 설정(이름·운영자·이메일·도메인·AdSense ID)
 ├─ src/seo.js            # robots.txt · sitemap.xml · ads.txt 생성
@@ -23,6 +31,8 @@ myhome/
 ├─ tools/export-static.js# 공개 사이트 정적 빌드 (dist/)
 ├─ tools/audit.js        # 애드센스 관점 자동 점검
 ├─ tools/test-classify.js# 분야 자동 분류 정확도 확인
+├─ tools/init-kv.js      # 로컬 데이터 → Cloudflare KV (최초 이전)
+├─ tools/pull-kv.js      # Cloudflare KV → 로컬 백업
 ├─ tools/render-logo.js  # logo.svg → logo.png 렌더링
 ├─ data/apps.json        # 앱 매니페스트 (이 목록의 원본)
 ├─ data/site.json        # 사이트 설정 (관리자 화면에서 수정)
@@ -288,17 +298,49 @@ cp ~/Downloads/my-app.html apps/my-app/index.html
 - SVG 를 수정했다면 PNG 를 다시 만들어 두세요: `node tools/render-logo.js public/assets/logo.svg public/assets/logo.png 512`
 - 파일을 넣고 5초 안에 자동 반영됩니다(파일 존재 여부를 잠깐 캐시합니다).
 
-## 9. 배포
+## 9. 배포 (Cloudflare Workers)
 
-Node 가 돌아가는 곳(자체 서버, VPS, Render/Railway/Fly 등)에 폴더를 올리고:
+공개 사이트는 Cloudflare Workers(정적 자산 + KV)로 서비스하고, **관리자 화면도 같은 서버에서** 동작합니다.
 
 ```bash
-NODE_ENV=production SESSION_SECRET=... ADMIN_LOGINS=... BASE_URL=https://... npm start
+npm run build:static          # dist/ 생성
+npx wrangler deploy           # Cloudflare 배포
+npx wrangler dev              # 로컬에서 Worker 미리보기 (http://localhost:8787)
 ```
 
-- HTTPS 뒤에 둘 때는 `BASE_URL` 을 실제 도메인으로 맞추세요 (OAuth 리디렉션·쿠키 secure 판정에 사용).
-- 리버스 프록시(nginx/Caddy)를 쓴다면 `X-Forwarded-Proto` 를 넘겨주세요 (`trust proxy` 가 켜져 있습니다).
-- 앱은 정적 파일이므로, 별도 호스트에 두고 싶으면 `apps/` 를 통째로 올린 뒤 `data/apps.json` 의 `path` 만 맞춰도 됩니다.
+| 구성 | 설명 |
+| --- | --- |
+| 정적 자산 | `dist/` (HTML·CSS·JS·로고·앱 파일) |
+| 저장소 (KV `MYHOME`) | 앱 목록, 사이트 설정, 관리자 비밀번호 해시, 앱 파일, 생성된 페이지 |
+| 라우트 | `www.reversroad.com/*`, `reversroad.com/*` (도메인 DNS 는 그대로 두고 라우트로 연결) |
+| worker/index.js | `/api/*`·`/auth/*`·`/admin.html` 처리, 나머지는 KV 페이지 → 정적 파일 순으로 서빙 |
+
+**관리자 화면은 배포 사이트에서 바로 씁니다**: `https://www.reversroad.com/admin.html` → 비밀번호 로그인 → 앱 추가·수정·삭제가 즉시 반영됩니다.
+앱을 바꾸면 Worker 가 사이트 페이지(홈·목록·상세·분야·sitemap)를 다시 만들어 KV 에 저장하므로, 재배포 없이 반영됩니다.
+
+### 최초 이전 · 백업
+
+```bash
+node tools/init-kv.js     # 이 PC의 앱·설정·비밀번호·페이지를 KV 로 올림 (최초 1회)
+node tools/pull-kv.js     # 배포 사이트에서 바꾼 내용을 이 PC 로 내려받아 백업
+```
+
+- 배포 사이트에서 수정한 내용은 KV 에 있으므로, 저장소를 최신으로 유지하려면 `pull-kv.js` 후 커밋하세요.
+- 로컬 서버(`npm start`)는 개발·미리보기용이고, 배포 사이트의 데이터와는 별개입니다.
+- 관리자 페이지를 다시 만들려면: `npm run deploy`
+
+### 도메인 연결 (기존 사이트 교체)
+
+`wrangler.jsonc` 의 `routes` 로 연결합니다. 기존 DNS 레코드를 지우지 않아 되돌리기 쉽습니다.
+
+```jsonc
+"routes": [
+  { "pattern": "www.reversroad.com/*", "zone_name": "reversroad.com" },
+  { "pattern": "reversroad.com/*", "zone_name": "reversroad.com" }
+]
+```
+
+되돌리려면 이 `routes` 를 비우고 다시 배포하면 원래 서버로 돌아갑니다.
 
 ## 10. 구글 애드센스 준비
 

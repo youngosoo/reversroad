@@ -10,14 +10,16 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const ROOT = path.join(__dirname, '..');
-const ASSETS_DIR = path.join(ROOT, 'public', 'assets');
+// Cloudflare Worker 번들에는 __dirname 이 없습니다. 있을 때만 경로를 계산합니다.
+const HAS_FS = typeof __dirname !== 'undefined';
+const ASSETS_DIR = HAS_FS ? path.join(__dirname, '..', 'public', 'assets') : '';
 const CANDIDATES = ['logo.png', 'logo.jpg', 'logo.jpeg', 'logo.webp', 'logo.svg'];
 const TTL_MS = 5000;
 
 let cache = { at: 0, name: null };
 
 function resolveLogoName() {
+  if (!HAS_FS) return CANDIDATES[0];
   const now = Date.now();
   if (cache.name && now - cache.at < TTL_MS) return cache.name;
   let found = CANDIDATES[CANDIDATES.length - 1];
@@ -44,6 +46,7 @@ const versionCache = new Map();
 const VERSION_TTL_MS = 3000;
 
 function assetUrl(name) {
+  if (!HAS_FS) return `/assets/${name}`;
   const file = path.join(ASSETS_DIR, name);
   let stat;
   try {

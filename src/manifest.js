@@ -12,12 +12,9 @@ const TRASH_DIR = path.join(ROOT, '.trash');
 const STAGING_DIR = path.join(ROOT, 'uploads');
 const MANIFEST = path.join(ROOT, 'data', 'apps.json');
 
-const HOWTO_MAX = 4000;
-const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,39}$/;
+const meta = require('./meta');
 
-function isValidSlug(slug) {
-  return typeof slug === 'string' && SLUG_RE.test(slug);
-}
+const { HOWTO_MAX, isValidSlug, parseTags, normalizeMeta, HttpError, safeAnalyze } = meta;
 
 async function ensureDirs() {
   await fsp.mkdir(APPS_DIR, { recursive: true });
@@ -43,49 +40,6 @@ async function writeApps(apps) {
   await fsp.writeFile(tmp, `${JSON.stringify(apps, null, 2)}\n`, 'utf8');
   await fsp.rename(tmp, MANIFEST);
   return apps;
-}
-
-function parseTags(value) {
-  if (Array.isArray(value)) return value.map((t) => String(t).trim()).filter(Boolean).slice(0, 10);
-  return String(value || '')
-    .split(',')
-    .map((t) => t.trim())
-    .filter(Boolean)
-    .slice(0, 10);
-}
-
-function normalizeMeta(input, fallback = {}) {
-  const name = String(input.name || '').trim() || String(fallback.name || '').trim();
-  if (!name) throw new HttpError(400, 'name is required');
-  const desc = (String(input.desc || '').trim() || String(fallback.desc || '').trim()).slice(0, 300);
-  const icon = String(input.icon || '').trim().slice(0, 8) || String(fallback.icon || '').trim() || '📦';
-  const tags = parseTags(input.tags);
-  const finalTags = tags.length ? tags : parseTags(fallback.tags);
-  const howto = (String(input.howto || '').trim() || String(fallback.howto || '').trim()).slice(0, HOWTO_MAX);
-  const requested = String(input.category || '').trim();
-  const category = isValidCategory(requested)
-    ? requested
-    : (isValidCategory(fallback.category)
-      ? fallback.category
-      : (isValidCategory(fallback.siteCategory) ? fallback.siteCategory : DEFAULT_SLUG));
-  return { name, desc, icon, tags: finalTags, howto, category };
-}
-
-/** Best-effort static analysis of a file that was just uploaded (never throws). */
-function safeAnalyze(buffer, fileName) {
-  try {
-    const { analyzeBuffer } = require('./analyze');
-    return analyzeBuffer(buffer, fileName);
-  } catch {
-    return null;
-  }
-}
-
-class HttpError extends Error {
-  constructor(status, message) {
-    super(message);
-    this.status = status;
-  }
 }
 
 function assertInside(baseDir, target) {
@@ -245,9 +199,11 @@ async function addApp(input) {
     await moveDir(stage, destDir);
 
     const now = new Date().toISOString();
+    const online = Boolean(analysis && (analysis.details?.externalResources || []).length);
     const app = {
       id: finalSlug,
       ...meta,
+      ...(online ? { online: true } : {}),
       path: `apps/${finalSlug}/`,
       entry: 'index.html',
       createdAt: now,
@@ -348,6 +304,8 @@ module.exports = {
   MANIFEST,
   HttpError,
   isValidSlug,
+  normalizeMeta,
+  parseTags,
   ensureDirs,
   readApps,
   writeApps,
@@ -356,6 +314,8 @@ module.exports = {
   removeApp,
   getApp,
   analyzeApp,
+  normalizeMeta,
+  parseTags,
   renameApp,
   safeAnalyze,
   STARTER_HTML,

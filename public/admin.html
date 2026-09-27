@@ -57,6 +57,12 @@
           <input id="id" name="id" type="text" pattern="[a-z0-9][a-z0-9-]{0,39}" placeholder="budget" />
         </div>
         <div class="field">
+          <label for="category">분야 <span class="muted">(파일을 올리면 자동 분류)</span></label>
+          <select id="category" name="category">
+            <option value="">자동 분류</option>
+          </select>
+        </div>
+        <div class="field">
           <label for="icon">아이콘 (이모지 1자)</label>
           <input id="icon" name="icon" type="text" maxlength="4" placeholder="💰" />
         </div>
@@ -99,7 +105,7 @@
     <div style="overflow-x:auto">
       <table>
         <thead>
-          <tr><th></th><th>이름</th><th>ID</th><th>태그</th><th>사용방법</th><th>등록일</th><th></th></tr>
+          <tr><th></th><th>이름</th><th>분야</th><th>ID</th><th>태그</th><th>사용방법</th><th>등록일</th><th></th></tr>
         </thead>
         <tbody id="rows"></tbody>
       </table>
@@ -200,6 +206,10 @@
           <input id="e_icon" type="text" maxlength="4" />
         </div>
         <div class="field">
+          <label for="e_category">분야</label>
+          <select id="e_category"></select>
+        </div>
+        <div class="field">
           <label for="e_id">ID (주소) <span class="muted">변경하면 링크가 바뀝니다</span></label>
           <input id="e_id" type="text" pattern="[a-z0-9][a-z0-9-]{0,39}" placeholder="short-english-id" />
         </div>
@@ -248,6 +258,7 @@ const reanalyzeBtn = document.getElementById('reanalyzeBtn');
 const autoFill = document.getElementById('autoFill');
 const addStatus = document.getElementById('addStatus');
 const F = {
+  category: document.getElementById('category'),
   name: document.getElementById('name'),
   id: document.getElementById('id'),
   icon: document.getElementById('icon'),
@@ -256,6 +267,7 @@ const F = {
   howto: document.getElementById('howto'),
 };
 const E = {
+  category: document.getElementById('e_category'),
   name: document.getElementById('e_name'),
   icon: document.getElementById('e_icon'),
   id: document.getElementById('e_id'),
@@ -304,6 +316,32 @@ async function api(url, options = {}) {
   return data;
 }
 
+let categoriesCache = [];
+
+async function loadCategories() {
+  try {
+    const { categories } = await api('/api/categories');
+    categoriesCache = categories || [];
+  } catch {
+    categoriesCache = [];
+  }
+  const fill = (select, { includeAuto = false } = {}) => {
+    if (!select) return;
+    const current = select.value;
+    select.innerHTML = (includeAuto ? '<option value="">자동 분류</option>' : '')
+      + categoriesCache.map((c) => `<option value="${esc(c.slug)}">${esc(c.icon)} ${esc(c.label)}${includeAuto ? '' : ` (${c.count}개)`}</option>`).join('');
+    if (current) select.value = current;
+  };
+  fill(F.category, { includeAuto: true });
+  fill(E.category);
+  if (!E.category.value) E.category.value = 'etc';
+}
+
+function categoryLabel(slug) {
+  const found = categoriesCache.find((c) => c.slug === slug);
+  return found ? `${found.icon} ${found.label}` : '—';
+}
+
 async function loadUser() {
   const { user } = await fetch('/auth/me').then((r) => r.json());
   const chip = document.getElementById('userChip');
@@ -343,6 +381,7 @@ function applyAnalysis(analysis, { force = false } = {}) {
   if (!analysis) return;
   lastAnalysis = analysis;
   const g = analysis.guess || {};
+  if (g.siteCategory && (force || !F.category.value)) F.category.value = g.siteCategory;
   if (force || !F.name.value.trim()) F.name.value = g.name || F.name.value;
   if (force || !F.id.value.trim()) F.id.value = g.slug || F.id.value;
   if (force || !F.icon.value.trim()) F.icon.value = g.icon || F.icon.value;
@@ -430,12 +469,13 @@ async function loadApps() {
   document.getElementById('count').textContent = apps.length ? `(${apps.length})` : '(0)';
   renderChecklist();
   if (!apps.length) {
-    rows.innerHTML = '<tr><td colspan="7" class="muted">아직 앱이 없습니다.</td></tr>';
+    rows.innerHTML = '<tr><td colspan="8" class="muted">아직 앱이 없습니다.</td></tr>';
     return;
   }
   rows.innerHTML = apps.map((a) => `
     <tr>
       <td style="width:34px;font-size:20px">${esc(a.icon || '📦')}</td>
+      <td><a href="/category/${esc(a.category || 'etc')}" target="_blank" rel="noopener" style="font-size:13px">${esc(categoryLabel(a.category || 'etc'))}</a></td>
       <td><a href="/${esc(a.path || `apps/${a.id}/`)}" target="_blank" rel="noopener">${esc(a.name)}</a><div class="muted" style="font-size:12.5px">${esc(a.desc || '')}</div></td>
       <td class="mono">${esc(a.id)}</td>
       <td>${(a.tags || []).map((t) => `<span class="tag">${esc(t)}</span>`).join(' ')}</td>
@@ -474,6 +514,7 @@ rows.addEventListener('click', async (e) => {
     editing = app;
     document.getElementById('editTitle').textContent = '앱 수정';
     document.getElementById('editId').textContent = `/${app.path || `apps/${app.id}/`}`;
+    E.category.value = app.category || 'etc';
     E.name.value = app.name || '';
     E.icon.value = app.icon || '';
     E.id.value = app.id || '';
@@ -512,6 +553,7 @@ document.getElementById('editAnalyze').addEventListener('click', async () => {
     const { analysis } = await api(`/api/apps/${editing.id}/analyze`, { method: 'POST' });
     renderAnalysis(box, analysis);
     const g = analysis.guess || {};
+    if (g.siteCategory) E.category.value = g.siteCategory;
     E.name.value = g.name || E.name.value;
     E.icon.value = g.icon || E.icon.value;
     E.desc.value = g.desc || '';
@@ -539,6 +581,7 @@ document.getElementById('editSave').addEventListener('click', async () => {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
+        category: E.category.value,
         name: E.name.value,
         icon: E.icon.value,
         tags: E.tags.value,
@@ -726,7 +769,10 @@ function renderChecklist() {
 }
 
 loadUser().catch(() => {});
-loadApps().then(loadSite).catch((err) => say(err.message, 'err'));
+loadCategories()
+  .then(loadApps)
+  .then(loadSite)
+  .catch((err) => say(err.message, 'err'));
 </script>
 </body>
 </html>

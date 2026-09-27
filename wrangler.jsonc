@@ -1,0 +1,11 @@
+{
+  // Cloudflare Workers + 정적 자산 배포 설정
+  // 공개 사이트는 이 폴더(dist/)의 정적 파일로만 서비스하고, 관리자 화면은 이 PC에서만 씁니다.
+  "name": "reversroad",
+  "compatibility_date": "2026-09-27",
+  "assets": {
+    "directory": "./dist",
+    "html_handling": "drop-trailing-slash",
+    "not_found_handling": "404-page"
+  }
+}

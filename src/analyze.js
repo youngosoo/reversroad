@@ -9,6 +9,7 @@
 const path = require('path');
 const AdmZip = require('adm-zip');
 const cheerio = require('cheerio');
+const { classifyCategory } = require('./categories');
 
 function fail(status, message) {
   const err = new Error(message);
@@ -680,6 +681,14 @@ function analyzeHtml(html, meta = {}) {
   const fileBase = meta.fileName ? path.basename(meta.fileName, path.extname(meta.fileName)) : '';
   const name = shortName(title) || shortName(h1) || shortName(fileBase) || '새 앱';
   const icon = findEmoji(title, h1, fileBase) || (category ? category.icon : '📦');
+  // 화면에 보이는 글(제목·설명·라벨)을 우선해 분류합니다. 코드에 섞인 라이브러리 이름은 가중치를 낮춥니다.
+  const siteCategory = classifyCategory(
+    {
+      primary: [name, title, h1, metaDescription, headings.join(' '), controls.map((c) => c.label).join(' ')].join(' '),
+      secondary: `${innerText.slice(0, 6000)} ${scriptText.slice(0, 4000)}`,
+    },
+    { hint: category ? category.key : null, name }
+  );
   const slug = suggestSlug({ name, category: category ? category.key : '', fileName: meta.fileName });
 
   // ---- description
@@ -834,9 +843,20 @@ function analyzeHtml(html, meta = {}) {
       title: title || null,
       h1: h1 || null,
     },
-    guess: { name, icon, slug, category: category ? category.key : '', desc, tags: finalTags, howto },
+    guess: {
+      name,
+      icon,
+      slug,
+      kind: category ? category.key : '',
+      siteCategory,
+      desc,
+      tags: finalTags,
+      howto,
+    },
     details: {
+      kind: category ? category.key : null,
       category: category ? category.label : null,
+      siteCategory,
       headings,
       metaDescription: metaDescription || null,
       controls: controls.map((c) => ({ tag: c.tag, type: c.type, label: c.label })),

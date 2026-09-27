@@ -4,6 +4,7 @@ const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
 const AdmZip = require('adm-zip');
+const { isValidCategory, DEFAULT_SLUG, getCategory } = require('./categories');
 
 const ROOT = path.join(__dirname, '..');
 const APPS_DIR = path.join(ROOT, 'apps');
@@ -61,7 +62,13 @@ function normalizeMeta(input, fallback = {}) {
   const tags = parseTags(input.tags);
   const finalTags = tags.length ? tags : parseTags(fallback.tags);
   const howto = (String(input.howto || '').trim() || String(fallback.howto || '').trim()).slice(0, HOWTO_MAX);
-  return { name, desc, icon, tags: finalTags, howto };
+  const requested = String(input.category || '').trim();
+  const category = isValidCategory(requested)
+    ? requested
+    : (isValidCategory(fallback.category)
+      ? fallback.category
+      : (isValidCategory(fallback.siteCategory) ? fallback.siteCategory : DEFAULT_SLUG));
+  return { name, desc, icon, tags: finalTags, howto, category };
 }
 
 /** Best-effort static analysis of a file that was just uploaded (never throws). */
@@ -264,6 +271,7 @@ async function updateApp(id, patch) {
     icon: patch.icon ?? app.icon,
     tags: patch.tags ?? app.tags,
     howto: patch.howto ?? app.howto,
+    category: patch.category || app.category, // 빈 값이면 기존 분야 유지
   });
   Object.assign(app, meta, { updatedAt: new Date().toISOString() });
   await writeApps(apps);

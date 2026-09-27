@@ -1,6 +1,7 @@
 'use strict';
 
 const { logoPath } = require('../assets');
+const { getCategory } = require('../categories');
 
 function esc(value) {
   return String(value ?? '').replace(/[&<>"']/g, (c) => ({
@@ -30,6 +31,7 @@ function formatDate(iso) {
 /** 앱 카드. 목록/상세/홈에서 공통으로 씁니다. */
 function appCard(app, { site } = {}) {
   const href = `/${app.path || `apps/${app.id}/`}`;
+  const category = getCategory(app.category);
   const haystack = [app.name, app.desc, app.id, ...(app.tags || [])].join(' ').toLowerCase();
   return `
     <article class="card app-card" data-app data-search="${attr(haystack)}" data-name="${attr(String(app.name || '').toLowerCase())}" data-tags="${attr((app.tags || []).join(','))}" data-created="${attr(app.createdAt || '')}" data-updated="${attr(app.updatedAt || '')}">
@@ -37,7 +39,8 @@ function appCard(app, { site } = {}) {
         <span class="icon" aria-hidden="true">${esc(app.icon || '📦')}</span>
         <div class="app-card-head">
           <h3><a href="${attr(href)}">${esc(app.name)}</a></h3>
-          ${app.tags?.length ? `<div class="tags">${app.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
+          ${category ? `<a class="cat-badge" href="/category/${attr(category.slug)}"><span aria-hidden="true">${esc(category.icon)}</span> ${esc(category.label)}</a>` : ''}
+          ${app.tags?.length ? `<div class="tags">${app.tags.slice(0, 4).map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
         </div>
       </div>
       <p class="desc">${esc(app.desc || '설명이 아직 등록되지 않았습니다.')}</p>
@@ -185,7 +188,7 @@ ${graphs.length ? `<script type="application/ld+json">${safeJson(graphs.length =
     <a class="brand" href="/">${brandLogo()}<span class="brand-text">${esc(site.name)}</span></a>
     <nav class="site-nav" aria-label="주요 메뉴">
       ${navItems.map((item) => `<a href="${attr(item.href)}"${nav === item.key ? ' class="active" aria-current="page"' : ''}>${esc(item.label)}</a>`).join('')}
-      <a class="nav-admin" href="/admin.html">관리자</a>
+      ${site.hideAdmin ? '' : '<a class="nav-admin" href="/admin.html">관리자</a>'}
       ${themeToggle()}
     </nav>
   </div>

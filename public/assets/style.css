@@ -139,6 +139,9 @@
 /* ------------------------------------------------------- 2) 기본 요소 */
 *, *::before, *::after { box-sizing: border-box; }
 
+/* hidden 속성은 항상 이깁니다. (.consent 처럼 display 를 지정한 요소가 무시되는 문제 방지) */
+[hidden] { display: none !important; }
+
 html { scroll-behavior: smooth; }
 
 body {
@@ -354,6 +357,11 @@ header.top .theme-toggle { margin-left: 0; }
 .app-card h3 a { color: var(--text); }
 .app-card h3 a:hover { color: var(--accent); text-decoration: none; }
 .app-card .desc { margin: 0; color: var(--muted); font-size: 0.9375rem; }
+.app-card .cat-badge {
+  display: inline-block; margin: 0 0 8px; font-size: 0.75rem; font-weight: 700;
+  color: var(--accent); background: var(--accent-soft); border-radius: 8px; padding: 3px 9px; text-decoration: none;
+}
+.app-card .cat-badge:hover { text-decoration: none; filter: brightness(0.97); }
 .app-card .actions { margin-top: auto; display: flex; gap: 8px; flex-wrap: wrap; }
 
 .ad-slot {
@@ -368,6 +376,34 @@ header.top .theme-toggle { margin-left: 0; }
 .checklist { list-style: none; padding: 0; margin: 0 0 1em; }
 .checklist li { position: relative; padding-left: 1.5em; margin: 0.5em 0; }
 .checklist li::before { content: "✓"; position: absolute; left: 0; color: var(--accent); font-weight: 700; }
+
+/* 분야별 보기 칩 */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 1.5rem; padding: 0; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: 999px;
+  padding: 7px 14px; font-size: 0.875rem; font-weight: 600; color: var(--text-soft); text-decoration: none;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.chip:hover { border-color: var(--accent); color: var(--accent); text-decoration: none; }
+.chip.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.chip span { color: var(--muted); font-weight: 500; font-size: 0.8125rem; }
+.chip.active span { color: var(--accent); }
+
+/* 분야 목록 표 */
+.cat-table { width: 100%; border-collapse: collapse; font-size: 0.9375rem; }
+.cat-table th, .cat-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; }
+.cat-table th { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.cat-table td:nth-child(2) { white-space: nowrap; font-weight: 600; }
+
+/* 분야 카드 */
+.cat-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.cat-card { padding: 22px; text-decoration: none; color: inherit; display: flex; flex-direction: column; gap: 8px; transition: transform 0.12s, box-shadow 0.15s, border-color 0.15s; }
+.cat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: var(--border-strong); text-decoration: none; }
+.cat-card .cat-icon { font-size: 1.75rem; line-height: 1; }
+.cat-card h2 { margin: 0; font-size: 1.0625rem; }
+.cat-card p { margin: 0; color: var(--muted); font-size: 0.9375rem; }
+.cat-card .cat-count { margin-top: auto; font-size: 0.8125rem; font-weight: 700; color: var(--accent); }
 
 .guide-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
 .guide-card { padding: 20px; display: flex; flex-direction: column; gap: 8px; }
@@ -412,6 +448,15 @@ header.top .theme-toggle { margin-left: 0; }
   border-radius: var(--radius-sm); padding: 16px 18px; font-size: 0.9375rem; line-height: 1.85;
 }
 .howto.empty-state { color: var(--muted); }
+
+/* 사용 팁 · 관련 글 목록 */
+.tips { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.tips li { position: relative; padding-left: 1.6em; color: var(--text-soft); }
+.tips li::before { content: "💡"; position: absolute; left: 0; font-size: 0.95em; }
+.related-list { list-style: none; padding: 0; }
+.related-list li { padding: 10px 0; border-top: 1px solid var(--border); }
+.related-list li:first-child { border-top: 0; }
+.related-list a { font-weight: 600; }
 
 /* 글·정책 */
 .prose { max-width: 76ch; }

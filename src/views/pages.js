@@ -2,6 +2,7 @@
 
 const { layout, esc, attr, safeJson, formatDate, appCard, adSlot, breadcrumbs, prose } = require('./layout');
 const { GUIDES, findGuide } = require('../content/guides');
+const { CATEGORIES, getCategory, listCategories } = require('../categories');
 const { privacyPolicy, termsOfService, disclaimer } = require('../content/legal');
 
 const FAQ = [
@@ -38,6 +39,29 @@ const FAQ = [
     a: '광고 차단 프로그램을 쓰거나, 지역·브라우저 설정에 따라 광고가 표시되지 않을 수 있습니다. 광고가 보이지 않아도 앱 이용에는 아무런 제한이 없습니다.',
   },
 ];
+
+/** 카테고리별 앱 개수 (앱이 있는 카테고리만) */
+function categoryCounts(apps) {
+  const counts = new Map();
+  for (const app of apps) {
+    const slug = app.category && getCategory(app.category) ? app.category : 'etc';
+    counts.set(slug, (counts.get(slug) || 0) + 1);
+  }
+  return [...CATEGORIES]
+    .map((c) => ({ ...c, count: counts.get(c.slug) || 0 }))
+    .filter((c) => c.count > 0);
+}
+
+/** 홈·목록 상단의 카테고리 이동 칩 */
+function categoryChips(apps, { active = '' } = {}) {
+  const items = categoryCounts(apps);
+  if (!items.length) return '';
+  return `
+    <nav class="chips" aria-label="분야별 보기">
+      <a class="chip${active ? '' : ' active'}" href="/apps">전체 <span>${apps.length}</span></a>
+      ${items.map((c) => `<a class="chip${active === c.slug ? ' active' : ''}" href="/category/${attr(c.slug)}"><span aria-hidden="true">${esc(c.icon)}</span> ${esc(c.label)} <span>${c.count}</span></a>`).join('')}
+    </nav>`;
+}
 
 function websiteJsonLd(site) {
   return {
@@ -144,6 +168,7 @@ function homePage({ site, apps, guides = GUIDES }) {
         <h2>등록된 웹앱 <span class="count">(<span id="gridCount">${apps.length}</span>)</span></h2>
         <p class="section-desc">버튼을 누르면 바로 실행됩니다. 각 카드의 “사용법”에서 입력 순서와 주의사항을 볼 수 있습니다.</p>
       </div>
+      ${categoryChips(apps)}
       <div class="toolbar">
         <label class="sr-only" for="q">앱 검색</label>
         <input class="search" id="q" type="search" placeholder="앱 이름·설명·태그로 검색" autocomplete="off" />
@@ -241,8 +266,9 @@ function appsPage({ site, apps }) {
     ${crumbs.html}
     <header class="page-head">
       <h1>앱 목록</h1>
-      <p class="lead">설치 없이 실행되는 단일 파일 웹앱 ${apps.length}개입니다. 이름을 누르면 사용법을 볼 수 있고, “앱 열기”를 누르면 바로 실행됩니다.</p>
+      <p class="lead">설치 없이 실행되는 단일 파일 웹앱 ${apps.length}개입니다. 분야별로 묶어 두었으니 아래에서 골라 보세요. 이름을 누르면 사용법을 볼 수 있고, “앱 열기”를 누르면 바로 실행됩니다.</p>
     </header>
+    ${categoryChips(apps)}
     <div class="toolbar">
       <label class="sr-only" for="q">앱 검색</label>
       <input class="search" id="q" type="search" placeholder="앱 이름·설명·태그로 검색" autocomplete="off" />
@@ -260,8 +286,16 @@ function appsPage({ site, apps }) {
     ${adSlot(site, { slot: site.adsense?.slotInline, className: 'ad-inline' })}
     <section class="section prose">
       <h2>앱을 고르는 기준</h2>
-      <p>모든 앱은 운영자가 직접 만들었고, 등록 전에 휴대폰 화면에서의 사용성과 오프라인 실행 여부를 확인합니다. 외부 서버에서 자료를 불러오지 않는 앱을 우선하기 때문에, 인터넷이 느리거나 끊긴 환경에서도 대부분 그대로 동작합니다.</p>
-      <p>각 앱의 상세 페이지에는 입력 순서, 데이터가 저장되는 위치, 백업 방법이 함께 적혀 있습니다. 처음 쓰는 앱이라면 상세 페이지를 먼저 읽어 보시길 권합니다.</p>
+      <p>모든 앱은 운영자가 직접 만들었고, 등록 전에 휴대폰 화면에서의 사용성과 실행 여부를 확인합니다. 외부 서버에서 자료를 불러오지 않는 앱을 우선하기 때문에, 인터넷이 느리거나 끊긴 환경에서도 대부분 그대로 동작합니다. 다만 AI 분석이나 영상 렌더링처럼 외부 서비스가 필요한 앱은 인터넷 연결이 필요하며, 그 사실을 상세 페이지에 적어 두었습니다.</p>
+      <p>각 앱의 상세 페이지에는 입력 순서, 데이터가 저장되는 위치, 백업 방법, 그리고 실제로 써 보며 알게 된 사용 팁이 함께 적혀 있습니다. 처음 쓰는 앱이라면 상세 페이지를 먼저 읽어 보시길 권합니다.</p>
+      <h2>앱을 고를 때 확인하면 좋은 것</h2>
+      <ul>
+        <li><strong>데이터가 어디에 저장되는지</strong> — 이 사이트의 앱은 모두 브라우저에만 저장합니다. 기기를 바꾸면 이어지지 않으므로 중요한 기록은 내보내기로 백업하세요.</li>
+        <li><strong>인터넷이 필요한지</strong> — 외부 API를 쓰는 앱은 연결이 필요합니다.</li>
+        <li><strong>결과를 그대로 믿어도 되는지</strong> — 자동 분석·계산 결과는 참고용입니다. 정산이나 게시 전에는 원본과 대조하세요.</li>
+      </ul>
+      <h2>앱이 열리지 않을 때</h2>
+      <p>브라우저를 최신 버전으로 업데이트한 뒤 새로고침해 보시고, 시크릿 모드에서는 저장 기능이 동작하지 않으니 일반 창에서 열어 주세요. 그래도 문제가 있으면 <a href="/contact">문의 페이지</a>로 알려 주시면 확인 후 반영합니다.</p>
     </section>
   </div>
   ${FILTER_SCRIPT}`;
@@ -309,11 +343,15 @@ function appDetailPage({ site, app, apps }) {
   ]);
   const related = relatedApps(app, apps);
   const howto = String(app.howto || '').trim();
+  const tips = Array.isArray(app.tips) ? app.tips.filter(Boolean) : [];
+  const relatedGuides = GUIDES.filter((g) => (g.related || []).includes(app.id));
   const meta = [
     ['실행 주소', openHref],
     ['등록일', formatDate(app.createdAt)],
     ['최근 수정', formatDate(app.updatedAt)],
-    ['분류', (app.tags || []).join(' · ') || '미분류'],
+    ['분류', app.category && getCategory(app.category) ? `${getCategory(app.category).icon} ${getCategory(app.category).label}` : '기타 도구'],
+    ['특성', (app.tags || []).join(' · ') || '—'],
+    ['실행 환경', '웹 브라우저 (모바일·데스크톱)'],
   ];
 
   const body = `
@@ -342,23 +380,45 @@ function appDetailPage({ site, app, apps }) {
               ? `<div class="howto">${esc(howto)}</div>`
               : `<p>이 앱은 화면의 안내에 따라 바로 사용할 수 있습니다. 입력한 값은 브라우저에만 저장되며 서버로 전송되지 않습니다.</p>`}
           </section>
+          ${tips.length ? `
+          <section class="section prose">
+            <h2>이럴 때 유용합니다 — 사용 팁</h2>
+            <ul class="tips">
+              ${tips.map((t) => `<li>${esc(t)}</li>`).join('')}
+            </ul>
+          </section>` : ''}
           <section class="section prose">
             <h2>사용 전에 알아두세요</h2>
             <ul>
               <li>입력한 내용은 <strong>이 브라우저에만</strong> 저장됩니다. 다른 기기에서는 이어지지 않습니다.</li>
               <li>브라우저의 사이트 데이터를 삭제하거나 시크릿 모드로 열면 기록이 남지 않습니다.</li>
               <li>중요한 기록은 앱의 내보내기(내려받기) 기능으로 파일로 백업해 두세요.</li>
-              <li>계산 결과는 참고용입니다. 중요한 결정에는 공식 자료나 전문가의 확인을 거치세요.</li>
+              <li>계산·분석 결과는 참고용입니다. 중요한 결정에는 공식 자료나 전문가의 확인을 거치세요.</li>
+              ${app.online ? '<li>이 앱은 외부 서비스(API·라이브러리)를 사용하므로 인터넷 연결이 필요합니다.</li>' : ''}
             </ul>
             <p class="muted small">자세한 내용은 <a href="/privacy">개인정보처리방침</a>, <a href="/terms">이용약관</a>, <a href="/disclaimer">책임 한계·광고 고지</a>를 확인하세요.</p>
           </section>
+          ${relatedGuides.length ? `
+          <section class="section prose">
+            <h2>함께 읽으면 좋은 안내</h2>
+            <ul class="related-list">
+              ${relatedGuides.map((g) => `<li><a href="/guide/${attr(g.slug)}">${esc(g.title)}</a> — <span class="muted">${esc(g.summary)}</span></li>`).join('')}
+            </ul>
+          </section>` : ''}
           ${adSlot(site, { slot: site.adsense?.slotInline, className: 'ad-inline' })}
         </div>
         <aside class="detail-side">
           <div class="card info-card">
             <h2>앱 정보</h2>
             <dl class="kv">
-              ${meta.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${k === '실행 주소' ? `<span class="mono">${esc(v)}</span>` : esc(v)}</dd>`).join('')}
+              ${meta.map(([k, v]) => {
+                if (k === '실행 주소') return `<dt>${esc(k)}</dt><dd><span class="mono">${esc(v)}</span></dd>`;
+                if (k === '분류' && app.category && getCategory(app.category)) {
+                  const c = getCategory(app.category);
+                  return `<dt>${esc(k)}</dt><dd><a href="/category/${attr(c.slug)}">${esc(c.icon)} ${esc(c.label)}</a></dd>`;
+                }
+                return `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`;
+              }).join('')}
             </dl>
           </div>
           ${related.length ? `
@@ -453,6 +513,11 @@ function aboutPage({ site, apps, guides = GUIDES }) {
         <p>이 사이트의 앱은 서버에 데이터를 보내지 않습니다. 입력한 값은 이용자의 브라우저 저장소에만 남고, 운영자는 그것을 볼 수 없습니다. 대신 기기 간 동기화는 되지 않으므로, 오래 보관할 기록은 앱의 내보내기 기능으로 백업해 두시길 권합니다. 자세한 처리는 <a href="/privacy">개인정보처리방침</a>에 적어 두었습니다.</p>
       </section>
       <section class="prose-block">
+        <h2>업데이트 원칙</h2>
+        <p>새 앱은 만들고 점검한 뒤에 올리고, 기존 앱은 브라우저 동작이 바뀌거나 사용 중 불편이 확인되면 고칩니다. 고칠 때는 상세 페이지의 “최근 수정” 날짜와 사용법이 함께 갱신되므로, 어느 앱이 최신인지 이 페이지에서 바로 확인할 수 있습니다.</p>
+        <p>앱을 정리해 목록에서 내리는 경우도 있습니다. 주소가 바뀌면 기존 북마크가 열리지 않을 수 있으니, 자주 쓰는 앱은 <a href="/apps">앱 목록</a>에서 다시 확인해 주세요.</p>
+      </section>
+      <section class="prose-block">
         <h2>최근 등록한 앱</h2>
         ${recent.length
           ? `<ul class="timeline">${recent.map((a) => `<li><span class="muted small">${esc(formatDate(a.createdAt))}</span> <a href="/app/${attr(a.id)}">${esc(a.name)}</a> — ${esc(a.desc || '')}</li>`).join('')}</ul>`
@@ -521,6 +586,19 @@ function contactPage({ site }) {
       <section class="prose-block">
         <h2>답변 안내</h2>
         <p>개인이 운영하는 사이트라 모든 메일을 바로 확인하기 어렵습니다. 접수 순서대로 확인하며, 보통 영업일 기준 2~3일 안에 답변드립니다. 다만 모든 제안이 반영되지는 않습니다.</p>
+        <p>앱은 운영자가 직접 만들고 점검하지만, 브라우저·기기·사용 환경에 따라 다르게 동작할 수 있습니다. 문제를 알려 주실 때는 위의 네 가지만 적어 주시면 원인을 훨씬 빠르게 좁힐 수 있습니다.</p>
+      </section>
+      <section class="prose-block">
+        <h2>이런 문의는 답변이 어렵습니다</h2>
+        <ul>
+          <li>특정 상품·업체의 홍보나 순위 조정 요청 — 이 사이트는 광고성 콘텐츠를 싣지 않습니다.</li>
+          <li>다른 사람의 저작물을 대신 올려 달라는 요청 — 권리 관계를 확인할 수 없어 받지 않습니다.</li>
+          <li>앱을 대신 만들어 달라는 요청 — 제안은 읽지만 제작 일정을 약속드리지는 않습니다.</li>
+        </ul>
+      </section>
+      <section class="prose-block">
+        <h2>광고·제휴 문의</h2>
+        <p>페이지에 게재되는 광고는 Google AdSense를 통해 자동으로 집행되며, 운영자가 개별 광고를 직접 판매하거나 중개하지 않습니다. 다만 콘텐츠 협업 제안은 위 이메일로 보내 주시면 검토하겠습니다.</p>
       </section>
       <section class="prose-block">
         <h2>개인정보 관련 요청</h2>
@@ -558,7 +636,8 @@ function guideIndexPage({ site, apps, guides = GUIDES }) {
     ${crumbs.html}
     <header class="page-head">
       <h1>가이드</h1>
-      <p class="lead">이 사이트의 앱을 오래, 안전하게 쓰는 방법을 정리했습니다. 처음 방문했다면 첫 번째 글부터 읽어 보시길 권합니다.</p>
+      <p class="lead">이 사이트의 앱을 오래, 안전하게 쓰는 방법을 정리한 글 모음입니다. 도구의 사용법뿐 아니라 데이터를 어디에 두고 어떻게 백업할지, AI API 키를 어떻게 다룰지까지 함께 다룹니다.</p>
+      <p class="muted">처음 방문했다면 <a href="/guide/single-file-webapp">단일 파일 웹앱이란 무엇인가</a>부터, 앱을 이미 쓰고 있다면 <a href="/guide/api-key-safety">AI API 키 관리</a>를 먼저 읽어 보시길 권합니다.</p>
     </header>
     <div class="grid guide-grid">
       ${guides.map((g) => `
@@ -601,13 +680,16 @@ function guideIndexPage({ site, apps, guides = GUIDES }) {
   });
 }
 
-function guideDetailPage({ site, guide }) {
+function guideDetailPage({ site, guide, apps = [] }) {
   const crumbs = breadcrumbs([
     { label: '홈', href: '/', url: site.domain ? `${site.domain}/` : undefined },
     { label: '가이드', href: '/guide', url: site.domain ? `${site.domain}/guide` : undefined },
     { label: guide.title, href: `/guide/${guide.slug}` },
   ]);
   const others = GUIDES.filter((g) => g.slug !== guide.slug).slice(0, 2);
+  const relatedAppList = (guide.related || [])
+    .map((id) => apps.find((a) => a.id === id))
+    .filter(Boolean);
   const body = `
   <div class="shell">
     ${crumbs.html}
@@ -634,6 +716,13 @@ function guideDetailPage({ site, guide }) {
         }).join('')}
       </div>
       ${adSlot(site, { slot: site.adsense?.slotInline, className: 'ad-inline' })}
+      ${relatedAppList.length ? `
+      <section class="section">
+        <h2>이 글과 관련된 앱</h2>
+        <div class="grid">
+          ${relatedAppList.map((a) => appCard(a, { site })).join('')}
+        </div>
+      </section>` : ''}
       <section class="section">
         <h2>이어서 읽기</h2>
         <div class="grid guide-grid">
@@ -680,6 +769,153 @@ function slugifyHeading(text) {
     .replace(/[^\w가-힣]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 60) || `section`;
+}
+
+function categoriesPage({ site, apps }) {
+  const crumbs = breadcrumbs([
+    { label: '홈', href: '/', url: site.domain ? `${site.domain}/` : undefined },
+    { label: '분야별 보기', href: '/categories' },
+  ]);
+  const items = categoryCounts(apps);
+  const etcLink = items.some((c) => c.slug === 'etc')
+    ? '<a href="/category/etc">기타 도구</a>'
+    : '기타 도구';
+  const body = `
+  <div class="shell">
+    ${crumbs.html}
+    <header class="page-head">
+      <h1>분야별로 앱 찾기</h1>
+      <p class="lead">등록된 웹앱 ${apps.length}개를 쓰임새별로 묶었습니다. 분야를 고르면 그 분야의 앱과 사용법을 한 번에 볼 수 있습니다.</p>
+    </header>
+    <div class="grid cat-grid">
+      ${items.map((c) => `
+        <a class="card cat-card" href="/category/${attr(c.slug)}">
+          <span class="cat-icon" aria-hidden="true">${esc(c.icon)}</span>
+          <h2>${esc(c.label)}</h2>
+          <p>${esc(c.blurb)}</p>
+          <span class="cat-count">앱 ${c.count}개</span>
+        </a>`).join('')}
+    </div>
+    <section class="section prose">
+      <h2>분야별 앱 수</h2>
+      <p>지금 올라와 있는 앱을 분야별로 세어 보면 아래와 같습니다. 앱이 하나도 없는 분야는 목록에서 빠지고, 새로운 앱이 등록되면 그때 자동으로 생깁니다.</p>
+      <table class="cat-table">
+        <thead><tr><th>분야</th><th>앱 수</th><th>이런 앱이 들어갑니다</th></tr></thead>
+        <tbody>
+          ${items.map((c) => `<tr><td><a href="/category/${attr(c.slug)}">${esc(c.icon)} ${esc(c.label)}</a></td><td>${c.count}개</td><td class="muted">${esc(c.blurb)}</td></tr>`).join('')}
+        </tbody>
+      </table>
+    </section>
+    <section class="section prose narrow">
+      <h2>분야는 이렇게 정합니다</h2>
+      <p>앱 파일을 읽어 제목·설명·화면 라벨에 나타난 낱말로 자동 분류하고, 운영자가 등록 전에 한 번 더 확인합니다. 화면에 보이는 글을 우선하고 코드에 섞여 있는 라이브러리 이름은 가중치를 낮게 보기 때문에, “이미지 파일을 다루는 계산기”처럼 겹치는 앱도 실제 쓰임새 쪽으로 묶입니다.</p>
+      <p>그래서 같은 앱이라도 기능이 바뀌면 분야가 옮겨질 수 있습니다. 앱을 고칠 때 분야도 함께 다시 확인하기 때문입니다.</p>
+      <p>분야가 애매한 도구는 ${etcLink} 에 모아 두고, 쓰임새가 분명해지면 알맞은 분야로 옮깁니다. 원하는 분야가 없거나 잘못 묶인 앱이 보이면 <a href="/contact">문의 페이지</a>로 알려 주세요. 확인 후 반영합니다.</p>
+    </section>
+    <section class="section prose narrow">
+      <h2>분야별로 찾는 방법</h2>
+      <ul>
+        <li>홈과 <a href="/apps">앱 목록</a> 위쪽의 분야 버튼을 누르면 그 분야의 앱만 모아 볼 수 있습니다.</li>
+        <li>앱 상세 페이지의 “분류” 항목을 누르면 같은 분야의 다른 앱으로 이동합니다.</li>
+        <li>분야 페이지마다 그 분야에서 자주 필요한 안내 글을 함께 걸어 두었습니다.</li>
+      </ul>
+    </section>
+  </div>`;
+  return layout({
+    site,
+    title: '분야별로 앱 찾기',
+    description: `등록된 웹앱 ${apps.length}개를 콘텐츠 제작·업무·금융·문서·이미지·텍스트·학습·생활·데이터·게임 분야로 나눠 소개합니다.`,
+    path: '/categories',
+    body,
+    nav: 'apps',
+    jsonLd: [
+      crumbs.jsonLd,
+      {
+        '@context': 'https://schema.org',
+        '@type': 'CollectionPage',
+        name: `${site.name} 분야별 앱 목록`,
+        hasPart: items.map((c) => ({
+          '@type': 'CollectionPage',
+          name: c.label,
+          description: c.blurb,
+          ...(site.domain ? { url: `${site.domain}/category/${c.slug}` } : {}),
+        })),
+      },
+    ],
+  });
+}
+
+function categoryPage({ site, apps, category }) {
+  const items = apps.filter((a) => (a.category && getCategory(a.category) ? a.category : 'etc') === category.slug);
+  const others = categoryCounts(apps).filter((c) => c.slug !== category.slug);
+  const crumbs = breadcrumbs([
+    { label: '홈', href: '/', url: site.domain ? `${site.domain}/` : undefined },
+    { label: '분야별 보기', href: '/categories', url: site.domain ? `${site.domain}/categories` : undefined },
+    { label: category.label, href: `/category/${category.slug}` },
+  ]);
+  const relatedGuides = GUIDES.filter((g) => (g.related || []).some((id) => items.some((a) => a.id === id))).slice(0, 3);
+  const body = `
+  <div class="shell">
+    ${crumbs.html}
+    <header class="page-head">
+      <p class="eyebrow">${esc(category.icon)} 분야</p>
+      <h1>${esc(category.label)} 앱 <span class="count">(${items.length})</span></h1>
+      <p class="lead">${esc(category.blurb)}</p>
+    </header>
+    ${categoryChips(apps, { active: category.slug })}
+    ${items.length
+      ? `<div class="grid">${items.map((a) => appCard(a, { site })).join('')}</div>`
+      : '<div class="card empty">이 분야에는 아직 앱이 없습니다. 다른 분야를 살펴보세요.</div>'}
+    <section class="section prose narrow">
+      ${(category.intro || []).map((t) => `<p>${esc(t)}</p>`).join('')}
+      <p>분야가 잘못 묶였다고 생각되면 <a href="/contact">문의 페이지</a>로 알려 주세요. 확인 후 옮기겠습니다.</p>
+    </section>
+    ${relatedGuides.length ? `
+    <section class="section">
+      <h2>이 분야와 함께 읽을 안내</h2>
+      <div class="grid guide-grid">
+        ${relatedGuides.map((g) => `
+          <article class="card guide-card">
+            <h3><a href="/guide/${attr(g.slug)}">${esc(g.title)}</a></h3>
+            <p>${esc(g.summary)}</p>
+            <a class="more" href="/guide/${attr(g.slug)}">읽기 →</a>
+          </article>`).join('')}
+      </div>
+    </section>` : ''}
+    ${adSlot(site, { slot: site.adsense?.slotInline, className: 'ad-inline' })}
+    ${others.length ? `
+    <section class="section">
+      <h2>다른 분야</h2>
+      <nav class="chips" aria-label="다른 분야">
+        ${others.map((c) => `<a class="chip" href="/category/${attr(c.slug)}"><span aria-hidden="true">${esc(c.icon)}</span> ${esc(c.label)} <span>${c.count}</span></a>`).join('')}
+      </nav>
+    </section>` : ''}
+  </div>`;
+  return layout({
+    site,
+    title: `${category.label} 앱`,
+    description: `${category.blurb} 현재 ${items.length}개의 앱을 소개합니다. 각 앱의 사용법과 데이터 저장 방식도 함께 안내합니다.`,
+    path: `/category/${category.slug}`,
+    body,
+    nav: 'apps',
+    jsonLd: [
+      crumbs.jsonLd,
+      {
+        '@context': 'https://schema.org',
+        '@type': 'CollectionPage',
+        name: `${category.label} 앱 모음`,
+        description: category.blurb,
+        ...(items.length ? {
+          hasPart: items.map((a) => ({
+            '@type': 'WebApplication',
+            name: a.name,
+            description: a.desc || '',
+            ...(site.domain ? { url: `${site.domain}/app/${a.id}` } : {}),
+          })),
+        } : {}),
+      },
+    ],
+  });
 }
 
 function policyPage({ site, doc }) {
@@ -751,6 +987,10 @@ module.exports = {
   guideIndexPage,
   guideDetailPage,
   policyPage,
+  categoriesPage,
+  categoryPage,
+  categoryCounts,
+  categoryChips,
   notFoundPage,
   privacyPolicy,
   termsOfService,

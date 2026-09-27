@@ -13,6 +13,7 @@ const manifest = require('./src/manifest');
 const analyze = require('./src/analyze');
 const auth = require('./src/auth');
 const siteStore = require('./src/site');
+const categories = require('./src/categories');
 const passwordStore = require('./src/password');
 const seo = require('./src/seo');
 const pages = require('./src/views/pages');
@@ -101,6 +102,7 @@ app.post('/api/apps', auth.requireAuth, upload.single('file'), async (req, res, 
       icon: req.body.icon,
       tags: req.body.tags,
       howto: req.body.howto,
+      category: req.body.category,
       file: req.file,
       zip: req.body.zip === 'true',
     });
@@ -272,6 +274,45 @@ app.get('/apps', async (req, res, next) => {
   }
 });
 
+app.get('/categories', async (req, res, next) => {
+  try {
+    const site = await currentSite(req);
+    const apps = await manifest.readApps();
+    res.send(pages.categoriesPage({ site, apps }));
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get('/category/:slug', async (req, res, next) => {
+  try {
+    const site = await currentSite(req);
+    const category = categories.getCategory(req.params.slug);
+    if (!category) return res.status(404).send(pages.notFoundPage({ site }));
+    const apps = await manifest.readApps();
+    const hasApps = apps.some((a) => (a.category || 'etc') === category.slug);
+    if (!hasApps) return res.redirect(302, '/categories');
+    res.send(pages.categoryPage({ site, apps, category }));
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get('/api/categories', async (req, res, next) => {
+  try {
+    const apps = await manifest.readApps();
+    const counted = pages.categoryCounts(apps);
+    res.json({
+      categories: categories.listCategories().map((c) => ({
+        ...c,
+        count: (counted.find((x) => x.slug === c.slug) || { count: 0 }).count,
+      })),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 app.get('/app/:id', async (req, res, next) => {
   try {
     const site = await currentSite(req);
@@ -299,7 +340,8 @@ app.get('/guide/:slug', async (req, res, next) => {
     const site = await currentSite(req);
     const guide = findGuide(req.params.slug);
     if (!guide) return res.status(404).send(pages.notFoundPage({ site }));
-    res.send(pages.guideDetailPage({ site, guide }));
+    const apps = await manifest.readApps();
+    res.send(pages.guideDetailPage({ site, guide, apps }));
   } catch (err) {
     next(err);
   }

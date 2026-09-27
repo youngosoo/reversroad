@@ -1,6 +1,7 @@
 'use strict';
 
 const { GUIDES } = require('./content/guides');
+const { CATEGORIES } = require('./categories');
 const { privacyPolicy, termsOfService, disclaimer } = require('./content/legal');
 
 function xmlEscape(value) {
@@ -19,11 +20,17 @@ function entries({ site, apps }) {
     { path: '/', lastmod: dayOf(site.updatedAt), changefreq: 'daily', priority: '1.0' },
     { path: '/apps', lastmod: dayOf(site.updatedAt), changefreq: 'daily', priority: '0.9' },
     { path: '/guide', lastmod: dayOf(site.updatedAt), changefreq: 'weekly', priority: '0.7' },
+    { path: '/categories', lastmod: dayOf(site.updatedAt), changefreq: 'weekly', priority: '0.7' },
     { path: '/about', lastmod: dayOf(site.updatedAt), changefreq: 'monthly', priority: '0.6' },
     { path: '/contact', lastmod: dayOf(site.updatedAt), changefreq: 'monthly', priority: '0.5' },
   ];
   for (const app of apps) {
     list.push({ path: `/app/${app.id}`, lastmod: dayOf(app.updatedAt || app.createdAt), changefreq: 'monthly', priority: '0.8' });
+  }
+  const usedCategories = new Set(apps.map((a) => a.category).filter(Boolean));
+  for (const category of CATEGORIES) {
+    if (!usedCategories.has(category.slug)) continue;
+    list.push({ path: `/category/${category.slug}`, lastmod: dayOf(site.updatedAt), changefreq: 'weekly', priority: '0.7' });
   }
   for (const guide of GUIDES) {
     list.push({ path: `/guide/${guide.slug}`, lastmod: dayOf(guide.date), changefreq: 'yearly', priority: '0.6' });

@@ -7,7 +7,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "build:static": "node tools/export-static.js",
+    "deploy": "node tools/export-static.js && npx wrangler deploy"
   },
   "dependencies": {
     "adm-zip": "^0.5.16",

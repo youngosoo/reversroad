@@ -7,3 +7,5 @@ uploads/*
 .trash/
 .DS_Store
 *.log
+dist/
+.wrangler/

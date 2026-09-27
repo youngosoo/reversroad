@@ -11,6 +11,7 @@ myhome/
 ├─ src/analyze.js        # 업로드한 html/zip 을 읽어 이름·설명·태그·사용방법 생성
 ├─ src/auth.js           # 비밀번호·GitHub/Google OAuth 로그인 + 관리자 허용목록
 ├─ src/password.js       # 관리자 비밀번호(scrypt 해시) 저장·검증
+├─ src/categories.js     # 앱 분야(카테고리) 정의 + 자동 분류기
 ├─ src/site.js           # 사이트 설정(이름·운영자·이메일·도메인·AdSense ID)
 ├─ src/seo.js            # robots.txt · sitemap.xml · ads.txt 생성
 ├─ src/assets.js         # 로고 등 정적 자산 경로 결정
@@ -19,6 +20,10 @@ myhome/
 ├─ tools/analyze-dump.js # 분석기 단독 실행 도구 (디버깅용)
 ├─ tools/render-logo.js  # logo.svg → logo.png 렌더링
 ├─ tools/set-password.js # 관리자 비밀번호 설정/재설정 (서버용)
+├─ tools/export-static.js# 공개 사이트 정적 빌드 (dist/)
+├─ tools/audit.js        # 애드센스 관점 자동 점검
+├─ tools/test-classify.js# 분야 자동 분류 정확도 확인
+├─ tools/render-logo.js  # logo.svg → logo.png 렌더링
 ├─ data/apps.json        # 앱 매니페스트 (이 목록의 원본)
 ├─ data/site.json        # 사이트 설정 (관리자 화면에서 수정)
 ├─ data/admin.json       # 관리자 비밀번호 해시 (git 제외)
@@ -85,28 +90,6 @@ ALLOW_DEV_LOGIN=0
 
 ## 3. 앱 추가 방법 (관리자 화면)
 
-`.env` 에 값을 채우면 `/login.html` 에 해당 버튼이 나타납니다.
-
-**GitHub** — https://github.com/settings/developers → New OAuth App
-- Homepage URL: `http://localhost:3000` (배포 시 실제 도메인)
-- Authorization callback URL: `http://localhost:3000/auth/github/callback`
-- 발급된 Client ID/Secret → `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`
-
-**Google** — https://console.cloud.google.com/apis/credentials → OAuth 클라이언트 ID(웹 애플리케이션)
-- 승인된 리디렉션 URI: `http://localhost:3000/auth/google/callback`
-- → `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
-
-마지막으로 `ADMIN_LOGINS` 에 관리자 계정을 적습니다. GitHub 은 로그인 아이디, Google 은 이메일입니다.
-여러 명은 쉼표로 구분하며, `*` 는 "로그인한 모든 계정 허용"(테스트 전용)입니다.
-
-```
-ADMIN_LOGINS=my-github-login,me@gmail.com
-BASE_URL=https://myhome.example.com
-SESSION_SECRET=<node -e "console.log(require('crypto').randomBytes(32).toString('hex'))">
-```
-
-## 3. 앱 추가 방법 (관리자 화면)
-
 `/admin.html` 에서:
 
 | 방식 | 결과 |
@@ -128,6 +111,7 @@ HTML(또는 zip)을 선택하는 순간 서버가 파일을 읽어 아래를 만
 
 | 항목 | 어떻게 알아내나 |
 | --- | --- |
+| **분야** | 제목·설명·화면 라벨의 낱말로 **자동 분류** (콘텐츠 제작·업무·금융·문서·이미지·텍스트·학습·생활·데이터·게임·기타). 관리자 화면에서 언제든 바꿀 수 있습니다 |
 | 이름 | `<title>` → `<h1>` → 파일명 순. **16자 이내로 짧게** 다듬습니다 (괄호 설명·`앱`/`프로그램` 같은 꼬리말·`v2`·`The/Simple/무료` 같은 수식어 제거) |
 | 아이콘 | 제목/파일명의 이모지, 없으면 감지된 분류의 기본 이모지 |
 | 설명 | `<meta name="description">`(og/twitter 포함) → 본문 첫 문단 → 자동 생성 문장 |
@@ -182,7 +166,41 @@ cp ~/Downloads/my-app.html apps/my-app/index.html
 }
 ```
 
-## 5. 앱 작성 규칙 (계약)
+## 5. 분야(카테고리) 자동 분류
+
+앱을 올리면 파일을 읽어 **분야를 자동으로 정합니다.** 태그가 "저장형·인쇄·키보드" 같은 기능 특성이라면, 분야는 "무엇을 하는 앱인지"입니다.
+
+| 분야 | 들어가는 앱 |
+| --- | --- |
+| 🎬 콘텐츠 제작 | 영상·대본·문구 생성 (쇼츠·상품 콘텐츠 등) |
+| 💼 업무·비즈니스 | 영수증·정산·재고 |
+| 🧮 금융·계산 | 이자·세금·예산 |
+| 📋 문서·표 | 표·목록·내보내기 |
+| 🖼️ 이미지·영상 | 사진·영상 변환·다듬기 |
+| 🔤 텍스트 도구 | 글자 수·변환·비교 |
+| 📚 학습·퀴즈 | 단어장·문제 풀이 |
+| 🏠 생활·기록 | 할 일·습관·타이머·메모 |
+| 🔄 데이터·변환 | 단위·형식·코드 변환 |
+| 🎮 게임·오락 | 작은 게임 |
+| 📦 기타 도구 | 위에 딱 맞지 않는 도구 |
+
+**어떻게 분류하나** (`src/categories.js`)
+
+- 화면에 보이는 글(제목·설명·버튼·라벨)에 **2배 가중치**를 주고, 코드에 섞여 있는 라이브러리 이름은 낮게 봅니다. 그래서 "이미지 파일을 다루는 계산기"도 실제 쓰임새 쪽으로 묶입니다.
+- 분류기가 애매하다고 판단하면 `기타 도구`로 두고, 관리자 화면에서 사람이 고칠 수 있습니다.
+- 정확도 확인: `node tools/test-classify.js` (실제 앱 + 합성 예시 20건) — 현재 20/20.
+
+**사이트에서 분야가 쓰이는 곳**
+
+| 주소 | 내용 |
+| --- | --- |
+| `/categories` | 분야 목록 + 분야별 앱 수 |
+| `/category/<slug>` | 그 분야의 앱 모음 (앱이 있는 분야만 생성) |
+| 홈·앱 목록 | 상단 분야 버튼(칩)으로 바로 이동 |
+| 앱 카드·상세 | 분야 배지, 상세 페이지의 "분류" 항목에서 분야 페이지로 이동 |
+| sitemap.xml | 앱이 있는 분야 페이지 자동 포함 |
+
+## 6. 앱 작성 규칙 (계약)
 
 1. 앱 1개 = `apps/<id>/` 폴더 1개, 진입점은 `index.html`
 2. **상대경로 + 루트 절대경로(`/apps/<id>/...`)만 사용** — 홈페이지를 거치지 않고 `http://host/apps/<id>/` 로 열어도 동작해야 함
@@ -203,12 +221,13 @@ cp ~/Downloads/my-app.html apps/my-app/index.html
 
 `<title>`/`<h1>`, `meta description`, `label`·`placeholder`·버튼 글자가 곧 설명과 사용방법의 재료가 됩니다. 버튼 라벨은 `시작`, `일시정지`, `초기화`, `인쇄`, `내려받기`, `복사`, `설정`, `도움말` 처럼 흔한 표현을 쓰면 그에 맞는 문장이 생성됩니다.
 
-## 6. API 요약
+## 7. API 요약
 
 | 메서드 | 경로 | 인증 | 설명 |
 | --- | --- | --- | --- |
 | GET | `/api/apps` | 공개 | 앱 목록 |
 | GET | `/api/apps/:id` | 공개 | 앱 하나 |
+| GET | `/api/categories` | 공개 | 분야 목록 + 분야별 앱 수 |
 | GET | `/api/site` | 공개 | 사이트 설정(공개분) |
 | PUT | `/api/site` | 관리자 | 사이트 설정 저장 (이름·운영자·이메일·도메인·AdSense ID 등) |
 | POST | `/api/analyze` | 관리자 | 파일만 분석해 메타데이터 초안 반환 (저장 안 함) |
@@ -226,7 +245,7 @@ cp ~/Downloads/my-app.html apps/my-app/index.html
 
 `POST /api/apps` 는 넘어오지 않은 항목(설명·태그·사용방법·이름·아이콘)을 서버에서 자동 분석해 채웁니다. 즉 파일만 올려도 최소한의 정보가 등록됩니다.
 
-## 7. 공개 페이지 (서버 렌더링)
+## 8. 공개 페이지 (서버 렌더링)
 
 홈·목록·상세·정책 페이지는 **서버에서 HTML 로 완성해 내려보냅니다.** 검색엔진과 광고 심사 크롤러가 자바스크립트를 실행하지 않아도 내용이 그대로 보입니다.
 
@@ -269,7 +288,7 @@ cp ~/Downloads/my-app.html apps/my-app/index.html
 - SVG 를 수정했다면 PNG 를 다시 만들어 두세요: `node tools/render-logo.js public/assets/logo.svg public/assets/logo.png 512`
 - 파일을 넣고 5초 안에 자동 반영됩니다(파일 존재 여부를 잠깐 캐시합니다).
 
-## 8. 배포
+## 9. 배포
 
 Node 가 돌아가는 곳(자체 서버, VPS, Render/Railway/Fly 등)에 폴더를 올리고:
 
@@ -281,7 +300,7 @@ NODE_ENV=production SESSION_SECRET=... ADMIN_LOGINS=... BASE_URL=https://... npm
 - 리버스 프록시(nginx/Caddy)를 쓴다면 `X-Forwarded-Proto` 를 넘겨주세요 (`trust proxy` 가 켜져 있습니다).
 - 앱은 정적 파일이므로, 별도 호스트에 두고 싶으면 `apps/` 를 통째로 올린 뒤 `data/apps.json` 의 `path` 만 맞춰도 됩니다.
 
-## 9. 구글 애드센스 준비
+## 10. 구글 애드센스 준비
 
 심사에 필요한 요소는 코드에 미리 넣어 두었습니다. 관리자 화면 맨 위의 **“AdSense 준비 점검”** 카드가 남은 항목을 자동으로 알려 줍니다.
 
@@ -327,7 +346,7 @@ NODE_ENV=production SESSION_SECRET=... ADMIN_LOGINS=... BASE_URL=https://... npm
 
 **주의**: 통과를 보장할 수는 없습니다(최종 판단은 Google 몫입니다). 심사 중에는 자기 광고를 클릭하지 말고, 승인 후에도 콘텐츠 없는 페이지에 광고를 넣지 마세요.
 
-## 10. 운영 수칙
+## 11. 운영 수칙
 
 - `apps/`, `data/`, `.trash/` 를 git 으로 버전관리하고, 커밋은 `git init && git add -A && git commit -m "..."` 로 남기면 앱 변경 이력이 그대로 남습니다.
 - 업로드 검증: 슬러그 정규식, zip 경로 탈출(`../`) 차단, 50MB·2000파일 상한이 적용되어 있습니다.

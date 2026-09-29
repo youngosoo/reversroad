@@ -351,6 +351,17 @@ function findEmoji(...texts) {
   return '';
 }
 
+/** 입력 예시(URL·이메일 등)는 라벨로 쓰지 않습니다 — "https://example.com 에 입력" 같은 문장을 막습니다 */
+function isExampleText(text) {
+  const value = collapse(text);
+  if (!value) return true;
+  if (/^https?:\/\//i.test(value)) return true;
+  if (/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(value)) return true;
+  if (/example\.(com|org|net)/i.test(value)) return true;
+  if (/^(입력|여기에|예:|예시|type|enter)\b/i.test(value)) return true;
+  return false;
+}
+
 function labelFor($, el) {
   const $el = $(el);
   const aria = $el.attr('aria-label');
@@ -369,7 +380,7 @@ function labelFor($, el) {
     if (text) return { label: text, explicit: true };
   }
   const placeholder = $el.attr('placeholder');
-  if (placeholder) return { label: collapse(placeholder), explicit: true };
+  if (placeholder && !isExampleText(placeholder)) return { label: collapse(placeholder), explicit: true };
   const title = $el.attr('title');
   if (title) return { label: collapse(title), explicit: true };
   if ($el.is('button')) {

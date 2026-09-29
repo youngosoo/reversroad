@@ -39,6 +39,7 @@ function walk(dir, out = []) {
 }
 
 const strip = (html) => html
+  .replace(/\s(?:placeholder|value|title|alt)="[^"]*"/gi, ' ') // 입력 예시 문구는 내용이 아니므로 제외
   .replace(/<script[\s\S]*?<\/script>/gi, ' ')
   .replace(/<style[\s\S]*?<\/style>/gi, ' ')
   .replace(/<[^>]+>/g, ' ')

@@ -132,7 +132,7 @@ async function handleApi(request, env, url) {
   if (path === '/api/site' && method === 'PUT') {
     const patch = await readBody(request);
     const saved = await store.writeSite(env, patch);
-    await store.rebuild(env, { host });
+    await store.rebuild(env, { host, site: saved });
     return json({ site: store.publicSite(saved, host) });
   }
 

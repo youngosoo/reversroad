@@ -80,8 +80,8 @@ async function addApp(env, { slug, name, desc, icon, tags, howto, category, file
     updatedAt: now,
   };
   apps.push(app);
-  await store.writeApps(env, apps);
-  const rebuild = await store.rebuild(env);
+  const saved = await store.writeApps(env, apps);
+  const rebuild = await store.rebuild(env, { apps: saved });
   return { app, analysis, rebuild };
 }
 
@@ -101,8 +101,8 @@ async function updateApp(env, id, patch) {
   const manual = normalizeManual(patch.manual);
   Object.assign(app, meta, { hidden, updatedAt: new Date().toISOString() });
   if (manual !== undefined) app.manual = manual; // undefined = 변경 없음, '' = 삭제
-  await store.writeApps(env, apps);
-  await store.rebuild(env);
+  const saved = await store.writeApps(env, apps);
+  await store.rebuild(env, { apps: saved });
   return app;
 }
 
@@ -122,8 +122,8 @@ async function renameApp(env, id, nextIdRaw) {
   app.id = next;
   app.path = `apps/${next}/`;
   app.updatedAt = new Date().toISOString();
-  await store.writeApps(env, apps);
-  await store.rebuild(env);
+  const saved = await store.writeApps(env, apps);
+  await store.rebuild(env, { apps: saved });
   return app;
 }
 
@@ -136,8 +136,8 @@ async function removeApp(env, id, { permanent = false } = {}) {
   await store.markGone(env, id);
   if (permanent) await store.deleteAppFiles(env, id);
 
-  await store.writeApps(env, apps.filter((a) => a.id !== id));
-  await store.rebuild(env);
+  const saved = await store.writeApps(env, apps.filter((a) => a.id !== id));
+  await store.rebuild(env, { apps: saved });
   return app;
 }
 
@@ -150,8 +150,8 @@ async function setManual(env, id, markdown) {
   if (manual) app.manual = manual;
   else delete app.manual;
   app.updatedAt = new Date().toISOString();
-  await store.writeApps(env, apps);
-  await store.rebuild(env);
+  const saved = await store.writeApps(env, apps);
+  await store.rebuild(env, { apps: saved });
   return { app: { id: app.id, name: app.name, manualChars: manual ? manual.length : 0 } };
 }
 

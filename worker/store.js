@@ -153,12 +153,14 @@ async function isGenerated(env) {
 }
 
 /** 관리자 변경 후 사이트 전체 페이지를 다시 만듭니다 */
-async function rebuild(env, { host = '' } = {}) {
-  const raw = await readSite(env);
+async function rebuild(env, { host = '', apps: appsInput = null, site: siteInput = null } = {}) {
+  // KV 는 쓰기 직후 다른 위치에서 옛 값을 읽을 수 있습니다(최대 60초).
+  // 방금 저장한 값을 넘겨받아 그 값으로 페이지를 만들면 항상 최신이 반영됩니다.
+  const raw = siteInput || (await readSite(env));
   const site = publicSite(raw, host);
   // 배포 사이트에서는 관리자 화면이 같은 주소에 있으므로 상대 경로로 둡니다
   site.adminUrl = '/admin.html';
-  const apps = await readApps(env);
+  const apps = appsInput || (await readApps(env));
   const rendered = renderSite({ site, apps });
   const result = await writePages(env, rendered);
   return { ...result, apps: apps.length };

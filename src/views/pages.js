@@ -3,6 +3,7 @@
 const { layout, esc, attr, safeJson, formatDate, appCard, adSlot, breadcrumbs, prose } = require('./layout');
 const { GUIDES, findGuide } = require('../content/guides');
 const { CATEGORIES, getCategory, listCategories } = require('../categories');
+const { renderMarkdown } = require('../markdown');
 const { privacyPolicy, termsOfService, disclaimer } = require('../content/legal');
 
 const FAQ = [
@@ -344,6 +345,8 @@ function appDetailPage({ site, app, apps }) {
   const related = relatedApps(app, apps);
   const howto = String(app.howto || '').trim();
   const tips = Array.isArray(app.tips) ? app.tips.filter(Boolean) : [];
+  const manualMd = String(app.manual || '').trim();
+  const manualHtml = manualMd ? renderMarkdown(manualMd) : '';
   const relatedGuides = GUIDES.filter((g) => (g.related || []).includes(app.id));
   const meta = [
     ['실행 주소', openHref],
@@ -351,6 +354,7 @@ function appDetailPage({ site, app, apps }) {
     ['최근 수정', formatDate(app.updatedAt)],
     ['분류', app.category && getCategory(app.category) ? `${getCategory(app.category).icon} ${getCategory(app.category).label}` : '기타 도구'],
     ['특성', (app.tags || []).join(' · ') || '—'],
+    ['사용설명서', manualMd ? `있음 (${manualMd.length.toLocaleString()}자)` : '없음'],
     ['실행 환경', '웹 브라우저 (모바일·데스크톱)'],
   ];
 
@@ -381,6 +385,12 @@ function appDetailPage({ site, app, apps }) {
               ? `<div class="howto">${esc(howto)}</div>`
               : `<p>이 앱은 화면의 안내에 따라 바로 사용할 수 있습니다. 입력한 값은 브라우저에만 저장되며 서버로 전송되지 않습니다.</p>`}
           </section>
+          ${manualHtml ? `
+          <section class="section prose manual">
+            <h2>사용설명서</h2>
+            <div class="manual-body">${manualHtml}</div>
+            <p class="muted small">설명서 원문(.md) 내려받기: <a href="/apps/${attr(app.id)}/manual.md" download>manual.md</a></p>
+          </section>` : ''}
           ${tips.length ? `
           <section class="section prose">
             <h2>이럴 때 유용합니다 — 사용 팁</h2>

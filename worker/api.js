@@ -93,7 +93,8 @@ async function handleApi(request, env, url) {
     const all = (await store.readApps(env)).filter((a) => !a.trashed);
     const viewer = await auth.currentUser(request, env);
     const wantsAll = url.searchParams.get('all') === '1' && Boolean(viewer);
-    return json({ apps: wantsAll ? all : all.filter((a) => !a.hidden) });
+    const list = wantsAll ? all : all.filter((a) => !a.hidden);
+    return json({ apps: meta.stripManual(list) });
   }
 
   if (path === '/api/categories' && method === 'GET') {
@@ -145,6 +146,12 @@ async function handleApi(request, env, url) {
     return json({ ok: true, updatedAt: result.updatedAt });
   }
 
+  if (path === '/api/markdown' && method === 'POST') {
+    const body = await readBody(request);
+    const markdownLib = require('../src/markdown');
+    return json({ html: markdownLib.renderMarkdown(String(body.markdown || '').slice(0, 200000)) });
+  }
+
   if (path === '/api/rebuild' && method === 'POST') {
     const result = await store.rebuild(env, { host });
     return json({ ok: true, rebuild: result });
@@ -189,6 +196,13 @@ async function handleApi(request, env, url) {
           'cache-control': 'no-store',
         },
       });
+    }
+    if (action === '/manual' && method === 'PUT') {
+      const body = await readBody(request);
+      return json(await appService.setManual(env, id, body.markdown ?? ''));
+    }
+    if (action === '/manual' && method === 'DELETE') {
+      return json(await appService.setManual(env, id, ''));
     }
     if (action === '/analyze' && method === 'POST') return json(await appService.analyzeApp(env, id));
     if (action === '/rename' && method === 'POST') {

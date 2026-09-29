@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="ko" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AI 여행 체크리스트 & 외장 API Key 관리</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- FontAwesome 6 Icons CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- html2pdf.js CDN for PDF generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <style>
+    @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+    
+    * {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .donut-circle {
+      transition: stroke-dashoffset 0.6s ease, stroke 0.4s ease;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+    }
+
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    @media print {
+      .no-print {
+        display: none !important;
+      }
+      .print-only {
+        display: block !important;
+      }
+      body {
+        background: white !important;
+        color: black !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-full flex flex-col transition-colors duration-200">
+
+  <header class="sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-4 py-3 no-print">
+    <div class="max-w-4xl mx-auto flex items-center justify-between gap-3">
+      <!-- Logo & Title -->
+      <div class="flex items-center gap-2 cursor-pointer" onclick="resetToInputView()">
+        <span class="text-2xl">✈️</span>
+        <div>
+          <h1 class="text-base font-extrabold tracking-tight text-slate-900 dark:text-white leading-tight">
+            AI 여행 체크리스트
+          </h1>
+          <p class="text-[10px] text-slate-500 dark:text-slate-400 font-medium hidden sm:block">
+            맞춤형 준비물 생성 & 암호화 Key 관리
+          </p>
+        </div>
+      </div>
+
+      <!-- Header Actions: API Key Badge & Dark Mode -->
+      <div class="flex items-center gap-2">
+        <!-- API Key Status Badge (Clickable) -->
+        <button id="api-key-status-badge" onclick="openApiKeyModal()" class="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800 border border-amber-200 hover:opacity-90 transition flex items-center">
+          <i class="fa-solid fa-triangle-exclamation mr-1"></i>미설정 (외장 암호화 파일 로드 필요)
+        </button>
+
+        <!-- API Settings Modal Button -->
+        <button onclick="openApiKeyModal()" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition" title="API Key 설정">
+          <i class="fa-solid fa-key"></i>
+        </button>
+
+        <!-- Dark Mode Toggle -->
+        <button onclick="toggleDarkMode()" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition" title="다크모드 전환">
+          <i id="theme-icon" class="fa-solid fa-moon"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto w-full flex-1 px-4 py-6">
+
+    <section id="view-input" class="space-y-6">
+      
+      <!-- Hero Header -->
+      <div class="bg-gradient-to-br from-brand-500 to-indigo-700 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+        <div class="relative z-10 max-w-xl">
+          <span class="inline-block px-2.5 py-1 bg-white/20 backdrop-blur-md rounded-lg text-xs font-bold mb-2">
+            🤖 Gemini AI 기반 맞춤 체크리스트
+          </span>
+          <h2 class="text-xl sm:text-2xl font-black mb-2 leading-snug">
+            어디로, 누구와 떠나시나요?<br>여행 조건에 딱 맞는 준비물을 챙겨드릴게요!
+          </h2>
+          <p class="text-xs sm:text-sm text-indigo-100 font-normal">
+            목적, 동반자, 기간, 현지 특성을 종합 분석하여 빠뜨림 없는 완벽한 체크리스트를 자동 생성합니다.
+          </p>
+        </div>
+        <div class="absolute -right-6 -bottom-6 text-white/10 text-9xl pointer-events-none select-none">
+          🧭
+        </div>
+      </div>
+
+      <!-- Form Inputs Card -->
+      <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-sm space-y-5">
+        <h3 class="text-base font-bold flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+          <i class="fa-solid fa-sliders text-brand-500"></i> 여행 조건 입력하기
+        </h3>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- 1. 여행지 (나라/도시) -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+              1. 여행지 (나라 또는 도시) <span class="text-rose-500">*</span>
+            </label>
+            <input 
+              type="text" 
+              id="input-region" 
+              placeholder="예: 일본 도쿄, 베트남 다낭, 제주도, 프랑스 파리"
+              class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 transition"
+            >
+          </div>
+
+          <!-- 2. 여행 기간 및 달력 -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+              <span>2. 여행 일정 (달력 선택) <span class="text-rose-500">*</span></span>
+              <span id="duration-badge" class="text-[10px] font-semibold text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-950/60 px-2 py-0.5 rounded-md hidden">
+                계산 완료
+              </span>
+            </label>
+
+            <!-- Calendar Date Selectors -->
+            <div class="grid grid-cols-2 gap-2 mb-2">
+              <div>
+                <label for="input-start-date" class="text-[11px] font-medium text-slate-500 dark:text-slate-400 block mb-1">
+                  <i class="fa-regular fa-calendar-check text-brand-500 mr-1"></i>가는 날 (출발)
+                </label>
+                <input 
+                  type="date" 
+                  id="input-start-date" 
+                  onchange="calculateDurationFromDates()"
+                  class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 transition cursor-pointer"
+                >
+              </div>
+              <div>
+                <label for="input-end-date" class="text-[11px] font-medium text-slate-500 dark:text-slate-400 block mb-1">
+                  <i class="fa-regular fa-calendar-xmark text-slate-400 mr-1"></i>오는 날 (도착)
+                </label>
+                <input 
+                  type="date" 
+                  id="input-end-date" 
+                  onchange="calculateDurationFromDates()"
+                  class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 transition cursor-pointer"
+                >
+              </div>
+            </div>
+
+            <!-- Auto-Calculated Duration Text -->
+            <input 
+              type="text" 
+              id="input-duration" 
+              placeholder="예: 3박 4일 (달력 선택 시 자동 완성)"
+              class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-brand-500 transition"
+            >
+          </div>
+
+          <!-- 3. 여행 목적 -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+              3. 여행 목적 <span class="text-rose-500">*</span>
+            </label>
+            <select id="input-purpose" class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 transition">
+              <option value="관광 & 휴양 (일반 여행)">🏝️ 관광 & 휴양 (일반 여행)</option>
+              <option value="캠핑 & 등산 & 아웃도어">🏕️ 캠핑 & 등산 & 아웃도어</option>
+              <option value="비즈니스 & 출장">💼 비즈니스 & 출장</option>
+              <option value="호캉스 & 수영 & 스파">🏊‍♂️ 호캉스 & 수영 & 스파</option>
+              <option value="골프 & 스포츠 여행">⛳ 골프 & 스포츠 여행</option>
+              <option value="신혼여행 (허니문)">💍 신혼여행 (허니문)</option>
+              <option value="배낭여행 & 트레킹">🎒 배낭여행 & 트레킹</option>
+            </select>
+          </div>
+
+          <!-- 4. 동반자 -->
+          <div>
+            <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+              4. 동반자 <span class="text-rose-500">*</span>
+            </label>
+            <select id="input-companion" class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 transition">
+              <option value="나홀로 (솔로 여행)">👤 나홀로 (솔로 여행)</option>
+              <option value="연인 / 커플">💑 연인 / 커플</option>
+              <option value="아이 동반 가족">👶 아이 동반 가족</option>
+              <option value="부모님 동반 가족">👴 부모님 동반 가족</option>
+              <option value="친구들과 함께">👫 친구들과 함께</option>
+              <option value="반려동물 동반">🐾 반려동물 동반</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 5. 추가 참고사항 -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+            5. 기타 특이사항 (선택사항)
+          </label>
+          <input 
+            type="text" 
+            id="input-notes" 
+            placeholder="예: 스노클링 예정, 다이빙 자격증 소지, 추운 날씨, 임산부 동반 등"
+            class="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 transition"
+          >
+        </div>
+
+        <!-- Action Button -->
+        <div class="pt-2">
+          <button 
+            id="btn-generate-ai"
+            onclick="generateAiChecklist()"
+            class="w-full py-3.5 px-6 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl text-sm shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 group"
+          >
+            <i class="fa-solid fa-wand-magic-sparkles group-hover:rotate-12 transition transform"></i>
+            <span>AI 맞춤 체크리스트 생성하기</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Presets -->
+      <div class="space-y-3">
+        <h4 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+          💡 빠른 추천 설정 프리셋
+        </h4>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <button onclick="applyPreset('일본 도쿄', '3박 4일', '관광 & 휴양 (일반 여행)', '연인 / 커플', '쇼핑 및 식도락 위주')" class="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-brand-500 rounded-xl text-left transition shadow-xs group">
+            <p class="font-bold text-xs group-hover:text-brand-500">🇯🇵 도쿄 커플여행</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">3박 4일 · 커플</p>
+          </button>
+          <button onclick="applyPreset('베트남 다낭', '4박 5일', '호캉스 & 수영 & 스파', '아이 동반 가족', '수영장, 리조트 전용 물품')" class="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-brand-500 rounded-xl text-left transition shadow-xs group">
+            <p class="font-bold text-xs group-hover:text-brand-500">🇻🇳 다낭 휴양가족</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">4박 5일 · 아이 동반</p>
+          </button>
+          <button onclick="applyPreset('제주도', '2박 3일', '캠핑 & 등산 & 아웃도어', '나홀로 (솔로 여행)', '한라산 등산 계획')" class="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-brand-500 rounded-xl text-left transition shadow-xs group">
+            <p class="font-bold text-xs group-hover:text-brand-500">⛰️️ 제주 혼자 여행</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">2박 3일 · 홀로 등산</p>
+          </button>
+          <button onclick="applyPreset('프랑스 파리', '6박 7일', '관광 & 휴양 (일반 여행)', '친구들과 함께', '소매치기 예방 및 미술관')" class="p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-brand-500 rounded-xl text-left transition shadow-xs group">
+            <p class="font-bold text-xs group-hover:text-brand-500">🇫🇷 파리 우정여행</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">6박 7일 · 친구</p>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-result" class="hidden space-y-6">
+      
+      <!-- Top Action Bar -->
+      <div class="flex items-center justify-between gap-2 no-print">
+        <button onclick="resetToInputView()" class="px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold hover:bg-slate-100 transition flex items-center gap-1.5">
+          <i class="fa-solid fa-arrow-left"></i> 조건 다시 입력
+        </button>
+
+        <div class="flex items-center gap-2">
+          <button onclick="openAddNewItemModal()" class="px-3 py-2 bg-brand-50 dark:bg-brand-950/60 text-brand-600 dark:text-brand-400 border border-brand-200 dark:border-brand-900 rounded-xl text-xs font-bold hover:bg-brand-100 transition">
+            <i class="fa-solid fa-plus mr-1"></i>항목 추가
+          </button>
+          <button id="btn-export-pdf" onclick="exportToPDF()" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+            <i class="fa-solid fa-file-pdf"></i> PDF 다운로드
+          </button>
+          <button onclick="window.print()" class="px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold hover:bg-slate-100 transition">
+            <i class="fa-solid fa-print mr-1"></i>인쇄
+          </button>
+        </div>
+      </div>
+
+      <!-- Checklist Header Info Banner -->
+      <div class="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span id="res-badge-destination" class="px-2.5 py-0.5 text-xs font-extrabold rounded-md bg-brand-100 dark:bg-brand-950 text-brand-700 dark:text-brand-300">
+                여행지
+              </span>
+              <span id="res-badge-duration" class="px-2.5 py-0.5 text-xs font-bold rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                일정
+              </span>
+            </div>
+            <h2 id="res-title" class="text-xl font-extrabold text-slate-900 dark:text-white">
+              맞춤 여행 체크리스트
+            </h2>
+          </div>
+
+          <!-- Progress Donut SVG -->
+          <div class="flex items-center gap-4 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl">
+            <div class="relative w-16 h-16 flex items-center justify-center shrink-0">
+              <svg class="w-full h-full" viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="50" stroke-width="12" class="stroke-slate-200 dark:stroke-slate-700 fill-none" />
+                <circle id="donut-progress" cx="60" cy="60" r="50" stroke-width="12" stroke-linecap="round" class="donut-circle fill-none stroke-brand-500" stroke-dasharray="314.15" stroke-dashoffset="314.15" />
+              </svg>
+              <span id="donut-text" class="absolute text-xs font-extrabold">0%</span>
+            </div>
+            <div>
+              <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">준비 완료율</p>
+              <p id="progress-counts" class="text-sm font-extrabold text-slate-800 dark:text-slate-100">0 / 0 항목</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Details Tags -->
+        <div class="flex flex-wrap gap-2 text-xs text-slate-600 dark:text-slate-300">
+          <span class="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg">🎯 목적: <strong id="res-tag-purpose">-</strong></span>
+          <span class="px-2.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-lg">👥 동반자: <strong id="res-tag-companion">-</strong></span>
+        </div>
+      </div>
+
+      <!-- Filter Chips & Batch Check Actions -->
+      <div class="flex flex-wrap items-center justify-between gap-2 no-print">
+        <div class="flex gap-1.5 bg-slate-200/70 dark:bg-slate-800/80 p-1 rounded-xl text-xs font-bold">
+          <button onclick="setFilter('all')" id="filter-all" class="px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 shadow-xs text-brand-600 dark:text-brand-400">전체</button>
+          <button onclick="setFilter('essential')" id="filter-essential" class="px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400">🔴 필수만</button>
+          <button onclick="setFilter('uncompleted')" id="filter-uncompleted" class="px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400">미완료</button>
+          <button onclick="setFilter('completed')" id="filter-completed" class="px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400">완료됨</button>
+        </div>
+
+        <!-- Batch Check Buttons -->
+        <div class="flex gap-1.5">
+          <button onclick="toggleAllItems(true)" class="px-3 py-1.5 bg-brand-500 hover:bg-brand-600 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-xs">
+            <i class="fa-solid fa-check-double"></i> 모두 완료
+          </button>
+          <button onclick="toggleAllItems(false)" class="px-3 py-1.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1">
+            <i class="fa-solid fa-rotate-left text-slate-400"></i> 모두 해제
+          </button>
+        </div>
+      </div>
+
+      <!-- Dynamic Sections Container -->
+      <div id="checklist-sections-container" class="space-y-4">
+        <!-- Sections populated dynamically -->
+      </div>
+    </section>
+
+  </main>
+
+  <div id="api-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5 border border-slate-200 dark:border-slate-800 max-h-[90vh] overflow-y-auto">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+        <h3 class="text-base font-bold flex items-center gap-2">
+          <i class="fa-solid fa-key text-brand-500"></i> API Key 외장 암호화 관리
+        </h3>
+        <button onclick="closeApiKeyModal()" class="text-slate-400 hover:text-slate-600 text-lg">✕</button>
+      </div>
+
+      <!-- 1. Key Manual Input & Test -->
+      <div class="bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl space-y-3 border border-slate-100 dark:border-slate-800">
+        <label class="block text-xs font-bold text-slate-700 dark:text-slate-300">
+          Gemini API Key 입력
+        </label>
+        <div class="relative">
+          <input 
+            type="password" 
+            id="modal-gemini-key" 
+            placeholder="AIzaSy..." 
+            class="w-full pl-3 pr-10 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono focus:outline-none focus:ring-1 focus:ring-brand-500"
+          >
+          <button onclick="togglePasswordVisibility('modal-gemini-key')" class="absolute right-3 top-2.5 text-xs text-slate-400 hover:text-slate-600">
+            <i class="fa-solid fa-eye"></i>
+          </button>
+        </div>
+
+        <!-- Connection Test Row -->
+        <div class="flex items-center justify-between pt-1">
+          <button 
+            id="btn-test-connection" 
+            onclick="testApiConnection()" 
+            class="px-3 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-xs font-bold rounded-lg transition"
+          >
+            <i class="fa-solid fa-network-wired mr-1"></i>연결 테스트
+          </button>
+          <span id="connection-test-result" class="text-[11px] font-semibold text-slate-500">
+            테스트 준비됨
+          </span>
+        </div>
+      </div>
+
+      <!-- 2. Export Encrypted File (.enc) -->
+      <div class="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-3">
+        <h4 class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+          <i class="fa-solid fa-file-export text-emerald-500"></i> 암호화 파일로 내보내기 (.enc 저장)
+        </h4>
+        <p class="text-[11px] text-slate-500">
+          입력된 Key를 AES-256 비트로 암호화하여 사용자 로컬 드라이브에 안전하게 저장합니다.
+        </p>
+        <div class="flex gap-2">
+          <input 
+            type="password" 
+            id="export-passphrase" 
+            placeholder="암호화 비밀번호 입력" 
+            class="flex-1 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-brand-500"
+          >
+          <button 
+            onclick="exportEncryptedKeyFile()" 
+            class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs transition shrink-0"
+          >
+            .enc 저장
+          </button>
+        </div>
+      </div>
+
+      <!-- 3. Import Encrypted File (.enc) -->
+      <div class="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-3">
+        <h4 class="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+          <i class="fa-solid fa-file-import text-indigo-500"></i> 암호화 파일 불러오기 (.enc 로드)
+        </h4>
+        <input 
+          type="file" 
+          id="import-file-input" 
+          accept=".enc,.json" 
+          class="w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200"
+        >
+        <div class="flex gap-2 pt-1">
+          <input 
+            type="password" 
+            id="import-passphrase" 
+            placeholder="파일 해독 비밀번호 입력" 
+            class="flex-1 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-brand-500"
+          >
+          <button 
+            onclick="importEncryptedKeyFile()" 
+            class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs transition shrink-0"
+          >
+            복호화 & 적용
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800 pt-3">
+        <button onclick="closeApiKeyModal()" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold rounded-xl text-xs hover:bg-slate-200 transition">
+          취소
+        </button>
+        <button onclick="applyAndCloseModal()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-xl text-xs transition">
+          적용 및 닫기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="add-item-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl max-w-sm w-full p-5 shadow-2xl space-y-4 border border-slate-200 dark:border-slate-800">
+      <h3 class="text-sm font-bold">새 준비물 항목 추가</h3>
+      <div>
+        <label class="block text-xs font-semibold mb-1">카테고리 (섹션)</label>
+        <input type="text" id="add-item-section" placeholder="예: 의류 & 용품, 상비약" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs">
+      </div>
+      <div>
+        <label class="block text-xs font-semibold mb-1">항목명</label>
+        <input type="text" id="add-item-name" placeholder="예: 보조배터리 20000mAh" class="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border rounded-xl text-xs">
+      </div>
+      <div class="flex items-center gap-2">
+        <input type="checkbox" id="add-item-essential" class="rounded">
+        <label for="add-item-essential" class="text-xs font-bold text-rose-500">필수 항목 지정 (🔴)</label>
+      </div>
+      <div class="flex justify-end gap-2 pt-2">
+        <button onclick="closeAddNewItemModal()" class="px-3 py-1.5 bg-slate-100 text-xs rounded-xl font-bold">취소</button>
+        <button onclick="saveNewItem()" class="px-3 py-1.5 bg-brand-600 text-white text-xs rounded-xl font-bold">추가</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let activeKeys = {
+      geminiKey: sessionStorage.getItem('ext_gemini_key') || ''
+    };
+    let currentChecklist = null;
+    let currentFilter = 'all';
+
+    function showToast(message, type = 'info') {
+      let toast = document.getElementById('toast-notification');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'toast-notification';
+        toast.className = 'fixed bottom-5 right-5 z-50 px-4 py-3 rounded-xl shadow-xl text-xs font-bold text-white transition-all transform translate-y-10 opacity-0 pointer-events-none flex items-center gap-2';
+        document.body.appendChild(toast);
+      }
+      
+      if (type === 'error') {
+        toast.style.backgroundColor = '#ef4444';
+      } else if (type === 'success') {
+        toast.style.backgroundColor = '#10b981';
+      } else {
+        toast.style.backgroundColor = '#6366f1';
+      }
+      
+      toast.innerText = message;
+      toast.classList.remove('translate-y-10', 'opacity-0', 'pointer-events-none');
+      toast.classList.add('translate-y-0', 'opacity-100');
+      
+      setTimeout(() => {
+        toast.classList.add('translate-y-10', 'opacity-0', 'pointer-events-none');
+        toast.classList.remove('translate-y-0', 'opacity-100');
+      }, 3500);
+    }
+
+    async function getCryptoKey(passphrase, salt, usage) {
+      const enc = new TextEncoder();
+      const keyMaterial = await crypto.subtle.importKey(
+        "raw",
+        enc.encode(passphrase),
+        { name: "PBKDF2" },
+        false,
+        ["deriveKey"]
+      );
+      return await crypto.subtle.deriveKey(
+        {
+          name: "PBKDF2",
+          salt: salt,
+          iterations: 100000,
+          hash: "SHA-256"
+        },
+        keyMaterial,
+        { name: "AES-GCM", length: 256 },
+        false,
+        [usage]
+      );
+    }
+
+    async function encryptKeysPayload(keysObj, passphrase) {
+      const enc = new TextEncoder();
+      const salt = crypto.getRandomValues(new Uint8Array(16));
+      const iv = crypto.getRandomValues(new Uint8Array(12));
+
+      const cryptoKey = await getCryptoKey(passphrase, salt, "encrypt");
+      const dataToEncrypt = enc.encode(JSON.stringify(keysObj));
+
+      const encryptedBuffer = await crypto.subtle.encrypt(
+        { name: "AES-GCM", iv: iv },
+        cryptoKey,
+        dataToEncrypt
+      );
+
+      const exportBundle = {
+        salt: Array.from(salt),
+        iv: Array.from(iv),
+        ciphertext: Array.from(new Uint8Array(encryptedBuffer)),
+        version: "1.0",
+        timestamp: new Date().toISOString()
+      };
+
+      return JSON.stringify(exportBundle, null, 2);
+    }
+
+    async function decryptKeysPayload(bundleString, passphrase) {
+      const dec = new TextDecoder();
+      const bundle = JSON.parse(bundleString);
+
+      if (!bundle.salt || !bundle.iv || !bundle.ciphertext) {
+        throw new Error("유효하지 않은 암호화 파일 포맷입니다.");
+      }
+
+      const salt = new Uint8Array(bundle.salt);
+      const iv = new Uint8Array(bundle.iv);
+      const ciphertext = new Uint8Array(bundle.ciphertext);
+
+      const cryptoKey = await getCryptoKey(passphrase, salt, "decrypt");
+
+      const decryptedBuffer = await crypto.subtle.decrypt(
+        { name: "AES-GCM", iv: iv },
+        cryptoKey,
+        ciphertext
+      );
+
+      const decryptedText = dec.decode(decryptedBuffer);
+      return JSON.parse(decryptedText);
+    }
+
+    function getApiKey() {
+      return activeKeys.geminiKey;
+    }
+
+    function openApiKeyModal() {
+      document.getElementById('modal-gemini-key').value = activeKeys.geminiKey;
+      document.getElementById('api-modal').classList.remove('hidden');
+    }
+
+    function closeApiKeyModal() {
+      document.getElementById('api-modal').classList.add('hidden');
+    }
+
+    function togglePasswordVisibility(inputId) {
+      const el = document.getElementById(inputId);
+      el.type = el.type === 'password' ? 'text' : 'password';
+    }
+
+    function updateApiKeyBadge() {
+      const badge = document.getElementById('api-key-status-badge');
+      if (activeKeys.geminiKey) {
+        const masked = activeKeys.geminiKey.substring(0, 6) + '...' + activeKeys.geminiKey.substring(activeKeys.geminiKey.length - 4);
+        badge.className = "px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300 cursor-pointer hover:opacity-90 transition flex items-center";
+        badge.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-600 mr-1"></i>로드 완료 (${masked})`;
+      } else {
+        badge.className = "px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800 border border-amber-200 cursor-pointer hover:opacity-90 transition flex items-center";
+        badge.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-1"></i>미설정 (외장 암호화 파일 로드 필요)`;
+      }
+    }
+
+    async function exportEncryptedKeyFile() {
+      const geminiKey = document.getElementById('modal-gemini-key').value.trim();
+      const passphrase = document.getElementById('export-passphrase').value.trim();
+
+      if (!geminiKey) {
+        showToast('저장할 Gemini API Key를 입력하세요.', 'error');
+        return;
+      }
+      if (!passphrase) {
+        showToast('파일을 보호할 비밀번호(Passphrase)를 입력해주세요.', 'error');
+        return;
+      }
+
+      try {
+        const keysObj = { geminiKey, createdAt: new Date().toISOString() };
+        const encryptedJson = await encryptKeysPayload(keysObj, passphrase);
+
+        const blob = new Blob([encryptedJson], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `gemini_api_key_encrypted.enc`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        showToast('🔒 API Key가 암호화 파일(.enc)로 내보내졌습니다.', 'success');
+        document.getElementById('export-passphrase').value = '';
+      } catch (err) {
+        showToast('암호화 실패: ' + err.message, 'error');
+      }
+    }
+
+    async function importEncryptedKeyFile() {
+      const fileInput = document.getElementById('import-file-input');
+      const passphrase = document.getElementById('import-passphrase').value.trim();
+
+      if (!fileInput.files || fileInput.files.length === 0) {
+        showToast('불러올 암호화 파일(.enc)을 선택해주세요.', 'error');
+        return;
+      }
+      if (!passphrase) {
+        showToast('파일을 해독할 비밀번호를 입력해주세요.', 'error');
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+
+      reader.onload = async function (e) {
+        try {
+          const decrypted = await decryptKeysPayload(e.target.result, passphrase);
+          if (decrypted && decrypted.geminiKey) {
+            activeKeys.geminiKey = decrypted.geminiKey;
+            sessionStorage.setItem('ext_gemini_key', decrypted.geminiKey);
+            document.getElementById('modal-gemini-key').value = decrypted.geminiKey;
+            updateApiKeyBadge();
+            showToast('🔓 API Key 복호화 및 로드 완료!', 'success');
+            document.getElementById('import-passphrase').value = '';
+          } else {
+            showToast('유효한 Key 정보를 찾을 수 없습니다.', 'error');
+          }
+        } catch (err) {
+          showToast('복호화 실패: 비밀번호가 올바르지 않거나 파일이 손상되었습니다.', 'error');
+        }
+      };
+
+      reader.readAsText(file);
+    }
+
+    async function testApiConnection() {
+      const key = document.getElementById('modal-gemini-key').value.trim();
+      const statusEl = document.getElementById('connection-test-result');
+
+      if (!key) {
+        statusEl.innerText = "Key를 입력하세요.";
+        statusEl.className = "text-[11px] font-semibold text-rose-500";
+        return;
+      }
+
+      statusEl.innerText = "테스트 중...";
+      statusEl.className = "text-[11px] font-semibold text-amber-500";
+
+      const start = Date.now();
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+        const elapsed = Date.now() - start;
+        if (res.ok) {
+          statusEl.innerText = ` 연결 성공 (${elapsed}ms)`;
+          statusEl.className = "text-[11px] font-semibold text-emerald-600";
+        } else {
+          statusEl.innerText = ` 연결 실패 (HTTP ${res.status})`;
+          statusEl.className = "text-[11px] font-semibold text-rose-500";
+        }
+      } catch (err) {
+        statusEl.innerText = " 연결 실패 (네트워크 오류)";
+        statusEl.className = "text-[11px] font-semibold text-rose-500";
+      }
+    }
+
+    function applyAndCloseModal() {
+      const key = document.getElementById('modal-gemini-key').value.trim();
+      activeKeys.geminiKey = key;
+      if (key) {
+        sessionStorage.setItem('ext_gemini_key', key);
+      } else {
+        sessionStorage.removeItem('ext_gemini_key');
+      }
+      updateApiKeyBadge();
+      closeApiKeyModal();
+      showToast('API Key 설정이 적용되었습니다.', 'success');
+    }
+
+    async function exportToPDF() {
+      if (!currentChecklist) {
+        showToast('다운로드할 체크리스트 데이터가 없습니다.', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('btn-export-pdf');
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> PDF 생성 중...`;
+
+      try {
+        const element = document.createElement('div');
+        element.style.width = '750px';
+        element.style.padding = '16px 20px';
+        element.style.backgroundColor = '#ffffff';
+        element.style.color = '#0f172a';
+        element.style.fontFamily = "'Pretendard', sans-serif";
+
+        let totalCount = 0;
+        let doneCount = 0;
+
+        const sectionsHtml = currentChecklist.sections.map(sec => {
+          const itemsHtml = sec.items.map(item => {
+            totalCount++;
+            if (item.done) doneCount++;
+            return `
+              <div style="display: flex; align-items: flex-start; gap: 4px; padding: 2px 0; border-bottom: 1px solid #f1f5f9; font-size: 10px; break-inside: avoid;">
+                <span style="font-size: 11px; line-height: 1; min-width: 12px; color: ${item.done ? '#6366f1' : '#94a3b8'};">${item.done ? '☑' : '☐'}</span>
+                <div style="flex: 1; word-break: break-all;">
+                  <span style="${item.done ? 'text-decoration: line-through; color: #94a3b8;' : 'color: #0f172a; font-weight: 600;'}">
+                    ${item.name}
+                    ${item.essential ? '<span style="color: #ef4444; font-size: 8px; font-weight: bold; background: #fef2f2; border: 1px solid #fecaca; padding: 0px 3px; border-radius: 3px; margin-left: 2px;">필수</span>' : ''}
+                  </span>
+                  ${item.memo ? `<span style="font-size: 8.5px; color: #64748b; margin-left: 3px;">(${item.memo})</span>` : ''}
+                </div>
+              </div>
+            `;
+          }).join('');
+
+          return `
+            <div style="margin-bottom: 12px; break-inside: avoid; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px;">
+              <div style="font-size: 11px; font-weight: bold; color: #1e293b; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin-bottom: 4px; display: flex; justify-content: space-between;">
+                <span>📍 ${sec.name}</span>
+                <span style="font-weight: normal; color: #64748b; font-size: 9.5px;">(${sec.items.filter(i => i.done).length}/${sec.items.length})</span>
+              </div>
+              <div>${itemsHtml}</div>
+            </div>
+          `;
+        }).join('');
+
+        const pct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+
+        element.innerHTML = `
+          <div style="border-bottom: 2px solid #6366f1; padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-end;">
+            <div>
+              <h1 style="font-size: 18px; font-weight: 800; color: #0f172a; margin: 0;">✈️ ${currentChecklist.title}</h1>
+              <p style="font-size: 10px; color: #475569; margin: 4px 0 0 0;">
+                <b>여행지:</b> ${currentChecklist.region} | <b>일정:</b> ${currentChecklist.duration} | <b>목적:</b> ${currentChecklist.purpose}
+              </p>
+            </div>
+            <div style="text-align: right; font-size: 10px; color: #4f46e5; font-weight: bold;">
+              진행률: ${pct}% (${doneCount}/${totalCount})
+            </div>
+          </div>
+          <div style="column-count: 2; column-gap: 12px;">
+            ${sectionsHtml}
+          </div>
+        `;
+
+        const opt = {
+          margin: 8,
+          filename: `${currentChecklist.region}_여행체크리스트.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+
+        await html2pdf().set(opt).from(element).save();
+        showToast('📄 PDF 다운로드가 완료되었습니다.', 'success');
+      } catch (err) {
+        showToast('PDF 생성 중 오류 발생: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+    }
+
+    function calculateDurationFromDates() {
+      const startVal = document.getElementById('input-start-date').value;
+      const endVal = document.getElementById('input-end-date').value;
+      const durationInput = document.getElementById('input-duration');
+      const badge = document.getElementById('duration-badge');
+
+      if (!startVal) {
+        if (badge) badge.classList.add('hidden');
+        return;
+      }
+
+      if (!endVal) {
+        durationInput.value = `${startVal} 출발`;
+        if (badge) badge.classList.add('hidden');
+        return;
+      }
+
+      const startDate = new Date(startVal);
+      const endDate = new Date(endVal);
+
+      if (endDate < startDate) {
+        showToast('오는 날은 가는 날보다 빠를 수 없습니다.', 'error');
+        document.getElementById('input-end-date').value = startVal;
+        calculateDurationFromDates();
+        return;
+      }
+
+      const diffTime = Math.abs(endDate - startDate);
+      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 0) {
+        durationInput.value = `당일치기 (${startVal})`;
+      } else {
+        const nights = diffDays;
+        const days = diffDays + 1;
+        durationInput.value = `${nights}박 ${days}일 (${startVal} ~ ${endVal})`;
+      }
+
+      if (badge) {
+        badge.innerText = diffDays === 0 ? '당일치기' : `${diffDays}박 ${diffDays + 1}일`;
+        badge.classList.remove('hidden');
+      }
+    }
+
+    function applyPreset(region, duration, purpose, companion, notes) {
+      document.getElementById('input-region').value = region;
+      document.getElementById('input-duration').value = duration;
+      document.getElementById('input-purpose').value = purpose;
+      document.getElementById('input-companion').value = companion;
+      document.getElementById('input-notes').value = notes;
+
+      const match = duration.match(/(\d+)박/);
+      const today = new Date();
+      const startDateStr = today.toISOString().split('T')[0];
+      document.getElementById('input-start-date').value = startDateStr;
+
+      if (match && match[1]) {
+        const nights = parseInt(match[1], 10);
+        const endDate = new Date(today);
+        endDate.setDate(today.getDate() + nights);
+        document.getElementById('input-end-date').value = endDate.toISOString().split('T')[0];
+        calculateDurationFromDates();
+      } else {
+        document.getElementById('input-end-date').value = startDateStr;
+        const badge = document.getElementById('duration-badge');
+        if (badge) badge.classList.add('hidden');
+      }
+
+      showToast(`'${region}' 추천 설정을 적용했습니다.`);
+    }
+
+    function toggleDarkMode() {
+      const html = document.documentElement;
+      const isDark = html.classList.toggle('dark');
+      const icon = document.getElementById('theme-icon');
+      if (isDark) {
+        icon.className = 'fa-solid fa-sun';
+      } else {
+        icon.className = 'fa-solid fa-moon';
+      }
+    }
+
+    function resetToInputView() {
+      document.getElementById('view-result').classList.add('hidden');
+      document.getElementById('view-input').classList.remove('hidden');
+    }
+
+    async function generateAiChecklist() {
+      const region = document.getElementById('input-region').value.trim();
+      const duration = document.getElementById('input-duration').value.trim();
+      const purpose = document.getElementById('input-purpose').value;
+      const companion = document.getElementById('input-companion').value;
+      const notes = document.getElementById('input-notes').value.trim();
+
+      if (!region || !duration) {
+        showToast('여행지와 여행 일정을 입력해주세요.', 'error');
+        return;
+      }
+
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        showToast('⚠️ Gemini API Key가 필요합니다. 상단 키 설정을 확인하세요.', 'error');
+        openApiKeyModal();
+        return;
+      }
+
+      const btn = document.getElementById('btn-generate-ai');
+      const originalText = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-2"></i>AI가 맞춤 준비물을 구성하는 중입니다...`;
+
+      const promptText = `
+당신은 베테랑 여행 가이드이자 준비물 전문가입니다.
+다음 조건에 부합하는 철저하고 실용적인 여행 준비물 체크리스트를 생성하세요:
+- 여행 지역: ${region}
+- 여행 일정: ${duration}
+- 여행 목적: ${purpose}
+- 동반자: ${companion}
+- 특이사항/메모: ${notes || '없음'}
+
+카테고리는 (예: 필수 서류/결제, 의류/착용품, 세면/화장품, 전자기기, 상비약, 목적별 맞춤용품) 등으로 구성하세요.
+중요하거나 빠뜨리기 쉬운 필수 품목은 essential: true 로 지정하세요.
+`;
+
+      const payload = {
+        contents: [{ parts: [{ text: promptText }] }],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              "title": { "type": "STRING" },
+              "sections": {
+                "type": "ARRAY",
+                "items": {
+                  "type": "OBJECT",
+                  "properties": {
+                    "name": { "type": "STRING" },
+                    "items": {
+                      "type": "ARRAY",
+                      "items": {
+                        "type": "OBJECT",
+                        "properties": {
+                          "name": { "type": "STRING" },
+                          "essential": { "type": "BOOLEAN" },
+                          "memo": { "type": "STRING" }
+                        },
+                        "required": ["name", "essential"]
+                      }
+                    }
+                  },
+                  "required": ["name", "items"]
+                }
+              }
+            },
+            "required": ["title", "sections"]
+          }
+        }
+      };
+
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+      try {
+        const res = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error?.message || 'Gemini API 호출에 실패하였습니다.');
+        }
+
+        const data = await res.json();
+        const jsonText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        
+        if (!jsonText) {
+          throw new Error('올바른 응답 형식을 받지 못했습니다.');
+        }
+
+        const parsed = JSON.parse(jsonText);
+
+        currentChecklist = {
+          region,
+          duration,
+          purpose,
+          companion,
+          title: parsed.title || `${region} 맞춤 여행 체크리스트`,
+          sections: parsed.sections.map(sec => ({
+            name: sec.name,
+            items: sec.items.map(it => ({
+              id: 'it-' + Math.random().toString(36).substr(2, 9),
+              name: it.name,
+              essential: !!it.essential,
+              memo: it.memo || '',
+              done: false
+            }))
+          }))
+        };
+
+        renderChecklist();
+        document.getElementById('view-input').classList.add('hidden');
+        document.getElementById('view-result').classList.remove('hidden');
+        showToast('체크리스트가 완성되었습니다!', 'success');
+
+      } catch (err) {
+        showToast('체크리스트 생성 오류: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+    }
+
+    function renderChecklist() {
+      if (!currentChecklist) return;
+
+      document.getElementById('res-title').innerText = currentChecklist.title;
+      document.getElementById('res-badge-destination').innerText = `✈️ ${currentChecklist.region}`;
+      document.getElementById('res-badge-duration').innerText = `⏱️ ${currentChecklist.duration}`;
+      document.getElementById('res-tag-purpose').innerText = currentChecklist.purpose;
+      document.getElementById('res-tag-companion').innerText = currentChecklist.companion;
+
+      const container = document.getElementById('checklist-sections-container');
+      container.innerHTML = '';
+
+      let totalCount = 0;
+      let doneCount = 0;
+
+      currentChecklist.sections.forEach((sec, sIdx) => {
+        let visibleItems = sec.items;
+
+        if (currentFilter === 'essential') {
+          visibleItems = sec.items.filter(i => i.essential);
+        } else if (currentFilter === 'uncompleted') {
+          visibleItems = sec.items.filter(i => !i.done);
+        } else if (currentFilter === 'completed') {
+          visibleItems = sec.items.filter(i => i.done);
+        }
+
+        sec.items.forEach(i => {
+          totalCount++;
+          if (i.done) doneCount++;
+        });
+
+        if (visibleItems.length === 0 && currentFilter !== 'all') return;
+
+        const secEl = document.createElement('div');
+        secEl.className = "bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm";
+
+        secEl.innerHTML = `
+          <div class="px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <h3 class="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-brand-500"></span>
+              ${sec.name}
+              <span class="text-xs font-normal text-slate-400">(${sec.items.filter(i => i.done).length}/${sec.items.length})</span>
+            </h3>
+          </div>
+          <div class="p-2 divide-y divide-slate-100 dark:divide-slate-800/50">
+            ${visibleItems.map((item) => `
+              <div class="p-2.5 hover:bg-slate-50 dark:hover:bg-slate-800/40 rounded-xl transition flex items-start justify-between gap-3 group">
+                <div class="flex items-start gap-3 flex-1">
+                  <input 
+                    type="checkbox" 
+                    ${item.done ? 'checked' : ''} 
+                    onchange="toggleItemDone('${sIdx}', '${item.id}')"
+                    class="mt-1 w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500 cursor-pointer"
+                  >
+                  <div class="flex-1">
+                    <p class="text-xs sm:text-sm font-semibold ${item.done ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-800 dark:text-slate-200'}">
+                      ${item.name}
+                      ${item.essential ? '<span class="ml-1 text-[10px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-950/60 px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-900">필수</span>' : ''}
+                    </p>
+                    ${item.memo ? `<p class="text-[11px] text-slate-400 mt-0.5">${item.memo}</p>` : ''}
+                  </div>
+                </div>
+                <button onclick="deleteItem('${sIdx}', '${item.id}')" class="text-slate-300 hover:text-rose-500 text-xs p-1 transition opacity-0 group-hover:opacity-100">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+              </div>
+            `).join('')}
+          </div>
+        `;
+
+        container.appendChild(secEl);
+      });
+
+      // Donut progress calculation
+      const pct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+      const donut = document.getElementById('donut-progress');
+      const offset = 314.15 - (314.15 * pct) / 100;
+      donut.style.strokeDashoffset = offset;
+      document.getElementById('donut-text').innerText = `${pct}%`;
+      document.getElementById('progress-counts').innerText = `${doneCount} / ${totalCount} 완료`;
+    }
+
+    function toggleItemDone(sIdx, itemId) {
+      const sec = currentChecklist.sections[sIdx];
+      const item = sec.items.find(i => i.id === itemId);
+      if (item) {
+        item.done = !item.done;
+        renderChecklist();
+      }
+    }
+
+    function toggleAllItems(shouldCheck) {
+      if (!currentChecklist) return;
+      currentChecklist.sections.forEach(sec => {
+        sec.items.forEach(item => {
+          item.done = shouldCheck;
+        });
+      });
+      renderChecklist();
+      showToast(shouldCheck ? '모든 항목이 완료 처리되었습니다.' : '모든 선택이 해제되었습니다.');
+    }
+
+    function deleteItem(sIdx, itemId) {
+      const sec = currentChecklist.sections[sIdx];
+      sec.items = sec.items.filter(i => i.id !== itemId);
+      renderChecklist();
+      showToast('항목이 삭제되었습니다.');
+    }
+
+    function setFilter(filterType) {
+      currentFilter = filterType;
+      ['all', 'essential', 'uncompleted', 'completed'].forEach(f => {
+        const btn = document.getElementById(`filter-${f}`);
+        if (f === filterType) {
+          btn.className = "px-3 py-1.5 rounded-lg bg-white dark:bg-slate-900 shadow-xs text-brand-600 dark:text-brand-400 font-bold";
+        } else {
+          btn.className = "px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-400 font-medium";
+        }
+      });
+      renderChecklist();
+    }
+
+    function openAddNewItemModal() {
+      document.getElementById('add-item-modal').classList.remove('hidden');
+    }
+
+    function closeAddNewItemModal() {
+      document.getElementById('add-item-modal').classList.add('hidden');
+    }
+
+    function saveNewItem() {
+      const secName = document.getElementById('add-item-section').value.trim() || '추가 항목';
+      const name = document.getElementById('add-item-name').value.trim();
+      const essential = document.getElementById('add-item-essential').checked;
+
+      if (!name) {
+        showToast('항목명을 입력해주세요.', 'error');
+        return;
+      }
+
+      let sec = currentChecklist.sections.find(s => s.name === secName);
+      if (!sec) {
+        sec = { name: secName, items: [] };
+        currentChecklist.sections.push(sec);
+      }
+
+      sec.items.push({
+        id: 'it-' + Math.random().toString(36).substr(2, 9),
+        name,
+        essential,
+        memo: '',
+        done: false
+      });
+
+      closeAddNewItemModal();
+      document.getElementById('add-item-name').value = '';
+      renderChecklist();
+      showToast('새 항목이 추가되었습니다.', 'success');
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      updateApiKeyBadge();
+
+      // Set default start and end date (Today ~ 3 Days later)
+      const today = new Date();
+      const threeDaysLater = new Date(today);
+      threeDaysLater.setDate(today.getDate() + 3);
+
+      const startDateStr = today.toISOString().split('T')[0];
+      const endDateStr = threeDaysLater.toISOString().split('T')[0];
+
+      const startInput = document.getElementById('input-start-date');
+      const endInput = document.getElementById('input-end-date');
+
+      if (startInput && endInput) {
+        startInput.value = startDateStr;
+        endInput.value = endDateStr;
+        calculateDurationFromDates();
+      }
+    });
+  </script>
+</body>
+</html>

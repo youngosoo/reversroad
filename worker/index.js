@@ -38,6 +38,23 @@ export default {
         return serveAsset(request, env, path, { 'cache-control': 'no-store' });
       }
 
+      // 2-1) 사용설명서 원문(.md)
+      const manualMatch = path.match(/^\/apps\/([^/]+)\/manual\.md$/);
+      if (manualMatch) {
+        const id = decodeURIComponent(manualMatch[1]);
+        const app = await store.getApp(env, id);
+        if (app && app.manual && !app.trashed) {
+          return new Response(app.manual, {
+            headers: {
+              'content-type': 'text/markdown; charset=utf-8',
+              'content-disposition': `attachment; filename="${id}-manual.md"`,
+              'cache-control': 'no-store',
+            },
+          });
+        }
+        return notFound(request, env);
+      }
+
       // 3) 앱 파일 (KV 우선 → 정적 파일)
       // /apps/<id>, /apps/<id>/, /apps/<id>/파일 전부 처리
       const appFileMatch = path.match(/^\/apps\/([^/]+)(?:\/(.*))?$/);

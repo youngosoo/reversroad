@@ -95,6 +95,33 @@ function normalizeHidden(value, fallback = false) {
   return text === 'true' || text === '1' || text === 'on' || text === 'yes';
 }
 
+/**
+ * 사용설명서(.md) 정규화.
+ * - 빈 값이면 빈 문자열
+ * - 길이 상한 100,000자
+ * - 앞뒤 공백 제거
+ */
+const MANUAL_MAX = 100000;
+
+function normalizeManual(value) {
+  if (value === undefined || value === null) return undefined; // 변경 없음
+  const text = String(value).replace(/\r\n?/g, '\n').trim();
+  if (!text) return '';
+  if (text.length > MANUAL_MAX) {
+    const err = new HttpError(400, `사용설명서가 너무 깁니다 (최대 ${Math.round(MANUAL_MAX / 1000)}천 자)`);
+    throw err;
+  }
+  return text;
+}
+
+/** 목록 응답에서는 설명서 본문을 빼고 길이만 알려 줍니다 (응답 크기 절약) */
+function stripManual(apps) {
+  return (apps || []).map((app) => {
+    const { manual, ...rest } = app;
+    return { ...rest, manualChars: manual ? manual.length : 0 };
+  });
+}
+
 module.exports = {
   STARTER_HTML,
   safeAnalyze,
@@ -104,5 +131,8 @@ module.exports = {
   normalizeMeta,
   filterVisible,
   normalizeHidden,
+  normalizeManual,
+  stripManual,
+  MANUAL_MAX,
   HttpError,
 };

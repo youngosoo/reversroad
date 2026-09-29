@@ -101,15 +101,11 @@
 
   <section class="card panel">
     <h2>등록된 앱 <span class="muted" id="count"></span></h2>
-    <p class="hint">삭제는 기본적으로 <span class="mono">.trash/</span> 폴더로 이동합니다. 완전 삭제는 되돌릴 수 없습니다.</p>
-    <div style="overflow-x:auto">
-      <table>
-        <thead>
-          <tr><th></th><th>이름</th><th>상태</th><th>분야</th><th>ID</th><th>태그</th><th>사용방법</th><th>등록일</th><th></th></tr>
-        </thead>
-        <tbody id="rows"></tbody>
-      </table>
-    </div>
+    <p class="hint">
+      앱마다 두 줄로 표시됩니다 — 윗줄은 <b>이름·상태·분야·ID</b>, 아랫줄은 <b>설명·태그·사용법·설명서·날짜·버튼</b>입니다.
+      <b>비노출</b>로 바꾸면 목록·분야·sitemap 에서 빠집니다. <b>설명서</b> 버튼으로 사용설명서(.md)를 넣을 수 있습니다.
+    </p>
+    <div id="rows" class="admin-apps"></div>
   </section>
 
   <section class="card panel">
@@ -248,6 +244,43 @@
   </form>
 </dialog>
 
+<dialog class="modal" id="manualModal">
+  <div class="modal-head"><span id="manualTitle">사용설명서</span><div class="spacer"></div><span class="muted small mono" id="manualId"></span></div>
+  <div class="modal-body">
+    <p class="muted small">
+      마크다운(.md)으로 작성합니다. 지원: <span class="mono"># 제목</span>, <span class="mono">- 목록</span>,
+      <span class="mono">1. 번호목록</span>, <span class="mono">**굵게**</span>, <span class="mono">\`코드\`</span>,
+      <span class="mono">[링크](/guide)</span>, <span class="mono">> 인용</span>, <span class="mono">```코드블록```</span>.
+      저장하면 앱 상세 페이지에 “사용설명서”로 표시됩니다.
+    </p>
+    <div class="form-grid">
+      <div class="field full">
+        <label class="drop-zone" id="manualDrop">
+          <input id="manualFile" type="file" accept=".md,.markdown,text/markdown,text/plain" class="sr-only" />
+          <span id="manualDropText"><strong>.md 파일 선택</strong> 또는 여기로 끌어다 놓기 (불러오면 아래 칸에 채워집니다)</span>
+        </label>
+      </div>
+      <div class="field full">
+        <label for="manualText">설명서 내용</label>
+        <textarea id="manualText" rows="16" placeholder="# 사용법&#10;&#10;## 준비물&#10;- ...&#10;&#10;## 순서&#10;1. ..."></textarea>
+      </div>
+    </div>
+    <div id="manualInfo" class="muted small"></div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn" type="button" id="manualPreview">미리보기</button>
+    <div class="spacer"></div>
+    <button class="btn danger" type="button" id="manualDelete">설명서 삭제</button>
+    <button class="btn" type="button" id="manualCancel">닫기</button>
+    <button class="btn primary" type="button" id="manualSave">저장</button>
+  </div>
+</dialog>
+
+<dialog class="modal" id="previewModal">
+  <div class="modal-head"><span>미리보기</span><div class="spacer"></div><button class="btn small" type="button" id="previewClose">닫기</button></div>
+  <div class="modal-body"><div class="manual-body" id="previewBody"></div></div>
+</dialog>
+
 <dialog class="modal" id="viewModal">
   <div class="modal-head"><span id="viewTitle">사용방법</span><div class="spacer"></div><button class="btn small" type="button" id="viewClose">닫기</button></div>
   <div class="modal-body">
@@ -353,6 +386,98 @@ function categoryLabel(slug) {
   const found = categoriesCache.find((c) => c.slug === slug);
   return found ? `${found.icon} ${found.label}` : '—';
 }
+
+// ------------------------------------------------------------- 사용설명서(.md)
+
+const manualModal = document.getElementById('manualModal');
+const previewModal = document.getElementById('previewModal');
+const manualText = document.getElementById('manualText');
+const manualFile = document.getElementById('manualFile');
+const manualDrop = document.getElementById('manualDrop');
+const manualDropText = document.getElementById('manualDropText');
+const manualDropDefault = manualDropText.innerHTML;
+let manualApp = null;
+
+function openManual(app) {
+  manualApp = app;
+  document.getElementById('manualTitle').textContent = `${app.icon || '📦'} ${app.name} — 사용설명서`;
+  document.getElementById('manualId').textContent = `/app/${app.id}`;
+  manualText.value = app.manual || '';
+  manualFile.value = '';
+  manualDropText.innerHTML = manualDropDefault;
+  document.getElementById('manualInfo').textContent = app.manual
+    ? `현재 ${app.manual.length.toLocaleString()}자 등록됨`
+    : '아직 설명서가 없습니다. 위 칸에 작성하거나 .md 파일을 불러오세요.';
+  manualModal.showModal();
+}
+
+manualFile.addEventListener('change', async () => {
+  const file = manualFile.files[0];
+  if (!file) return;
+  if (file.size > 200 * 1024) { say('설명서 파일은 200KB 이하로 올려 주세요', 'err'); return; }
+  const text = await file.text();
+  manualText.value = text;
+  manualDropText.innerHTML = `<strong>${esc(file.name)}</strong> (${(file.size / 1024).toFixed(0)} KB) — 내용을 아래 칸에 불러왔습니다`;
+});
+
+['dragenter', 'dragover'].forEach((ev) => manualDrop.addEventListener(ev, (e) => {
+  e.preventDefault(); manualDrop.classList.add('dragover');
+}));
+['dragleave', 'drop'].forEach((ev) => manualDrop.addEventListener(ev, (e) => {
+  e.preventDefault(); manualDrop.classList.remove('dragover');
+}));
+manualDrop.addEventListener('drop', async (e) => {
+  if (!e.dataTransfer.files.length) return;
+  manualFile.files = e.dataTransfer.files;
+  manualFile.dispatchEvent(new Event('change'));
+});
+
+document.getElementById('manualPreview').addEventListener('click', async () => {
+  if (!manualText.value.trim()) { say('미리 볼 내용이 없습니다', 'err'); return; }
+  try {
+    const { html } = await api('/api/markdown', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ markdown: manualText.value }),
+    });
+    document.getElementById('previewBody').innerHTML = html;
+    previewModal.showModal();
+  } catch (err) {
+    say(err.message, 'err');
+  }
+});
+document.getElementById('previewClose').addEventListener('click', () => previewModal.close());
+document.getElementById('manualCancel').addEventListener('click', () => manualModal.close());
+
+document.getElementById('manualSave').addEventListener('click', async () => {
+  if (!manualApp) return;
+  try {
+    const { app } = await api(`/api/apps/${manualApp.id}/manual`, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ markdown: manualText.value }),
+    });
+    manualModal.close();
+    say(`"${manualApp.name}" 사용설명서를 저장했습니다 (${app.manualChars.toLocaleString()}자)`);
+    await loadApps();
+  } catch (err) {
+    say(err.message, 'err');
+  }
+});
+
+document.getElementById('manualDelete').addEventListener('click', async () => {
+  if (!manualApp) return;
+  if (!manualApp.manual) { say('삭제할 설명서가 없습니다', 'err'); return; }
+  if (!confirm(`"${manualApp.name}" 의 사용설명서를 삭제할까요?`)) return;
+  try {
+    await api(`/api/apps/${manualApp.id}/manual`, { method: 'DELETE' });
+    manualModal.close();
+    say(`"${manualApp.name}" 사용설명서를 삭제했습니다`);
+    await loadApps();
+  } catch (err) {
+    say(err.message, 'err');
+  }
+});
 
 async function loadUser() {
   const { user } = await fetch('/auth/me').then((r) => r.json());
@@ -481,26 +606,43 @@ async function loadApps() {
   document.getElementById('count').textContent = apps.length ? `(${apps.length})` : '(0)';
   renderChecklist();
   if (!apps.length) {
-    rows.innerHTML = '<tr><td colspan="9" class="muted">아직 앱이 없습니다.</td></tr>';
+    rows.innerHTML = '<div class="card empty">아직 앱이 없습니다. 위에서 첫 앱을 추가해 보세요.</div>';
     return;
   }
-  rows.innerHTML = apps.map((a) => `
-    <tr${a.hidden ? ' style="opacity:.55"' : ''}>
-      <td style="width:34px;font-size:20px">${esc(a.icon || '📦')}</td>
-      <td><button class="btn small" data-act="toggle" data-id="${esc(a.id)}" title="${a.hidden ? '목록에 다시 노출합니다' : '목록에서 숨깁니다'}">${a.hidden ? '비노출' : '노출중'}</button></td>
-      <td><a href="/category/${esc(a.category || 'etc')}" target="_blank" rel="noopener" style="font-size:13px">${esc(categoryLabel(a.category || 'etc'))}</a></td>
-      <td><a href="/${esc(a.path || `apps/${a.id}/`)}" target="_blank" rel="noopener">${esc(a.name)}</a><div class="muted" style="font-size:12.5px">${esc(a.desc || '')}</div></td>
-      <td class="mono">${esc(a.id)}</td>
-      <td>${(a.tags || []).map((t) => `<span class="tag">${esc(t)}</span>`).join(' ')}</td>
-      <td>${a.howto ? '<button class="btn small" data-act="view" data-id="' + esc(a.id) + '">보기</button>' : '<span class="muted">없음</span>'}</td>
-      <td class="mono">${esc(dateOnly(a.createdAt))}</td>
-      <td class="actions">
-        <button class="btn small" data-act="edit" data-id="${esc(a.id)}">수정</button>
-        <a class="btn small" href="/api/apps/${esc(a.id)}/download">내려받기</a>
-        <button class="btn small danger" data-act="trash" data-id="${esc(a.id)}">삭제</button>
-        <button class="btn small danger" data-act="purge" data-id="${esc(a.id)}">완전삭제</button>
-      </td>
-    </tr>`).join('');
+  rows.innerHTML = apps.map((a) => {
+    const manualBadge = a.manualChars
+      ? `<span class="meta-ok">설명서 ${Number(a.manualChars).toLocaleString()}자</span>`
+      : '<span class="meta-warn">설명서 없음</span>';
+    const howtoBadge = (a.howto || '').length >= 20
+      ? '<span class="meta-ok">사용법 있음</span>'
+      : '<span class="meta-warn">사용법 없음</span>';
+    return `
+    <article class="card admin-app${a.hidden ? ' is-hidden' : ''}">
+      <div class="admin-app-line1">
+        <span class="icon" aria-hidden="true">${esc(a.icon || '📦')}</span>
+        <a class="name" href="/app/${esc(a.id)}" target="_blank" rel="noopener">${esc(a.name)}</a>
+        <button class="btn small" data-act="toggle" data-id="${esc(a.id)}" title="${a.hidden ? '목록에 다시 노출합니다' : '목록에서 숨깁니다'}">${a.hidden ? '비노출' : '노출중'}</button>
+        <a class="cat-badge" href="/category/${esc(a.category || 'etc')}" target="_blank" rel="noopener">${esc(categoryLabel(a.category || 'etc'))}</a>
+        <span class="mono id">${esc(a.id)}</span>
+        <span class="spacer"></span>
+        <span class="muted small mono">등록 ${esc(dateOnly(a.createdAt))} · 수정 ${esc(dateOnly(a.updatedAt))}</span>
+      </div>
+      <div class="admin-app-line2">
+        <p class="desc">${esc(a.desc || '설명이 없습니다.')}</p>
+        <div class="row small">
+          ${(a.tags || []).length ? `<span class="tags">${a.tags.map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</span>` : '<span class="muted">태그 없음</span>'}
+          ${howtoBadge}
+          ${manualBadge}
+        </div>
+        <div class="actions">
+          <button class="btn small" data-act="manual" data-id="${esc(a.id)}">설명서</button>
+          <button class="btn small" data-act="edit" data-id="${esc(a.id)}">수정</button>
+          <a class="btn small" href="/api/apps/${esc(a.id)}/download">내려받기</a>
+          <button class="btn small danger" data-act="trash" data-id="${esc(a.id)}">삭제</button>
+        </div>
+      </div>
+    </article>`;
+  }).join('');
 }
 
 const editModal = document.getElementById('editModal');
@@ -512,6 +654,11 @@ rows.addEventListener('click', async (e) => {
   const { act, id } = btn.dataset;
   let app;
   try { app = (await api('/api/apps/' + id)).app; } catch (err) { return say(err.message, 'err'); }
+
+  if (act === 'manual') {
+    openManual(app);
+    return;
+  }
 
   if (act === 'view') {
     document.getElementById('viewTitle').textContent = `${app.icon || '📦'} ${app.name}`;

@@ -11,6 +11,7 @@ const AdmZip = require('adm-zip');
 
 const manifest = require('./src/manifest');
 const meta = require('./src/meta');
+const markdownLib = require('./src/markdown');
 const analyze = require('./src/analyze');
 const auth = require('./src/auth');
 const siteStore = require('./src/site');
@@ -61,7 +62,48 @@ app.get('/api/apps', async (req, res, next) => {
     const all = await manifest.readApps();
     // 관리자(?all=1, 로그인 필요)만 비노출 앱까지 봅니다
     const wantsAll = req.query.all === '1' && req.session && req.session.user;
-    res.json({ apps: wantsAll ? all : meta.filterVisible(all) });
+    const list = wantsAll ? all : meta.filterVisible(all);
+    res.json({ apps: meta.stripManual(list) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 마크다운 미리보기 (관리자)
+app.post('/api/markdown', auth.requireAuth, async (req, res, next) => {
+  try {
+    const markdown = String((req.body && req.body.markdown) || '').slice(0, 200000);
+    res.json({ html: markdownLib.renderMarkdown(markdown) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 사용설명서(.md) 저장·삭제
+app.put('/api/apps/:id/manual', auth.requireAuth, async (req, res, next) => {
+  try {
+    const manual = meta.normalizeManual((req.body && req.body.markdown) ?? '');
+    const updated = await manifest.updateApp(req.params.id, { manual });
+    res.json({ app: { id: updated.id, manualChars: (updated.manual || '').length } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.delete('/api/apps/:id/manual', auth.requireAuth, async (req, res, next) => {
+  try {
+    const updated = await manifest.updateApp(req.params.id, { manual: '' });
+    res.json({ app: { id: updated.id, manualChars: (updated.manual || '').length } });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get('/apps/:id/manual.md', async (req, res, next) => {
+  try {
+    const app_ = await manifest.getApp(req.params.id);
+    if (!app_ || !app_.manual) return next();
+    res.type('text/markdown; charset=utf-8').send(app_.manual);
   } catch (err) {
     next(err);
   }

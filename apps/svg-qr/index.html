@@ -1,0 +1,1285 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SVG QR 코드 고급 생성기 Pro</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- QRCode Generator Library (Matrix generation) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+  
+  <!-- JSZip (Batch ZIP packaging) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  
+  <!-- PapaParse (CSV Parsing) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f5ff',
+              100: '#e0ebff',
+              500: '#4f46e5',
+              600: '#4338ca',
+              700: '#3730a3',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.5);
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: rgba(107, 114, 128, 0.8);
+    }
+    
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #printArea, #printArea * {
+        visibility: visible;
+      }
+      #printArea {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800 flex flex-col transition-colors duration-200">
+
+  <!-- Toast Notification Container -->
+  <div id="toastContainer" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Header Section -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center text-white shadow-md shadow-indigo-200">
+          <i class="fa-solid font-bold text-lg fa-qrcode"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            SVG QR Generator Pro
+            <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-semibold">v2.5</span>
+          </h1>
+          <p class="text-xs text-slate-500 hidden sm:block">고품질 벡터 SVG QR 코드 및 일괄 Batch 스티커 생성 플랫폼</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-2">
+        <button onclick="toggleHistoryModal()" class="px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition flex items-center gap-1.5">
+          <i class="fa-solid fa-clock-rotate-left"></i>
+          <span>히스토리</span>
+        </button>
+        <button onclick="openPrintModal()" class="px-3 py-2 text-xs sm:text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition flex items-center gap-1.5">
+          <i class="fa-solid fa-print"></i>
+          <span class="hidden sm:inline">라벨 인쇄</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    
+    <!-- Tab Switcher -->
+    <div class="flex border-b border-slate-200 mb-6 bg-slate-100/80 p-1 rounded-xl w-full sm:w-fit">
+      <button id="tabSingleBtn" onclick="switchTab('single')" class="flex-1 sm:flex-none px-6 py-2.5 text-sm font-semibold rounded-lg text-indigo-600 bg-white shadow-sm transition-all flex items-center justify-center gap-2">
+        <i class="fa-solid fa-wand-magic-sparkles"></i>
+        <span>개별 세밀 생성</span>
+      </button>
+      <button id="tabBatchBtn" onclick="switchTab('batch')" class="flex-1 sm:flex-none px-6 py-2.5 text-sm font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all flex items-center justify-center gap-2">
+        <i class="fa-solid fa-layer-group"></i>
+        <span>그룹 일괄 생성 (ZIP/CSV)</span>
+      </button>
+    </div>
+
+    <!-- SECTION 1: SINGLE GENERATOR -->
+    <section id="singleSection" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <!-- Left Column: Controls & Inputs (7 Cols) -->
+      <div class="lg:col-span-7 space-y-5">
+        
+        <!-- Preset Type Selection -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
+            <i class="fa-solid fa-icons mr-1"></i> 데이터 유형 선택
+          </label>
+          <div class="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            <button type="button" onclick="setPreset('url')" id="presetBtn-url" class="preset-btn active px-3 py-2 rounded-xl text-xs font-medium border flex flex-col items-center justify-center gap-1.5 transition border-indigo-500 bg-indigo-50/50 text-indigo-700">
+              <i class="fa-solid fa-link text-base"></i>
+              <span>URL</span>
+            </button>
+            <button type="button" onclick="setPreset('text')" id="presetBtn-text" class="preset-btn px-3 py-2 rounded-xl text-xs font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5 transition">
+              <i class="fa-solid fa-align-left text-base"></i>
+              <span>텍스트</span>
+            </button>
+            <button type="button" onclick="setPreset('wifi')" id="presetBtn-wifi" class="preset-btn px-3 py-2 rounded-xl text-xs font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5 transition">
+              <i class="fa-solid fa-wifi text-base"></i>
+              <span>Wi-Fi</span>
+            </button>
+            <button type="button" onclick="setPreset('vcard')" id="presetBtn-vcard" class="preset-btn px-3 py-2 rounded-xl text-xs font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5 transition">
+              <i class="fa-solid fa-address-card text-base"></i>
+              <span>연락처</span>
+            </button>
+            <button type="button" onclick="setPreset('email')" id="presetBtn-email" class="preset-btn px-3 py-2 rounded-xl text-xs font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5 transition">
+              <i class="fa-solid fa-envelope text-base"></i>
+              <span>이메일</span>
+            </button>
+            <button type="button" onclick="setPreset('phone')" id="presetBtn-phone" class="preset-btn px-3 py-2 rounded-xl text-xs font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5 transition">
+              <i class="fa-solid fa-phone text-base"></i>
+              <span>전화번호</span>
+            </button>
+          </div>
+
+          <!-- Dynamic Preset Input Fields -->
+          <div id="presetInputContainer" class="mt-4 pt-4 border-t border-slate-100">
+            <!-- URL Fields (Default) -->
+            <div id="field-url" class="space-y-3">
+              <div>
+                <label class="block text-xs font-medium text-slate-700 mb-1">웹사이트 주소 (URL)</label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <i class="fa-solid fa-globe"></i>
+                  </span>
+                  <input type="url" id="inputUrl" value="https://example.com" onclick="this.value=''; updateQr();" oninput="updateQr()" placeholder="https://example.com" class="w-full pl-9 pr-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:outline-none transition">
+                </div>
+              </div>
+            </div>
+
+            <!-- Text Fields -->
+            <div id="field-text" class="space-y-3 hidden">
+              <div>
+                <label class="block text-xs font-medium text-slate-700 mb-1">메모 / 텍스트 내용</label>
+                <textarea id="inputText" rows="3" onclick="this.value=''; updateQr();" oninput="updateQr()" placeholder="QR 코드에 담을 일반 텍스트를 입력하세요" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:outline-none transition"></textarea>
+              </div>
+            </div>
+
+            <!-- Wifi Fields -->
+            <div id="field-wifi" class="grid grid-cols-1 sm:grid-cols-2 gap-3 hidden">
+              <div class="sm:col-span-2">
+                <label class="block text-xs font-medium text-slate-700 mb-1">네트워크 이름 (SSID)</label>
+                <input type="text" id="wifiSsid" onclick="this.value=''; updateQr();" oninput="updateQr()" placeholder="MyHomeWiFi" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:outline-none transition">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-700 mb-1">비밀번호</label>
+                <input type="text" id="wifiPass" onclick="this.value=''; updateQr();" oninput="updateQr()" placeholder="비밀번호" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:outline-none transition">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-700 mb-1">암호화 방식</label>
+                <select id="wifiType" onchange="updateQr()" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:outline-none transition">
+                  <option value="WPA">WPA / WPA2 / WPA3</option>
+                  <option value="WEP">WEP</option>
+                  <option value="nopass">암호 없음</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- vCard Fields -->
+            <div id="field-vcard" class="grid grid-cols-1 sm:grid-cols-2 gap-3 hidden">
+              <div>
+                <label class="block text-xs font-medium text-slate-700 mb-1">이름</label>
+                <input type="text" id="vcardName" onclick="this.value=''; updateQr();" oninput="updateQr()" placeholder="홍길동" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:outline-none transition">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-700 mb-1">휴대폰 번호</label>
+                <input type="tel" id="vcardPhone" onclick="this.value=''; updateQr();" oninput="updateQr()" placeholder="010-1234-5678" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:outline-none transition">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-700 mb-1">이메일</label>
+                <input type="email" id="vcardEmail" onclick="this.value=''; updateQr();" oninput="updateQr()" placeholder="user@domain.com" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:outline-none transition">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-700 mb-1">회사 / 직책</label>
+                <input type="text" id="vcardCompany" onclick="this.value=''; updateQr();" oninput="updateQr()" placeholder="주식회사 에이비씨" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:outline-none transition">
+              </div>
+            </div>
+
+            <!-- Email Fields -->
+            <div id="field-email" class="space-y-3 hidden">
+              <div>
+                <label class="block text-xs font-medium text-slate-700 mb-1">받는 이메일</label>
+                <input type="email" id="emailTo" onclick="this.value=''; updateQr();" oninput="updateQr()" placeholder="recipient@example.com" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:outline-none transition">
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-slate-700 mb-1">제목 (선택)</label>
+                <input type="text" id="emailSubject" onclick="this.value=''; updateQr();" oninput="updateQr()" placeholder="문의 사항입니다" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:outline-none transition">
+              </div>
+            </div>
+
+            <!-- Phone Fields -->
+            <div id="field-phone" class="space-y-3 hidden">
+              <div>
+                <label class="block text-xs font-medium text-slate-700 mb-1">전화번호</label>
+                <input type="tel" id="phoneNum" onclick="this.value=''; updateQr();" oninput="updateQr()" placeholder="01012345678" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:outline-none transition">
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Customization Accordion Panels -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm divide-y divide-slate-100 overflow-hidden">
+          
+          <!-- Panel 1: Colors & Gradients -->
+          <div class="p-4 sm:p-5">
+            <div class="flex items-center justify-between cursor-pointer" onclick="toggleAccordion('panelColors')">
+              <div class="flex items-center space-x-2.5">
+                <div class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs">
+                  <i class="fa-solid fa-palette"></i>
+                </div>
+                <h3 class="text-sm font-semibold text-slate-800">색상 및 그라데이션</h3>
+              </div>
+              <i id="panelColorsIcon" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform"></i>
+            </div>
+
+            <div id="panelColors" class="mt-4 pt-3 border-t border-slate-100 space-y-4">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-medium text-slate-700 mb-1.5">전경색 (메인 컬러)</label>
+                  <div class="flex items-center gap-2">
+                    <input type="color" id="fgColor1" value="#1e1b4b" onchange="updateQr()" class="w-9 h-9 rounded-lg border border-slate-200 cursor-pointer p-0.5">
+                    <input type="text" id="fgColor1Text" value="#1e1b4b" oninput="syncColorInput('fgColor1Text', 'fgColor1')" class="w-full text-xs px-2.5 py-2 font-mono border rounded-lg bg-slate-50 uppercase">
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-medium text-slate-700 mb-1.5">그라데이션 종료색 (옵션)</label>
+                  <div class="flex items-center gap-2">
+                    <input type="color" id="fgColor2" value="#4338ca" onchange="updateQr()" class="w-9 h-9 rounded-lg border border-slate-200 cursor-pointer p-0.5">
+                    <input type="text" id="fgColor2Text" value="#4338ca" oninput="syncColorInput('fgColor2Text', 'fgColor2')" class="w-full text-xs px-2.5 py-2 font-mono border rounded-lg bg-slate-50 uppercase">
+                  </div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-medium text-slate-700 mb-1.5">그라데이션 모드</label>
+                  <select id="gradientType" onchange="updateQr()" class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 focus:outline-none">
+                    <option value="none">단색 (Solid)</option>
+                    <option value="linear" selected>선형 그라데이션 (Linear)</option>
+                    <option value="radial">방사형 그라데이션 (Radial)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-700 mb-1.5">배경색 설정</label>
+                  <div class="flex items-center gap-2">
+                    <input type="color" id="bgColor" value="#ffffff" onchange="updateQr()" class="w-9 h-9 rounded-lg border border-slate-200 cursor-pointer p-0.5">
+                    <label class="flex items-center text-xs text-slate-600 gap-1.5 cursor-pointer ml-1">
+                      <input type="checkbox" id="bgTransparent" onchange="updateQr()" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                      투명 배경
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panel 2: Module Shapes & Corner Eye Styles -->
+          <div class="p-4 sm:p-5">
+            <div class="flex items-center justify-between cursor-pointer" onclick="toggleAccordion('panelShapes')">
+              <div class="flex items-center space-x-2.5">
+                <div class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs">
+                  <i class="fa-solid fa-shapes"></i>
+                </div>
+                <h3 class="text-sm font-semibold text-slate-800">모듈 패턴 및 모서리(눈) 스타일</h3>
+              </div>
+              <i id="panelShapesIcon" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform"></i>
+            </div>
+
+            <div id="panelShapes" class="mt-4 pt-3 border-t border-slate-100 space-y-4">
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label class="block text-xs font-medium text-slate-700 mb-1.5">도트(모듈) 모양</label>
+                  <select id="dotStyle" onchange="updateQr()" class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg bg-slate-50">
+                    <option value="square">직사각형 (Square)</option>
+                    <option value="rounded" selected>라운드 (Rounded)</option>
+                    <option value="circle">원형 (Circle)</option>
+                    <option value="dots">작은 점 (Dots)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-medium text-slate-700 mb-1.5">모서리 외곽 테두리</label>
+                  <select id="cornerSquareStyle" onchange="updateQr()" class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg bg-slate-50">
+                    <option value="square">직사각형</option>
+                    <option value="rounded" selected>둥근 모서리</option>
+                    <option value="circle">원형</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-medium text-slate-700 mb-1.5">모서리 중심점</label>
+                  <select id="cornerDotStyle" onchange="updateQr()" class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg bg-slate-50">
+                    <option value="square">직사각형</option>
+                    <option value="rounded" selected>둥근 점</option>
+                    <option value="circle">원형 점</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-medium text-slate-700 mb-1">오류 복원율 (ECL)</label>
+                  <select id="ecl" onchange="updateQr()" class="w-full text-xs px-3 py-2 border border-slate-200 rounded-lg bg-slate-50">
+                    <option value="L">L - Low (7% 복원 가능)</option>
+                    <option value="M">M - Medium (15% 복원 가능)</option>
+                    <option value="Q">Q - Quartile (25% 복원 가능)</option>
+                    <option value="H" selected>H - High (30% 복원, 로고 추천)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-700 mb-1">여백 (Quiet Zone)</label>
+                  <input type="range" id="marginRange" min="0" max="6" value="2" oninput="updateQr()" class="w-full accent-indigo-600">
+                  <div class="text-[10px] text-slate-400 text-right"><span id="marginVal">2</span> 모듈</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panel 3: Center Logo & Icon -->
+          <div class="p-4 sm:p-5">
+            <div class="flex items-center justify-between cursor-pointer" onclick="toggleAccordion('panelLogo')">
+              <div class="flex items-center space-x-2.5">
+                <div class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs">
+                  <i class="fa-solid fa-image"></i>
+                </div>
+                <h3 class="text-sm font-semibold text-slate-800">중앙 로고 및 프레임 추가</h3>
+              </div>
+              <i id="panelLogoIcon" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform"></i>
+            </div>
+
+            <div id="panelLogo" class="mt-4 pt-3 border-t border-slate-100 space-y-4">
+              <!-- Preset Logos -->
+              <div>
+                <label class="block text-xs font-medium text-slate-700 mb-2">프리셋 아이콘 선택</label>
+                <div class="flex flex-wrap gap-2">
+                  <button type="button" onclick="setPresetLogo('none')" class="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs hover:bg-slate-50">없음</button>
+                  <button type="button" onclick="setPresetLogo('link')" class="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs hover:bg-slate-50 flex items-center gap-1"><i class="fa-solid fa-link text-indigo-600"></i> Link</button>
+                  <button type="button" onclick="setPresetLogo('wifi')" class="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs hover:bg-slate-50 flex items-center gap-1"><i class="fa-solid fa-wifi text-emerald-600"></i> Wi-Fi</button>
+                  <button type="button" onclick="setPresetLogo('user')" class="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs hover:bg-slate-50 flex items-center gap-1"><i class="fa-solid fa-user text-blue-600"></i> User</button>
+                  <button type="button" onclick="setPresetLogo('heart')" class="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs hover:bg-slate-50 flex items-center gap-1"><i class="fa-solid fa-heart text-rose-500"></i> Heart</button>
+                  <button type="button" onclick="setPresetLogo('star')" class="px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs hover:bg-slate-50 flex items-center gap-1"><i class="fa-solid fa-star text-amber-500"></i> Star</button>
+                </div>
+              </div>
+
+              <!-- Custom File Upload -->
+              <div>
+                <label class="block text-xs font-medium text-slate-700 mb-1">사용자 커스텀 이미지/로고 업로드 (PNG, SVG, JPG)</label>
+                <input type="file" id="logoFileInput" accept="image/*" onchange="handleLogoUpload(event)" class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-medium file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer">
+              </div>
+
+              <!-- Logo Controls -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-medium text-slate-700 mb-1">로고 크기 비율</label>
+                  <input type="range" id="logoScale" min="0.1" max="0.3" step="0.02" value="0.22" oninput="updateQr()" class="w-full accent-indigo-600">
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-700 mb-1">로고 백그라운드 여백</label>
+                  <label class="flex items-center text-xs text-slate-600 gap-1.5 cursor-pointer mt-2">
+                    <input type="checkbox" id="logoBgPad" checked onchange="updateQr()" class="rounded border-slate-300 text-indigo-600">
+                    로고 뒤에 흰색 마스크 생성
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Panel 4: Text Label Overlay -->
+          <div class="p-4 sm:p-5">
+            <div class="flex items-center justify-between cursor-pointer" onclick="toggleAccordion('panelLabel')">
+              <div class="flex items-center space-x-2.5">
+                <div class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs">
+                  <i class="fa-solid fa-font"></i>
+                </div>
+                <h3 class="text-sm font-semibold text-slate-800">하단 문구(라벨) 삽입</h3>
+              </div>
+              <i id="panelLabelIcon" class="fa-solid fa-chevron-down text-slate-400 text-xs transition-transform"></i>
+            </div>
+
+            <div id="panelLabel" class="mt-4 pt-3 border-t border-slate-100 space-y-4">
+              <div>
+                <label class="block text-xs font-medium text-slate-700 mb-1">라벨 텍스트</label>
+                <input type="text" id="labelText" placeholder="예: 스캔하여 접속하기" onclick="this.value=''; updateQr();" oninput="updateQr()" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg">
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-xs font-medium text-slate-700 mb-1">글자 색상</label>
+                  <input type="color" id="labelColor" value="#1e293b" onchange="updateQr()" class="w-full h-8 rounded-lg border border-slate-200 cursor-pointer p-0.5">
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-700 mb-1">글자 크기 (px)</label>
+                  <input type="number" id="labelSize" value="16" min="10" max="32" oninput="updateQr()" class="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg">
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Right Column: Live SVG Preview & Download Panel (5 Cols) -->
+      <div class="lg:col-span-5">
+        <div class="sticky top-20 space-y-4">
+          
+          <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm text-center flex flex-col items-center">
+            
+            <div class="w-full flex items-center justify-between mb-4">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                실시간 생성 미리보기
+              </span>
+              <button onclick="saveToHistory()" title="현재 QR 히스토리에 저장" class="text-xs text-slate-500 hover:text-indigo-600 transition flex items-center gap-1">
+                <i class="fa-regular fa-bookmark"></i>
+                <span>저장</span>
+              </button>
+            </div>
+
+            <!-- SVG Preview Container -->
+            <div id="svgPreviewCard" class="w-full max-w-[280px] sm:max-w-[320px] aspect-square bg-slate-50 rounded-2xl p-4 border border-slate-100 flex items-center justify-center shadow-inner relative group overflow-hidden">
+              <div id="singleQrOutput" class="w-full h-full flex items-center justify-center">
+                <!-- SVG injected dynamically -->
+              </div>
+            </div>
+
+            <!-- File Name Input & Format -->
+            <div class="w-full mt-5 space-y-3">
+              <div>
+                <label class="block text-left text-xs font-medium text-slate-600 mb-1">다운로드 파일명</label>
+                <div class="flex items-center">
+                  <input type="text" id="singleFilename" value="qrcode_custom" onclick="this.value='';" placeholder="qrcode" class="w-full px-3 py-2 text-xs border border-slate-200 rounded-l-xl focus:outline-none focus:ring-1 focus:ring-indigo-500">
+                  <span class="bg-slate-100 text-slate-500 text-xs px-3 py-2 border-y border-r border-slate-200 rounded-r-xl font-mono">.svg</span>
+                </div>
+              </div>
+
+              <!-- Main Download Buttons -->
+              <div class="grid grid-cols-2 gap-2 pt-1">
+                <button onclick="downloadSingleSvg()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm shadow-indigo-200">
+                  <i class="fa-solid fa-download"></i>
+                  <span>SVG 벡터 다운</span>
+                </button>
+                <button onclick="downloadSinglePng()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm">
+                  <i class="fa-solid fa-file-image"></i>
+                  <span>PNG 비트맵 다운</span>
+                </button>
+              </div>
+
+              <!-- Copy & Extra Utilities -->
+              <div class="grid grid-cols-2 gap-2">
+                <button onclick="copySvgCode()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5">
+                  <i class="fa-regular fa-copy"></i>
+                  <span>SVG 코드 복사</span>
+                </button>
+                <button onclick="copyPngImage()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium py-2 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5">
+                  <i class="fa-solid fa-copy"></i>
+                  <span>클립보드 이미지 복사</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Quick Scanning Tip Box -->
+          <div class="bg-indigo-50/60 p-4 rounded-xl border border-indigo-100 text-xs text-indigo-900 space-y-1">
+            <div class="font-semibold flex items-center gap-1.5">
+              <i class="fa-solid fa-circle-info text-indigo-600"></i>
+              <span>벡터 SVG QR 코드의 장점</span>
+            </div>
+            <p class="text-indigo-700/80 leading-relaxed">
+              SVG는 인쇄물이나 현수막, 명함 디자인 제작 시 깨짐 없는 깨끗한 벡터 출력을 보장합니다. 오류 복원율을 높이고 대비가 확실할 수록 인식률이 상승합니다.
+            </p>
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+
+    <!-- SECTION 2: BATCH / BULK GENERATOR -->
+    <section id="batchSection" class="hidden space-y-6">
+      
+      <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">그룹 일괄(Batch) SVG 생성기</h2>
+            <p class="text-xs text-slate-500">여러 개의 URL이나 텍스트 데이터를 한 번에 SVG로 변환하고 ZIP으로 일괄 압축 다운로드합니다.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <label class="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-3 py-2 rounded-xl font-medium transition flex items-center gap-1.5">
+              <i class="fa-solid fa-file-csv text-emerald-600"></i>
+              <span>CSV / TXT 파일 업로드</span>
+              <input type="file" id="batchCsvInput" accept=".csv, .txt" onchange="handleCsvUpload(event)" class="hidden">
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">
+            데이터 목록 입력 <span class="text-slate-400 font-normal">(한 줄에 하나씩 입력 / 형식: URL, 파일명, 라벨문구)</span>
+          </label>
+          <textarea id="batchUrls" rows="7" onclick="this.value='';" placeholder="https://google.com, 구글포털, Google
+https://github.com, 깃허브, GitHub
+https://naver.com, 네이버, NAVER" class="w-full p-3 text-xs font-mono bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:bg-white focus:outline-none transition leading-relaxed"></textarea>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+          <div class="flex items-center gap-4 text-xs text-slate-600">
+            <span>현재 설정 스타일 적용됨</span>
+            <span class="text-slate-300">|</span>
+            <label class="flex items-center gap-1.5 cursor-pointer">
+              <input type="checkbox" id="batchExportPng" class="rounded text-indigo-600">
+              <span>PNG 압축도 함께 포함</span>
+            </label>
+          </div>
+
+          <button onclick="generateBatch()" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-6 py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-sm shadow-indigo-200">
+            <i class="fa-solid fa-file-zipper"></i>
+            <span>일괄 SVG QR 생성 및 ZIP 다운로드</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Batch Result Container -->
+      <div id="batchResult" class="hidden bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+            <span>생성 결과 목록</span>
+            <span id="batchCountBadge" class="text-xs bg-indigo-100 text-indigo-700 px-2.5 py-0.5 rounded-full font-semibold">0개</span>
+          </h3>
+          <button onclick="openPrintModal()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1">
+            <i class="fa-solid fa-print"></i>
+            <span>스티커 라벨로 출력</span>
+          </button>
+        </div>
+
+        <div id="batchQrGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 pt-2">
+          <!-- Batch items will be rendered here -->
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- PRINT MODAL -->
+  <div id="printModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+          <i class="fa-solid fa-print text-indigo-600"></i>
+          QR 코드 라벨 스티커 인쇄 미리보기
+        </h3>
+        <button onclick="closePrintModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="p-6 overflow-y-auto flex-grow custom-scrollbar">
+        <div id="printArea" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-6 p-4 bg-white">
+          <!-- Print QR Items Injected Here -->
+        </div>
+      </div>
+
+      <div class="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+        <span class="text-xs text-slate-500">A4 인쇄 용지 규격에 맞춰 자동 정렬됩니다.</span>
+        <button onclick="window.print()" class="bg-indigo-600 text-white text-xs font-semibold px-5 py-2.5 rounded-xl hover:bg-indigo-700 transition flex items-center gap-2">
+          <i class="fa-solid fa-print"></i>
+          <span>인쇄하기 (Print)</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY MODAL -->
+  <div id="historyModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+        <h3 class="font-bold text-slate-900 text-base flex items-center gap-2">
+          <i class="fa-solid fa-clock-rotate-left text-indigo-600"></i>
+          저장된 QR 히스토리
+        </h3>
+        <button onclick="toggleHistoryModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div id="historyList" class="p-6 overflow-y-auto flex-grow custom-scrollbar space-y-3">
+        <!-- History items dynamically generated -->
+      </div>
+
+      <div class="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+        <button onclick="clearHistory()" class="text-xs text-rose-600 hover:text-rose-700 font-medium">히스토리 전체 삭제</button>
+        <button onclick="toggleHistoryModal()" class="bg-slate-200 text-slate-700 text-xs font-semibold px-4 py-2 rounded-xl hover:bg-slate-300">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    let currentPreset = 'url';
+    let currentLogoDataUrl = null;
+    let generatedSvgString = '';
+    let batchGeneratedList = [];
+    let savedHistory = [];
+
+    // Load saved history on startup
+    try {
+      savedHistory = JSON.parse(localStorage.getItem('svg_qr_history') || '[]');
+    } catch (e) {
+      savedHistory = [];
+    }
+
+    // Window load init
+    window.onload = function() {
+      updateQr();
+    };
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      
+      const colors = {
+        success: 'bg-emerald-600 text-white',
+        error: 'bg-rose-600 text-white',
+        info: 'bg-slate-900 text-white'
+      };
+
+      const icons = {
+        success: 'fa-circle-check',
+        error: 'fa-circle-exclamation',
+        info: 'fa-circle-info'
+      };
+
+      toast.className = `pointer-events-auto flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg text-xs font-medium ${colors[type] || colors.info} transform transition-all duration-300 translate-y-2 opacity-0`;
+      toast.innerHTML = `<i class="fa-solid ${icons[type] || icons.info}"></i> <span>${message}</span>`;
+
+      container.appendChild(toast);
+
+      // Animate in
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      // Remove after 3 seconds
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    function switchTab(type) {
+      const singleSec = document.getElementById('singleSection');
+      const batchSec = document.getElementById('batchSection');
+      const singleBtn = document.getElementById('tabSingleBtn');
+      const batchBtn = document.getElementById('tabBatchBtn');
+
+      if (type === 'single') {
+        singleSec.classList.remove('hidden');
+        batchSec.classList.add('hidden');
+        singleBtn.className = "flex-1 sm:flex-none px-6 py-2.5 text-sm font-semibold rounded-lg text-indigo-600 bg-white shadow-sm transition-all flex items-center justify-center gap-2";
+        batchBtn.className = "flex-1 sm:flex-none px-6 py-2.5 text-sm font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all flex items-center justify-center gap-2";
+      } else {
+        singleSec.classList.add('hidden');
+        batchSec.classList.remove('hidden');
+        batchBtn.className = "flex-1 sm:flex-none px-6 py-2.5 text-sm font-semibold rounded-lg text-indigo-600 bg-white shadow-sm transition-all flex items-center justify-center gap-2";
+        singleBtn.className = "flex-1 sm:flex-none px-6 py-2.5 text-sm font-semibold rounded-lg text-slate-600 hover:text-slate-900 transition-all flex items-center justify-center gap-2";
+      }
+    }
+
+    function toggleAccordion(panelId) {
+      const panel = document.getElementById(panelId);
+      const icon = document.getElementById(panelId + 'Icon');
+      if (panel.classList.contains('hidden')) {
+        panel.classList.remove('hidden');
+        if (icon) icon.classList.add('rotate-180');
+      } else {
+        panel.classList.add('hidden');
+        if (icon) icon.classList.remove('rotate-180');
+      }
+    }
+
+    function setPreset(type) {
+      currentPreset = type;
+      document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.className = "preset-btn px-3 py-2 rounded-xl text-xs font-medium border border-slate-200 text-slate-600 hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5 transition";
+      });
+      const activeBtn = document.getElementById(`presetBtn-${type}`);
+      if (activeBtn) {
+        activeBtn.className = "preset-btn active px-3 py-2 rounded-xl text-xs font-medium border flex flex-col items-center justify-center gap-1.5 transition border-indigo-500 bg-indigo-50/50 text-indigo-700";
+      }
+
+      ['url', 'text', 'wifi', 'vcard', 'email', 'phone'].forEach(p => {
+        const field = document.getElementById(`field-${p}`);
+        if (field) field.classList.add('hidden');
+      });
+
+      const currentField = document.getElementById(`field-${type}`);
+      if (currentField) currentField.classList.remove('hidden');
+
+      updateQr();
+    }
+
+    function syncColorInput(textId, colorId) {
+      const textVal = document.getElementById(textId).value;
+      if (/^#[0-9A-F]{6}$/i.test(textVal)) {
+        document.getElementById(colorId).value = textVal;
+        updateQr();
+      }
+    }
+
+    function getQrPayload() {
+      switch (currentPreset) {
+        case 'url':
+          return document.getElementById('inputUrl').value.trim() || 'https://example.com';
+        case 'text':
+          return document.getElementById('inputText').value.trim() || 'Sample Text';
+        case 'wifi':
+          const ssid = document.getElementById('wifiSsid').value.trim() || 'WiFi';
+          const pass = document.getElementById('wifiPass').value.trim();
+          const type = document.getElementById('wifiType').value;
+          return `WIFI:S:${ssid};T:${type};P:${pass};;`;
+        case 'vcard':
+          const name = document.getElementById('vcardName').value.trim() || '홍길동';
+          const phone = document.getElementById('vcardPhone').value.trim();
+          const email = document.getElementById('vcardEmail').value.trim();
+          const comp = document.getElementById('vcardCompany').value.trim();
+          return `BEGIN:VCARD\nVERSION:3.0\nN:${name}\nTEL:${phone}\nEMAIL:${email}\nORG:${comp}\nEND:VCARD`;
+        case 'email':
+          const to = document.getElementById('emailTo').value.trim();
+          const sub = document.getElementById('emailSubject').value.trim();
+          return `mailto:${to}?subject=${encodeURIComponent(sub)}`;
+        case 'phone':
+          const num = document.getElementById('phoneNum').value.trim();
+          return `tel:${num}`;
+        default:
+          return 'https://example.com';
+      }
+    }
+
+    function setPresetLogo(logoType) {
+      if (logoType === 'none') {
+        currentLogoDataUrl = null;
+        updateQr();
+        return;
+      }
+
+      const iconSvgMap = {
+        link: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%234f46e5"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>`,
+        wifi: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23059669"><path d="M12 3C7.95 3 4.21 4.34 1.2 6.6L3 9c2.45-1.84 5.5-3 9-3s6.55 1.16 9 3l1.8-2.4C19.79 4.34 16.05 3 12 3zm0 6c-2.78 0-5.32.92-7.4 2.47l1.8 2.4C8.04 12.72 9.94 12 12 12s3.96.72 5.6 1.87l1.8-2.4C17.32 9.92 14.78 9 12 9zm0 6c-1.52 0-2.9.5-4 1.34l4 5.33 4-5.33C14.9 15.5 13.52 15 12 15z"/></svg>`,
+        user: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%232563eb"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`,
+        heart: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23f43f5e"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`,
+        star: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23d97706"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>`
+      };
+
+      if (iconSvgMap[logoType]) {
+        currentLogoDataUrl = 'data:image/svg+xml;utf8,' + iconSvgMap[logoType];
+        updateQr();
+      }
+    }
+
+    function handleLogoUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        currentLogoDataUrl = e.target.result;
+        updateQr();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function buildSvgQrString(textPayload, customOptions = {}) {
+      const ecl = customOptions.ecl || document.getElementById('ecl').value;
+      const margin = customOptions.margin !== undefined ? customOptions.margin : parseInt(document.getElementById('marginRange').value);
+      const fgColor1 = customOptions.fgColor1 || document.getElementById('fgColor1').value;
+      const fgColor2 = customOptions.fgColor2 || document.getElementById('fgColor2').value;
+      const gradientType = customOptions.gradientType || document.getElementById('gradientType').value;
+      const bgColor = customOptions.bgColor || document.getElementById('bgColor').value;
+      const bgTransparent = customOptions.bgTransparent !== undefined ? customOptions.bgTransparent : document.getElementById('bgTransparent').checked;
+      const dotStyle = customOptions.dotStyle || document.getElementById('dotStyle').value;
+      const cornerSquareStyle = customOptions.cornerSquareStyle || document.getElementById('cornerSquareStyle').value;
+      const cornerDotStyle = customOptions.cornerDotStyle || document.getElementById('cornerDotStyle').value;
+      const logoUrl = customOptions.logoUrl !== undefined ? customOptions.logoUrl : currentLogoDataUrl;
+      const logoScale = customOptions.logoScale || parseFloat(document.getElementById('logoScale').value);
+      const logoBgPad = customOptions.logoBgPad !== undefined ? customOptions.logoBgPad : document.getElementById('logoBgPad').checked;
+      const labelText = customOptions.labelText !== undefined ? customOptions.labelText : document.getElementById('labelText').value.trim();
+      const labelColor = customOptions.labelColor || document.getElementById('labelColor').value;
+      const labelSize = customOptions.labelSize || parseInt(document.getElementById('labelSize').value);
+
+      // Generate QR matrix using qrcode-generator
+      let qr;
+      try {
+        qr = qrcode(0, ecl);
+        qr.addData(textPayload);
+        qr.make();
+      } catch (err) {
+        // Fallback for longer payload
+        qr = qrcode(10, 'M');
+        qr.addData(textPayload);
+        qr.make();
+      }
+
+      const count = qr.getModuleCount();
+      const viewBoxSize = 300;
+      const labelHeight = labelText ? (labelSize * 1.8) : 0;
+      const qrDrawSize = viewBoxSize;
+      const totalWidth = viewBoxSize;
+      const totalHeight = viewBoxSize + labelHeight;
+
+      const cellSize = qrDrawSize / (count + margin * 2);
+
+      let svgXml = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${totalWidth} ${totalHeight}" width="100%" height="100%">`;
+
+      // Definitions (Gradients & Defs)
+      svgXml += `<defs>`;
+      if (gradientType === 'linear') {
+        svgXml += `<linearGradient id="qrGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="${fgColor1}" />
+          <stop offset="100%" stop-color="${fgColor2}" />
+        </linearGradient>`;
+      } else if (gradientType === 'radial') {
+        svgXml += `<radialGradient id="qrGrad" cx="50%" cy="50%" r="70%">
+          <stop offset="0%" stop-color="${fgColor1}" />
+          <stop offset="100%" stop-color="${fgColor2}" />
+        </radialGradient>`;
+      }
+      svgXml += `</defs>`;
+
+      const fillRef = (gradientType !== 'none') ? `url(#qrGrad)` : fgColor1;
+
+      // Background
+      if (!bgTransparent) {
+        svgXml += `<rect width="${totalWidth}" height="${totalHeight}" fill="${bgColor}" rx="12" />`;
+      }
+
+      // Helper for Finder Pattern detection
+      function isFinderPattern(r, c) {
+        if (r < 7 && c < 7) return true; // Top-Left
+        if (r < 7 && c >= count - 7) return true; // Top-Right
+        if (r >= count - 7 && c < 7) return true; // Bottom-Left
+        return false;
+      }
+
+      // Helper for Central Logo clearing
+      const logoModuleRange = Math.floor(count * logoScale);
+      const centerStart = Math.floor((count - logoModuleRange) / 2);
+      const centerEnd = centerStart + logoModuleRange;
+
+      function isLogoArea(r, c) {
+        if (!logoUrl) return false;
+        return r >= centerStart && r < centerEnd && c >= centerStart && c < centerEnd;
+      }
+
+      // Draw Normal Data Modules
+      svgXml += `<g fill="${fillRef}">`;
+      for (let r = 0; r < count; r++) {
+        for (let c = 0; c < count; c++) {
+          if (qr.isDark(r, c) && !isFinderPattern(r, c) && !isLogoArea(r, c)) {
+            const x = (c + margin) * cellSize;
+            const y = (r + margin) * cellSize;
+
+            if (dotStyle === 'circle') {
+              svgXml += `<circle cx="${x + cellSize / 2}" cy="${y + cellSize / 2}" r="${cellSize / 2}" />`;
+            } else if (dotStyle === 'dots') {
+              svgXml += `<circle cx="${x + cellSize / 2}" cy="${y + cellSize / 2}" r="${cellSize * 0.38}" />`;
+            } else if (dotStyle === 'rounded') {
+              svgXml += `<rect x="${x}" y="${y}" width="${cellSize + 0.3}" height="${cellSize + 0.3}" rx="${cellSize * 0.35}" />`;
+            } else {
+              // Square default
+              svgXml += `<rect x="${x}" y="${y}" width="${cellSize + 0.3}" height="${cellSize + 0.3}" />`;
+            }
+          }
+        }
+      }
+      svgXml += `</g>`;
+
+      // Draw Eye Finder Patterns
+      const eyePositions = [
+        { r: 0, c: 0 },
+        { r: 0, c: count - 7 },
+        { r: count - 7, c: 0 }
+      ];
+
+      eyePositions.forEach(pos => {
+        const x = (pos.c + margin) * cellSize;
+        const y = (pos.r + margin) * cellSize;
+        const outerSize = cellSize * 7;
+        const innerSize = cellSize * 3;
+        const innerOffset = cellSize * 2;
+
+        // Outer Eye Frame
+        if (cornerSquareStyle === 'circle') {
+          svgXml += `<path d="M ${x + outerSize / 2} ${y} A ${outerSize / 2} ${outerSize / 2} 0 1 1 ${x + outerSize / 2 - 0.01} ${y} M ${x + outerSize / 2} ${y + cellSize} A ${outerSize / 2 - cellSize} ${outerSize / 2 - cellSize} 0 1 0 ${x + outerSize / 2 + 0.01} ${y + cellSize} Z" fill="${fillRef}" fill-rule="evenodd" />`;
+        } else if (cornerSquareStyle === 'rounded') {
+          svgXml += `<rect x="${x}" y="${y}" width="${outerSize}" height="${outerSize}" rx="${cellSize * 2}" fill="none" stroke="${fillRef}" stroke-width="${cellSize}" />`;
+        } else {
+          // Square Outer
+          svgXml += `<rect x="${x}" y="${y}" width="${outerSize}" height="${outerSize}" rx="0" fill="none" stroke="${fillRef}" stroke-width="${cellSize}" />`;
+        }
+
+        // Inner Eye Dot
+        const ix = x + innerOffset;
+        const iy = y + innerOffset;
+        if (cornerDotStyle === 'circle') {
+          svgXml += `<circle cx="${ix + innerSize / 2}" cy="${iy + innerSize / 2}" r="${innerSize / 2}" fill="${fillRef}" />`;
+        } else if (cornerDotStyle === 'rounded') {
+          svgXml += `<rect x="${ix}" y="${iy}" width="${innerSize}" height="${innerSize}" rx="${cellSize}" fill="${fillRef}" />`;
+        } else {
+          svgXml += `<rect x="${ix}" y="${iy}" width="${innerSize}" height="${innerSize}" fill="${fillRef}" />`;
+        }
+      });
+
+      // Draw Central Logo if present
+      if (logoUrl) {
+        const logoSizePx = qrDrawSize * logoScale;
+        const logoX = (qrDrawSize - logoSizePx) / 2;
+        const logoY = (qrDrawSize - logoSizePx) / 2;
+
+        if (logoBgPad) {
+          svgXml += `<rect x="${logoX - 4}" y="${logoY - 4}" width="${logoSizePx + 8}" height="${logoSizePx + 8}" rx="8" fill="${bgTransparent ? '#ffffff' : bgColor}" />`;
+        }
+        svgXml += `<image x="${logoX}" y="${logoY}" width="${logoSizePx}" height="${logoSizePx}" href="${logoUrl}" preserveAspectRatio="xMidYMid meet" />`;
+      }
+
+      // Draw Label Text below QR
+      if (labelText) {
+        const textY = viewBoxSize + (labelHeight / 1.5);
+        svgXml += `<text x="${totalWidth / 2}" y="${textY}" font-family="Inter, sans-serif" font-size="${labelSize}" font-weight="600" fill="${labelColor}" text-anchor="middle">${escapeXml(labelText)}</text>`;
+      }
+
+      svgXml += `</svg>`;
+      return svgXml;
+    }
+
+    function escapeXml(str) {
+      return str.replace(/[<>&'"]/g, c => {
+        switch (c) {
+          case '<': return '&lt;';
+          case '>': return '&gt;';
+          case '&': return '&amp;';
+          case '\'': return '&apos;';
+          case '"': return '&quot;';
+        }
+      });
+    }
+
+    function updateQr() {
+      const payload = getQrPayload();
+      document.getElementById('marginVal').innerText = document.getElementById('marginRange').value;
+      
+      generatedSvgString = buildSvgQrString(payload);
+      
+      const container = document.getElementById('singleQrOutput');
+      container.innerHTML = generatedSvgString;
+    }
+
+    function downloadSingleSvg() {
+      const filename = (document.getElementById('singleFilename').value.trim() || 'qrcode') + '.svg';
+      const blob = new Blob([generatedSvgString], { type: 'image/svg+xml;charset=utf-8' });
+      const downloadUrl = URL.createObjectURL(blob);
+      
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(downloadUrl);
+      showToast('SVG 파일이 다운로드 되었습니다.', 'success');
+    }
+
+    function downloadSinglePng() {
+      const filename = (document.getElementById('singleFilename').value.trim() || 'qrcode') + '.png';
+      svgToPngBlob(generatedSvgString, 1024, (blob) => {
+        const downloadUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(downloadUrl);
+        showToast('고해상도 PNG 파일이 다운로드 되었습니다.', 'success');
+      });
+    }
+
+    function svgToPngBlob(svgString, size, callback) {
+      const img = new Image();
+      const svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(svgBlob);
+
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, size, size);
+        URL.revokeObjectURL(url);
+
+        canvas.toBlob((blob) => {
+          callback(blob);
+        }, 'image/png');
+      };
+      img.src = url;
+    }
+
+    function copySvgCode() {
+      copyToClipboard(generatedSvgString);
+      showToast('SVG 코드가 클립보드에 복사되었습니다.', 'success');
+    }
+
+    function copyPngImage() {
+      svgToPngBlob(generatedSvgString, 800, (blob) => {
+        try {
+          const item = new ClipboardItem({ 'image/png': blob });
+          navigator.clipboard.write([item]).then(() => {
+            showToast('QR 코드가 이미지로 클립보드에 복사되었습니다.', 'success');
+          }).catch(() => {
+            showToast('클립보드 이미지 복사를 지원하지 않는 브라우저입니다.', 'error');
+          });
+        } catch (e) {
+          showToast('클립보드 복사에 실패했습니다.', 'error');
+        }
+      });
+    }
+
+    function copyToClipboard(text) {
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+      }
+    }
+
+    function handleCsvUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      Papa.parse(file, {
+        complete: function(results) {
+          if (results.data && results.data.length > 0) {
+            const lines = results.data
+              .filter(row => row.length > 0 && row[0].trim() !== '')
+              .map(row => row.join(', '));
+            document.getElementById('batchUrls').value = lines.join('\n');
+            showToast(`${lines.length}개의 CSV 데이터를 불러왔습니다.`, 'success');
+          }
+        },
+        error: function() {
+          showToast('CSV 파일을 파싱하는데 실패했습니다.', 'error');
+        }
+      });
+    }
+
+    async function generateBatch() {
+      const text = document.getElementById('batchUrls').value.trim();
+      if (!text) {
+        showToast('하나 이상의 데이터 목록을 입력하세요.', 'error');
+        return;
+      }
+
+      const lines = text.split('\n').filter(line => line.trim() !== '');
+      if (lines.length === 0) return;
+
+      const zip = new JSZip();
+      const exportPng = document.getElementById('batchExportPng').checked;
+      const gridContainer = document.getElementById('batchQrGrid');
+      gridContainer.innerHTML = '';
+      batchGeneratedList = [];
+
+      showToast('일괄 생성 중입니다...', 'info');
+
+      for (let i = 0; i < lines.length; i++) {
+        const parts = lines[i].split(',').map(p => p.trim());
+        const urlPayload = parts[0] || '';
+        const customName = parts[1] || `qrcode_${i + 1}`;
+        const customLabel = parts[2] || '';
+
+        if (!urlPayload) continue;
+
+        const svgStr = buildSvgQrString(urlPayload, { labelText: customLabel });
+        batchGeneratedList.push({ name: customName, payload: urlPayload, svg: svgStr, label: customLabel });
+
+        // Add SVG to ZIP
+        zip.file(`${customName}.svg`, svgStr);
+
+        // Optionally add PNG to ZIP
+        if (exportPng) {
+          const pngBlob = await new Promise(resolve => svgToPngBlob(svgStr, 800, resolve));
+          zip.file(`${customName}.png`, pngBlob);
+        }
+
+        // Preview Item UI
+        const itemDiv = document.createElement('div');
+        itemDiv.className = "bg-slate-50 p-3 rounded-xl border border-slate-200 text-center flex flex-col items-center hover:shadow-md transition group";
+        itemDiv.innerHTML = `
+          <div class="w-24 h-24 mb-2 flex items-center justify-center">${svgStr}</div>
+          <p class="text-xs font-semibold text-slate-800 truncate w-full" title="${customName}">${customName}</p>
+          <p class="text-[10px] text-slate-400 truncate w-full" title="${urlPayload}">${urlPayload}</p>
+        `;
+        gridContainer.appendChild(itemDiv);
+      }
+
+      document.getElementById('batchCountBadge').innerText = `${batchGeneratedList.length}개`;
+      document.getElementById('batchResult').classList.remove('hidden');
+
+      // Download ZIP File
+      const zipContent = await zip.generateAsync({ type: 'blob' });
+      const downloadUrl = URL.createObjectURL(zipContent);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = 'qrcodes_batch_svg.zip';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(downloadUrl);
+
+      showToast('ZIP 압축 파일 다운로드가 완료되었습니다!', 'success');
+    }
+
+    function openPrintModal() {
+      const printArea = document.getElementById('printArea');
+      printArea.innerHTML = '';
+
+      let itemsToPrint = batchGeneratedList.length > 0 ? batchGeneratedList : [{
+        name: document.getElementById('singleFilename').value || 'QR Label',
+        payload: getQrPayload(),
+        svg: generatedSvgString,
+        label: document.getElementById('labelText').value
+      }];
+
+      itemsToPrint.forEach(item => {
+        const card = document.createElement('div');
+        card.className = "p-3 border border-slate-300 rounded-lg text-center flex flex-col items-center bg-white";
+        card.innerHTML = `
+          <div class="w-28 h-28">${item.svg}</div>
+          <span class="text-xs font-bold text-slate-800 mt-1 truncate w-full">${item.name}</span>
+        `;
+        printArea.appendChild(card);
+      });
+
+      document.getElementById('printModal').classList.remove('hidden');
+    }
+
+    function closePrintModal() {
+      document.getElementById('printModal').classList.add('hidden');
+    }
+
+    function saveToHistory() {
+      const item = {
+        id: Date.now(),
+        date: new Date().toLocaleDateString('ko-KR'),
+        payload: getQrPayload(),
+        preset: currentPreset,
+        svg: generatedSvgString
+      };
+
+      savedHistory.unshift(item);
+      if (savedHistory.length > 30) savedHistory.pop();
+
+      try {
+        localStorage.setItem('svg_qr_history', JSON.stringify(savedHistory));
+        showToast('히스토리에 저장되었습니다.', 'success');
+      } catch (e) {}
+    }
+
+    function toggleHistoryModal() {
+      const modal = document.getElementById('historyModal');
+      if (modal.classList.contains('hidden')) {
+        renderHistoryList();
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    function renderHistoryList() {
+      const container = document.getElementById('historyList');
+      container.innerHTML = '';
+
+      if (savedHistory.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-400 text-center py-8">저장된 히스토리가 없습니다.</p>`;
+        return;
+      }
+
+      savedHistory.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = "p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-3";
+        div.innerHTML = `
+          <div class="w-12 h-12 bg-white rounded-lg p-1 border flex items-center justify-center shrink-0">${item.svg}</div>
+          <div class="flex-grow min-w-0">
+            <p class="text-xs font-semibold text-slate-800 truncate">${item.payload}</p>
+            <p class="text-[10px] text-slate-400">${item.date} · ${item.preset.toUpperCase()}</p>
+          </div>
+          <button onclick="restoreHistory(${index})" class="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-medium">불러오기</button>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function restoreHistory(index) {
+      const item = savedHistory[index];
+      if (!item) return;
+
+      setPreset(item.preset || 'url');
+      if (item.preset === 'url') document.getElementById('inputUrl').value = item.payload;
+      if (item.preset === 'text') document.getElementById('inputText').value = item.payload;
+
+      updateQr();
+      toggleHistoryModal();
+      showToast('히스토리에서 불러왔습니다.', 'info');
+    }
+
+    function clearHistory() {
+      savedHistory = [];
+      localStorage.removeItem('svg_qr_history');
+      renderHistoryList();
+      showToast('히스토리가 삭제되었습니다.', 'info');
+    }
+  </script>
+
+</body>
+</html>

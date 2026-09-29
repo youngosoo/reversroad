@@ -7,7 +7,7 @@ const meta = require('../src/meta');
 const { extractZipFiles, createZip } = require('./zip');
 const store = require('./store');
 
-const { HttpError, isValidSlug, normalizeMeta, normalizeHidden, STARTER_HTML } = meta;
+const { HttpError, isValidSlug, normalizeMeta, normalizeHidden, normalizeManual, STARTER_HTML } = meta;
 const MAX_UPLOAD = 20 * 1024 * 1024;
 
 function looksLikeZip(buffer) {
@@ -98,7 +98,9 @@ async function updateApp(env, id, patch) {
     category: patch.category || app.category,
   });
   const hidden = normalizeHidden(patch.hidden, app.hidden);
+  const manual = normalizeManual(patch.manual);
   Object.assign(app, meta, { hidden, updatedAt: new Date().toISOString() });
+  if (manual !== undefined) app.manual = manual; // undefined = 변경 없음, '' = 삭제
   await store.writeApps(env, apps);
   await store.rebuild(env);
   return app;
@@ -139,6 +141,20 @@ async function removeApp(env, id, { permanent = false } = {}) {
   return app;
 }
 
+/** 사용설명서(.md) 저장 ('' 이면 삭제) */
+async function setManual(env, id, markdown) {
+  const apps = await store.readApps(env);
+  const app = apps.find((a) => a.id === id);
+  if (!app) throw new HttpError(404, '앱을 찾을 수 없습니다');
+  const manual = normalizeManual(markdown === undefined || markdown === null ? '' : markdown);
+  if (manual) app.manual = manual;
+  else delete app.manual;
+  app.updatedAt = new Date().toISOString();
+  await store.writeApps(env, apps);
+  await store.rebuild(env);
+  return { app: { id: app.id, name: app.name, manualChars: manual ? manual.length : 0 } };
+}
+
 async function analyzeApp(env, id) {
   const app = await store.getApp(env, id);
   if (!app) throw new HttpError(404, '앱을 찾을 수 없습니다');
@@ -155,4 +171,4 @@ async function downloadApp(env, id) {
   return { buffer: createZip(files, id), name: app.name };
 }
 
-module.exports = { addApp, updateApp, renameApp, removeApp, analyzeApp, downloadApp, safeAnalyze };
+module.exports = { addApp, updateApp, renameApp, removeApp, analyzeApp, downloadApp, setManual, safeAnalyze };

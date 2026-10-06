@@ -152,6 +152,14 @@ function injectAppHead(html, { app, site }) {
   await copyFile(path.join(PUBLIC_DIR, 'admin.html'), path.join(OUT, 'admin.html'));
   await copyFile(path.join(PUBLIC_DIR, 'login.html'), path.join(OUT, 'login.html'));
 
+  // 그 밖의 public/ 최상위 파일(검색엔진 소유 확인 파일 등)도 그대로 올립니다.
+  // 예: naver-site-verification, google-site-verification, BingSiteAuth.xml
+  for (const entry of await fsp.readdir(PUBLIC_DIR, { withFileTypes: true })) {
+    if (entry.isDirectory()) continue; // assets/ 는 따로 복사
+    if (['admin.html', 'login.html'].includes(entry.name)) continue;
+    await copyFile(path.join(PUBLIC_DIR, entry.name), path.join(OUT, entry.name));
+  }
+
   // 4) 정적 자산과 앱 파일 복사 (관리자·로그인 화면은 제외)
   await copyDir(path.join(PUBLIC_DIR, 'assets'), path.join(OUT, 'assets'));
   await copyDir(APPS_DIR, path.join(OUT, 'apps'), { skip: ['index.html'] });

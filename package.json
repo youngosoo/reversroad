@@ -9,7 +9,7 @@
     "start": "node server.js",
     "dev": "node --watch server.js",
     "build:static": "node tools/export-static.js",
-    "deploy": "node tools/export-static.js && node tools/rebuild-kv-pages.js && npx wrangler deploy",
+    "deploy": "node tools/deploy.js",
     "rebuild:remote": "node tools/rebuild-kv-pages.js"
   },
   "dependencies": {

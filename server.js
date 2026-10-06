@@ -5,6 +5,7 @@ require('dotenv').config();
 const path = require('path');
 const crypto = require('crypto');
 const express = require('express');
+const fsp = require('fs/promises');
 const session = require('express-session');
 const multer = require('multer');
 const AdmZip = require('adm-zip');
@@ -12,6 +13,7 @@ const AdmZip = require('adm-zip');
 const manifest = require('./src/manifest');
 const meta = require('./src/meta');
 const markdownLib = require('./src/markdown');
+const miniappAds = require('./src/miniapp-ads');
 const analyze = require('./src/analyze');
 const auth = require('./src/auth');
 const siteStore = require('./src/site');
@@ -435,6 +437,28 @@ app.get('/admin.html', auth.requireAuth, (req, res) => {
 });
 
 app.use(express.static(PUBLIC_DIR, { extensions: ['html'] }));
+// 업로드된 앱 화면에 광고 코드를 끼워 넣어 내보냅니다 (파일은 그대로 두고 응답만 가공)
+app.get([/^\/apps\/([a-z0-9-]+)\/$/i, /^\/apps\/([a-z0-9-]+)\/([^/]+\.html?)$/i], async (req, res, next) => {
+  try {
+    const slug = String(req.params[0]);
+    const rel = req.params[1] || 'index.html';
+    if (!/^[a-z0-9-]{1,64}$/.test(slug) || rel.includes('..')) return next();
+    const site = await currentSite(req);
+    const ads = site.adsense || {};
+    if (ads.inApps === false) return next();
+    const target = path.join(APPS_DIR, slug, rel);
+    if (!target.startsWith(APPS_DIR)) return next();
+    const html = await fsp.readFile(target, 'utf8');
+    res.type('html').send(miniappAds.injectAppAds(html, {
+      client: ads.client,
+      slot: ads.slotDisplay || ads.slotInline,
+      adtest: Boolean(site.adsPreview),
+    }));
+  } catch {
+    next();
+  }
+});
+
 app.use('/apps', express.static(APPS_DIR, { extensions: ['html'], index: 'index.html' }));
 
 app.use(async (req, res) => {

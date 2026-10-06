@@ -10,7 +10,8 @@
   "adsense": {
     "client": "ca-pub-7170278463678851",
     "slotInline": "6208798581",
-    "slotDisplay": "3546973622"
+    "slotDisplay": "3546973622",
+    "inApps": true
   },
   "analytics": {
     "ga4": ""

@@ -13,6 +13,7 @@ const { handleApi, json, HttpError } = require('./api');
 const store = require('./store');
 const auth = require('./auth');
 const build = require('../src/build');
+const { injectAppAds } = require('../src/miniapp-ads');
 
 export default {
   async fetch(request, env) {
@@ -66,6 +67,20 @@ export default {
           if (await store.isGone(env, id)) return notFound(request, env);
           const body = await store.getFile(env, id, rel);
           if (body) {
+            // 앱 화면(HTML)에는 광고 코드를 끼워 넣어 내보냅니다 (파일 자체는 그대로)
+            if (/\.html?$/i.test(rel)) {
+              const site = await store.readSite(env);
+              const ads = site.adsense || {};
+              if (ads.inApps !== false) {
+                const html = injectAppAds(new TextDecoder().decode(body), {
+                  client: ads.client,
+                  slot: ads.slotDisplay || ads.slotInline,
+                });
+                return new Response(html, {
+                  headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
+                });
+              }
+            }
             return new Response(body, {
               headers: {
                 'content-type': build.contentTypeFor(rel),
@@ -75,7 +90,21 @@ export default {
           }
           return notFound(request, env);
         }
-        return serveAsset(request, env, path);
+        const asset = await serveAsset(request, env, path);
+        if (asset && asset.status === 200 && /\.html?$/i.test(path) && /^\/apps\//.test(path)) {
+          const site = await store.readSite(env);
+          const ads = site.adsense || {};
+          if (ads.inApps !== false) {
+            const html = injectAppAds(await asset.text(), {
+              client: ads.client,
+              slot: ads.slotDisplay || ads.slotInline,
+            });
+            return new Response(html, {
+              headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
+            });
+          }
+        }
+        return asset;
       }
 
       // 4) 페이지 — 관리자가 만든 페이지(KV) 우선, 없으면 배포된 정적 파일로 폴백

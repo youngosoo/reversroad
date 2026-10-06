@@ -17,7 +17,9 @@ const DEFAULTS = {
   adminUrl: 'http://localhost:3000/admin.html', // 공개 사이트의 "관리자" 링크가 가리킬 주소 (터널·도메인 주소로 바꿔 쓰세요)
   adsense: {
     client: '', // 예: ca-pub-0000000000000000
-    slotInline: '', // 본문 중간 광고 단위 ID (숫자)
+    slotInline: '', // 본문용 광고 단위 ID (숫자)
+    slotDisplay: '', // 콘텐츠 페이지용 광고 단위 ID (숫자)
+    inApps: true, // 업로드된 앱 화면에도 광고를 넣을지
   },
   analytics: { ga4: '' }, // 예: G-XXXXXXX
   social: { github: '', youtube: '', threads: '' },

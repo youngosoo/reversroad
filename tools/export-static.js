@@ -18,6 +18,7 @@ const path = require('path');
 const manifest = require('../src/manifest');
 const siteStore = require('../src/site');
 const build = require('../src/build');
+const { injectAppAds } = require('../src/miniapp-ads');
 
 const ROOT = path.join(__dirname, '..');
 const PUBLIC_DIR = path.join(ROOT, 'public');
@@ -172,7 +173,21 @@ function injectAppHead(html, { app, site }) {
     const entry = path.join(dest, 'index.html');
     if (fs.existsSync(entry)) {
       const html = await fsp.readFile(entry, 'utf8');
-      await fsp.writeFile(entry, injectAppHead(html, { app, site }), 'utf8');
+      const withSeo = injectAppHead(html, { app, site });
+      await fsp.writeFile(entry, injectAppAds(withSeo, {
+        client: site.adsense?.client,
+        slot: site.adsense?.slotDisplay || site.adsense?.slotInline,
+      }), 'utf8');
+    }
+    // 앱 안의 다른 html 파일에도 광고를 넣습니다
+    for (const file of await fsp.readdir(dest, { withFileTypes: true })) {
+      if (!file.isFile() || !/\.html?$/i.test(file.name) || file.name === 'index.html') continue;
+      const target = path.join(dest, file.name);
+      const html = await fsp.readFile(target, 'utf8');
+      await fsp.writeFile(target, injectAppAds(html, {
+        client: site.adsense?.client,
+        slot: site.adsense?.slotDisplay || site.adsense?.slotInline,
+      }), 'utf8');
     }
     // 사용설명서(.md)도 정적 배포본에 함께 넣어 둡니다 (상세 페이지의 내려받기 링크)
     if (app.manual) {

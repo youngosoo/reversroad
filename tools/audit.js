@@ -53,9 +53,13 @@ if (!fs.existsSync(DIST)) {
 }
 
 const files = walk(DIST);
-// 관리자·로그인 화면은 공개 페이지가 아니므로 점검 대상에서 제외합니다 (검색엔진 비노출)
+// 관리자·로그인 화면과 검색엔진 소유확인 파일은 콘텐츠 페이지가 아니므로 점검에서 제외합니다
 const PRIVATE_PAGES = ['/admin.html', '/login.html'];
-const htmlFiles = files.filter((f) => f.endsWith('.html') && !PRIVATE_PAGES.includes('/' + rel(f).split(path.sep).join('/')));
+const VERIFICATION_FILE = /^\/(naver|google|yandex|bing|msvalidate)[a-z0-9_.-]*\.html?$/i;
+const htmlFiles = files.filter((f) => {
+  const url = '/' + rel(f).split(path.sep).join('/');
+  return f.endsWith('.html') && !PRIVATE_PAGES.includes(url) && !VERIFICATION_FILE.test(url);
+});
 const existing = new Set(files.map((f) => '/' + rel(f).split(path.sep).join('/')));
 
 // ---------- 1) 페이지별 점검
@@ -94,7 +98,8 @@ for (const file of htmlFiles.sort()) {
     if (!canonical) bad(`${url}: canonical 없음 (상세 페이지로 모아야 함)`);
     else if (!canonical.startsWith(`${SITE.domain}/app/`)) bad(`${url}: canonical 이 상세 페이지가 아닙니다 (${canonical})`);
     if (!desc) bad(`${url}: meta description 없음`);
-    if (ads) bad(`${url}: 앱 실행 화면에 광고 코드가 있습니다 (내용 없는 페이지 광고 위험)`);
+    // 앱 실행 화면에도 광고를 넣습니다(운영자 요청) — head 스크립트와 하단 1개까지만 허용
+    if (ads && !/class="rr-ad/.test(html)) warn(`${url}: 광고 스크립트는 있는데 광고 자리(rr-ad)가 없습니다`);
     continue;
   }
   if (!title) bad(`${url}: <title> 없음`);

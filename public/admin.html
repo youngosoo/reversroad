@@ -176,6 +176,16 @@
           <label for="s_adsense">AdSense 게시자 ID</label>
           <input id="s_adsense" type="text" maxlength="40" placeholder="ca-pub-0000000000000000" />
         </div>
+        <div class="field full">
+          <label class="row" style="gap:8px;cursor:pointer">
+            <input type="checkbox" id="s_ads_in_apps" style="width:auto" />
+            <span>업로드한 앱 화면에도 광고 넣기 (앱 HTML 의 head·하단에 자동 삽입)</span>
+          </label>
+        </div>
+        <div class="field">
+          <label for="s_slot_display">콘텐츠 광고 슬롯 ID <span class="muted">(디스플레이)</span></label>
+          <input id="s_slot_display" type="text" maxlength="20" placeholder="3546973622" />
+        </div>
         <div class="field">
           <label for="s_slot">본문 광고 슬롯 ID <span class="muted">(선택)</span></label>
           <input id="s_slot" type="text" maxlength="20" placeholder="1234567890" />
@@ -787,6 +797,8 @@ const S = {
   admin: document.getElementById('s_admin'),
   adsense: document.getElementById('s_adsense'),
   slot: document.getElementById('s_slot'),
+  slotDisplay: document.getElementById('s_slot_display'),
+  adsInApps: document.getElementById('s_ads_in_apps'),
   ga4: document.getElementById('s_ga4'),
 };
 
@@ -803,6 +815,8 @@ function fillSite(site) {
   S.description.value = site.description || '';
   S.adsense.value = (site.adsense && site.adsense.client) || '';
   S.slot.value = (site.adsense && site.adsense.slotInline) || '';
+  S.slotDisplay.value = (site.adsense && site.adsense.slotDisplay) || '';
+  S.adsInApps.checked = !(site.adsense && site.adsense.inApps === false);
   S.ga4.value = (site.analytics && site.analytics.ga4) || '';
   S.admin.value = site.adminUrl || '';
 }
@@ -884,7 +898,7 @@ document.getElementById('siteForm').addEventListener('submit', async (e) => {
         adminUrl: S.admin.value,
         tagline: S.tagline.value,
         description: S.description.value,
-        adsense: { client: S.adsense.value, slotInline: S.slot.value },
+        adsense: { client: S.adsense.value, slotInline: S.slot.value, slotDisplay: S.slotDisplay.value, inApps: S.adsInApps.checked },
         analytics: { ga4: S.ga4.value },
       }),
     });

@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Content Prompt Maker v1.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f6ff',
+                            100: '#e0edff',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#1e3a8a',
+                        },
+                        dark: {
+                            bg: '#0f172a',
+                            card: '#1e293b',
+                            border: '#334155',
+                            input: '#0f172a',
+                            text: '#f8fafc',
+                            subtext: '#94a3b8'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        /* Form elements focus effects */
+        input, select, textarea {
+            transition: all 0.2s ease-in-out;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        /* Custom Checkbox Style */
+        .custom-checkbox {
+            accent-color: #3b82f6;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased bg-slate-950 text-slate-100">
+
+    <!-- Top Header Navigation -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <div class="flex items-center gap-3">
+                    <div class="h-9 w-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                        <i class="fa-solid font-bold text-white text-lg">⚡</i>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                            Content Prompt Maker <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">v1.0</span>
+                        </h1>
+                        <p class="text-xs text-slate-400">블로그·유튜브·SNS 콘텐츠 조건을 설정해 원하는 LLM용 범용 제작 프롬프트를 만드세요</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Badges & Global Actions -->
+            <div class="flex flex-wrap items-center gap-2 text-xs">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 border border-slate-700">
+                    <i class="fa-solid fa-bolt text-amber-400 text-[10px]"></i> AI API 없음
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 border border-slate-700">
+                    <i class="fa-solid fa-lock text-emerald-400 text-[10px]"></i> 로그인 없음
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 border border-slate-700">
+                    <i class="fa-solid fa-laptop-code text-sky-400 text-[10px]"></i> 브라우저 온디바이스
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        
+        <!-- Top Toolbar Actions -->
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-6 bg-slate-900 p-3 rounded-xl border border-slate-800">
+            <div class="flex items-center gap-2 text-sm text-slate-400">
+                <i class="fa-solid fa-sliders text-blue-400"></i>
+                <span>설정 프로필 관리</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="btnSave" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-export text-blue-400"></i> JSON 저장
+                </button>
+                <button id="btnLoad" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-import text-emerald-400"></i> JSON 불러오기
+                </button>
+                <!-- Hidden file input for uploading JSON -->
+                <input type="file" id="fileInput" accept=".json,application/json" class="hidden">
+                <button id="btnReset" class="px-3 py-1.5 text-xs font-medium bg-rose-950/40 hover:bg-rose-900/50 text-rose-300 rounded-lg border border-rose-800/50 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-rotate-left"></i> 초기화
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+            
+            <!-- Left Side: Controls & Options Panel -->
+            <div class="lg:col-span-7 space-y-6">
+
+                <!-- 01. 콘텐츠 기본 설정 (공통) -->
+                <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+                    <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
+                        <span class="flex items-center justify-center w-6 h-6 rounded-md bg-blue-600/20 text-blue-400 font-bold text-xs">01</span>
+                        <h2 class="text-base font-semibold text-slate-100">콘텐츠 기본 설정 <span class="text-xs font-normal text-slate-400">(공통)</span></h2>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- 콘텐츠 유형 -->
+                        <div>
+                            <label for="contentType" class="block text-xs font-medium text-slate-300 mb-1">콘텐츠 유형</label>
+                            <select id="contentType" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none">
+                                <option value="blog">블로그 글</option>
+                                <option value="youtube">YouTube 롱폼</option>
+                                <option value="shorts">Shorts · Reels · TikTok</option>
+                                <option value="instagram">Instagram</option>
+                                <option value="facebook">Facebook</option>
+                                <option value="threads">Threads</option>
+                                <option value="linkedin">LinkedIn</option>
+                                <option value="pinterest">Pinterest</option>
+                            </select>
+                        </div>
+
+                        <!-- 게시 플랫폼 (동적 변경) -->
+                        <div id="platformContainer">
+                            <label for="platform" class="block text-xs font-medium text-slate-300 mb-1">게시 플랫폼</label>
+                            <select id="platform" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none">
+                                <!-- JS 동적 생성 -->
+                            </select>
+                        </div>
+
+                        <!-- 결과 언어 -->
+                        <div>
+                            <label for="language" class="block text-xs font-medium text-slate-300 mb-1">결과 언어</label>
+                            <select id="language" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none">
+                                <option value="ko" selected>한국어 (기본)</option>
+                                <option value="keep">입력 주 언어 유지</option>
+                                <option value="en">English</option>
+                            </select>
+                        </div>
+
+                        <!-- 사실 정확성 -->
+                        <div>
+                            <label for="factAccuracy" class="block text-xs font-medium text-slate-300 mb-1">사실 정확성 검증 레벨</label>
+                            <select id="factAccuracy" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none">
+                                <option value="high" selected>높게 (확인 안된 수치/사양 지어내지 않기)</option>
+                                <option value="normal">일반</option>
+                                <option value="latest">최신 정보 확인 우선 (검증 필요 항목 별도 표시)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 주요 독자 -->
+                    <div>
+                        <label for="targetAudience" class="block text-xs font-medium text-slate-300 mb-1">주요 독자 / 타깃 페르소나</label>
+                        <input type="text" id="targetAudience" placeholder="예: 2030 사회초년생, 효율적인 자산 관리에 관심 있는 직장인" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder-slate-600">
+                    </div>
+
+                    <!-- 주제 · 작업 제목 -->
+                    <div>
+                        <label for="topicTitle" class="block text-xs font-medium text-slate-300 mb-1">주제 / 작업 제목 <span class="text-rose-400">*</span></label>
+                        <input type="text" id="topicTitle" placeholder="예: 초보자를 위한 2026년 연말정산 절세 팁 top 5" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder-slate-600">
+                    </div>
+
+                    <!-- 핵심 정보 · 참고자료 · 원문 -->
+                    <div>
+                        <label for="referenceData" class="block text-xs font-medium text-slate-300 mb-1">핵심 정보 · 참고자료 · 원문</label>
+                        <textarea id="referenceData" rows="3" placeholder="AI가 반영해야 할 참고자료, 뉴스 기사 요약, 가이드라인 텍스트 등을 입력하세요." class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder-slate-600 resize-y"></textarea>
+                    </div>
+
+                    <!-- 실제 경험 (비어있으면 자동 경고 지시) -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label for="realExperience" class="block text-xs font-medium text-slate-300">실제 경험 / 사례</label>
+                            <span class="text-[10px] text-amber-400/80"><i class="fa-solid fa-circle-info"></i> 비워두면 경험 지어내기 방지 지시 자동 적용</span>
+                        </div>
+                        <textarea id="realExperience" rows="2" placeholder="작성자의 실제 경험, 구체적 사용 후기, 프로젝트 데이터 등 (제공시 프롬프트에 구체화)" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder-slate-600 resize-y"></textarea>
+                    </div>
+
+                    <!-- 의견 · 관점 -->
+                    <div>
+                        <label for="userOpinion" class="block text-xs font-medium text-slate-300 mb-1">주장하고 싶은 의견 · 핵심 관점</label>
+                        <textarea id="userOpinion" rows="2" placeholder="콘텐츠를 통해 전달하려는 구체적 주관이나 결론 (예: 단순 절세보다 세액공제 상품 가입이 최선이다)" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder-slate-600 resize-y"></textarea>
+                    </div>
+
+                    <!-- 반드시 포함 / 제외할 내용 -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="mustInclude" class="block text-xs font-medium text-slate-300 mb-1">반드시 포함할 내용 (Must)</label>
+                            <textarea id="mustInclude" rows="2" placeholder="예: ISA 계좌 언급, 세액공제 한도 표 작성" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder-slate-600 resize-y"></textarea>
+                        </div>
+                        <div>
+                            <label for="mustExclude" class="block text-xs font-medium text-slate-300 mb-1">제외할 내용 (Must Not)</label>
+                            <textarea id="mustExclude" rows="2" placeholder="예: 특정 금융사 홍보, 전문 용어 나열, 상투적인 인삿말" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder-slate-600 resize-y"></textarea>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 02. 콘텐츠 유형별 설정 (동적 표시) -->
+                <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+                    <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
+                        <span class="flex items-center justify-center w-6 h-6 rounded-md bg-indigo-600/20 text-indigo-400 font-bold text-xs">02</span>
+                        <h2 class="text-base font-semibold text-slate-100"><span id="section02Title">콘텐츠 유형별</span> 세부 설정</h2>
+                    </div>
+
+                    <!-- [A] 블로그 전용 설정 -->
+                    <div id="typeBlog" class="type-section space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label for="blogLength" class="block text-xs font-medium text-slate-300 mb-1">분량</label>
+                                <select id="blogLength" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="medium" selected>보통 (1,500 ~ 2,500자)</option>
+                                    <option value="short">짧게 (800 ~ 1,200자)</option>
+                                    <option value="long">길게 (3,000 ~ 4,000자)</option>
+                                    <option value="deep">심층 (5,000자 이상 가이드)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="blogType" class="block text-xs font-medium text-slate-300 mb-1">글 유형</label>
+                                <select id="blogType" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="balanced" selected>균형잡힌 포스팅</option>
+                                    <option value="info">정보 전달형</option>
+                                    <option value="exp">경험 공유·사례 분석</option>
+                                    <option value="compare">비교 분석</option>
+                                    <option value="review">제품·서비스 솔직 리뷰</option>
+                                    <option value="guide">단계별 가이드 (How-to)</option>
+                                    <option value="opinion">칼럼·의견 전달</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="blogTone" class="block text-xs font-medium text-slate-300 mb-1">문체 및 어조</label>
+                                <select id="blogTone" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="natural" selected>자연스럽고 읽기 쉬운 어조 (AI상투문구 배제)</option>
+                                    <option value="friendly">친근한 대화체 (~해요)</option>
+                                    <option value="expert">전문가다운 정중한 어조 (~합니다)</option>
+                                    <option value="explaining">명쾌한 설명조</option>
+                                    <option value="persuasive">설득력 있는 강한 어조</option>
+                                    <option value="neutral">객관적 중립조</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label for="blogFormat" class="block text-xs font-medium text-slate-300 mb-1">기본 결과 형식</label>
+                                <select id="blogFormat" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="markdown" selected>Markdown</option>
+                                    <option value="text">일반 텍스트</option>
+                                    <option value="html">Clean HTML (본문 전용)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="blogSeo" class="block text-xs font-medium text-slate-300 mb-1">SEO 최적화 수준</label>
+                                <select id="blogSeo" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="basic" selected>기본 (키워드 자연스러운 배치)</option>
+                                    <option value="none">사용 안함</option>
+                                    <option value="aggressive">적극적 (소제목 검색의도 및 LSI 키워드 극대화)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="blogTitleStrategy" class="block text-xs font-medium text-slate-300 mb-1">제목 처리 방식</label>
+                                <select id="blogTitleStrategy" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="candidates" selected>클릭률 유발 제목 후보 5개 제안</option>
+                                    <option value="keep">지정한 제목 그대로 사용</option>
+                                    <option value="improve">입력된 제목 매끄럽게 개선</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="blogCta" class="block text-xs font-medium text-slate-300 mb-1">CTA (행동 유도)</label>
+                            <select id="blogCta" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                <option value="natural" selected>자연스러운 댓글 및 공유 유도</option>
+                                <option value="none">없음</option>
+                                <option value="explicit">명확한 행동 요구 (이웃추가, 링크 클릭, 구독 등)</option>
+                            </select>
+                        </div>
+
+                        <!-- 추가 체크박스 -->
+                        <div class="pt-2 border-t border-slate-800/80">
+                            <span class="block text-xs font-medium text-slate-300 mb-2">추가 생성 항목 (패키지)</span>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-2.5 text-xs text-slate-300">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="chkBlogMeta" class="custom-checkbox rounded" checked> SEO 메타 패키지 (Meta Title/Desc)
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="chkBlogFaq" class="custom-checkbox rounded" checked> FAQ 3선 제안 (Schema 구조)
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="chkBlogTags" class="custom-checkbox rounded" checked> 추천 카테고리 & 태그
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="chkBlogMdAlso" class="custom-checkbox rounded"> Markdown 버전도 함께 출력
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="chkBlogTextAlso" class="custom-checkbox rounded"> 일반 텍스트 버전도 함께 출력
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="chkBlogHtmlAlso" class="custom-checkbox rounded"> HTML 코드 버전도 함께 출력
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- [B] YouTube 롱폼 전용 설정 -->
+                    <div id="typeYoutube" class="type-section space-y-4 hidden">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label for="ytLength" class="block text-xs font-medium text-slate-300 mb-1">목표 영상 길이</label>
+                                <select id="ytLength" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="8min">8분 (수익화 표준)</option>
+                                    <option value="5min">5분 내외 (핵심 요약)</option>
+                                    <option value="10min" selected>10분 내외 (심층 설명)</option>
+                                    <option value="15min">15분 이상 (상세 가이드)</option>
+                                    <option value="20min">20분+ (다큐/롱폼)</option>
+                                    <option value="custom">직접 입력</option>
+                                </select>
+                                <input type="text" id="ytLengthCustom" placeholder="예: 12분 30초" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 mt-2 hidden">
+                            </div>
+                            <div>
+                                <label for="ytScriptType" class="block text-xs font-medium text-slate-300 mb-1">대본 진행 유형</label>
+                                <select id="ytScriptType" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="host" selected>1인 진행자 대화형</option>
+                                    <option value="narration">성우/내레이션 중심</option>
+                                    <option value="story">스토리텔링/사례 중심</option>
+                                    <option value="explanative">지식 해설형</option>
+                                    <option value="review">리뷰 & 분석형</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="ytHook" class="block text-xs font-medium text-slate-300 mb-1">도입부 후킹 세기</label>
+                                <select id="ytHook" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="strong" selected>강함 (문제제기 + 결론 요약 + 시청이유)</option>
+                                    <option value="super">매우 강함 (충격적 질문/지표 + 이탈방지 장치)</option>
+                                    <option value="normal">보통 (자연스러운 서론)</option>
+                                    <option value="soft">약함 (인사 후 차분한 진행)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label for="ytSentenceStyle" class="block text-xs font-medium text-slate-300 mb-1">문장 스타일</label>
+                                <select id="ytSentenceStyle" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="spoken" selected>자연스러운 구어체 (~거든요, ~죠)</option>
+                                    <option value="tts">TTS/AI 성우 발음 최적화 (단문 중심)</option>
+                                    <option value="narration">격식 있는 내레이션조</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="ytBodyFormat" class="block text-xs font-medium text-slate-300 mb-1">대본 본문 출력 형식</label>
+                                <select id="ytBodyFormat" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="production" selected>촬영용 (대사 + [시각연출] + [BGM/효과음])</option>
+                                    <option value="pure">순수 대사 텍스트 (TTS용)</option>
+                                    <option value="subtitle">소제목 구분형 대본</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="ytVisualType" class="block text-xs font-medium text-slate-300 mb-1">영상 제작 스타일</label>
+                                <select id="ytVisualType" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="auto" selected>자동 추천 (주제/독자 기반 추천)</option>
+                                    <option value="talkinghead">Talking Head (진행자 직접 출연)</option>
+                                    <option value="faceless">얼굴 없는 채널 (스톡/AI 비주얼)</option>
+                                    <option value="documentary">다큐멘터리 / 교양 스타일</option>
+                                    <option value="screen">화면 녹화 / 시연 (Tutorial)</option>
+                                    <option value="infographic">인포그래픽 / 모션그래픽</option>
+                                    <option value="cinematic">시네마틱 B-roll 위주</option>
+                                    <option value="podcast">팟캐스트 / 보라(보이는 라디오)</option>
+                                    <option value="custom">직접 입력</option>
+                                </select>
+                                <input type="text" id="ytVisualCustom" placeholder="예: 2D 애니메이션 캐릭터 진행" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 mt-2 hidden">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="ytTitleCount" class="block text-xs font-medium text-slate-300 mb-1">제목 후보 개수</label>
+                                <select id="ytTitleCount" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="5" selected>5개 (다양한 키워드/후킹 조합)</option>
+                                    <option value="10">10개 (A/B 테스트용)</option>
+                                    <option value="3">3개</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="ytPackage" class="block text-xs font-medium text-slate-300 mb-1">결과 구성 범위</label>
+                                <select id="ytPackage" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="full" selected>전체 패키지 (대본 + 메타 + 챕터 + 썸네일아이디어)</option>
+                                    <option value="script_title">대본 + 제목 후보만</option>
+                                    <option value="script_only">대본만</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="pt-2 border-t border-slate-800/80">
+                            <span class="block text-xs font-medium text-slate-300 mb-2">추가 상세 체크박스</span>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-2.5 text-xs text-slate-300">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="chkYtDesc" class="custom-checkbox rounded" checked> 설명란 (Description) 작성
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="chkYtChapters" class="custom-checkbox rounded" checked> 타임스탬프 (Chapters)
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="chkYtTags" class="custom-checkbox rounded" checked> 검색 태그 (Tags) 목록
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="chkYtThumb" class="custom-checkbox rounded" checked> 썸네일 문구 & 이미지 콘셉트
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="chkYtStyleReason" class="custom-checkbox rounded" checked> 추천 영상 스타일 & 이유 제안
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="chkYtBroll" class="custom-checkbox rounded" checked> 구간별 화면 연출 & B-roll 가이드
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- [C] Shorts/Reels/TikTok 전용 설정 -->
+                    <div id="typeShorts" class="type-section space-y-4 hidden">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label for="shortsLength" class="block text-xs font-medium text-slate-300 mb-1">목표 길이</label>
+                                <select id="shortsLength" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="30s" selected>30초 내외 (표준)</option>
+                                    <option value="15s">15초 (초고속 임팩트)</option>
+                                    <option value="60s">60초 (정보 전달형)</option>
+                                    <option value="90s">90초 (상세 숏폼)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="shortsHookPoint" class="block text-xs font-medium text-slate-300 mb-1">첫 후킹 시점</label>
+                                <select id="shortsHookPoint" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="1s" selected>1초 이내 (즉각적 호기심 유발)</option>
+                                    <option value="3s">3초 이내</option>
+                                    <option value="visual">화면 임팩트 우선</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="shortsPacing" class="block text-xs font-medium text-slate-300 mb-1">전개 속도</label>
+                                <select id="shortsPacing" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="fast" selected>빠름 (빠른 템포, 잦은 화면 전환)</option>
+                                    <option value="ultra">매우 빠름 (밈/챌린지 템포)</option>
+                                    <option value="normal">보통 (지식 전달형)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label for="shortsStyle" class="block text-xs font-medium text-slate-300 mb-1">영상 스타일</label>
+                                <select id="shortsStyle" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="talkinghead" selected>진행자 직접 말하기</option>
+                                    <option value="tts_broll">TTS + 빠른 B-roll 영상</option>
+                                    <option value="text_only">화면 텍스트 강조 + 배경음악</option>
+                                    <option value="skit">스킷/연기 릴스</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="shortsSubtitle" class="block text-xs font-medium text-slate-300 mb-1">화면 자막 가이드</label>
+                                <select id="shortsSubtitle" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="highlight" selected>핵심 단어 색상 강조 자막</option>
+                                    <option value="full">전체 자막 100% 가독성</option>
+                                    <option value="minimal">최소 자막</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="shortsCta" class="block text-xs font-medium text-slate-300 mb-1">CTA (엔딩)</label>
+                                <select id="shortsCta" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="loop" selected>무한 반복 시청형 자연스러운 연결</option>
+                                    <option value="comment">"댓글에 [단어] 남겨주세요"</option>
+                                    <option value="profile">"프로필 링크 확인"</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="pt-2 border-t border-slate-800/80">
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-2.5 text-xs text-slate-300">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="chkShortsLoop" class="custom-checkbox rounded" checked> 무한 반복 (Loop) 엔딩 구성
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="chkShortsCut" class="custom-checkbox rounded" checked> 컷 단위 화면/촬영 아이디어
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="chkShortsCaption" class="custom-checkbox rounded" checked> 숏폼 본문 캡션 (Caption)
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="chkShortsTags" class="custom-checkbox rounded" checked> 추천 해시태그 (Hashtags)
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="chkShortsCover" class="custom-checkbox rounded" checked> 표지 텍스트 썸네일 아이디어
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- [D] Instagram 전용 설정 -->
+                    <div id="typeInstagram" class="type-section space-y-4 hidden">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label for="instaFormat" class="block text-xs font-medium text-slate-300 mb-1">인스타그램 형태</label>
+                                <select id="instaFormat" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="carousel" selected>카드뉴스 (Carousel)</option>
+                                    <option value="post">단일 이미지 피드 포스트</option>
+                                    <option value="reel">릴스 (Reels)</option>
+                                </select>
+                            </div>
+                            <div id="instaSlideContainer">
+                                <label for="instaSlides" class="block text-xs font-medium text-slate-300 mb-1">슬라이드 수</label>
+                                <select id="instaSlides" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="5" selected>5장 (핵심 전달)</option>
+                                    <option value="8">8장 (상세 정보)</option>
+                                    <option value="10">10장 (최대 분량 저장유도)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="instaCaptionLen" class="block text-xs font-medium text-slate-300 mb-1">Caption 길이</label>
+                                <select id="instaCaptionLen" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="medium" selected>보통 (가독성 좋은 3~5줄)</option>
+                                    <option value="short">짧게 (1~2줄 핵심)</option>
+                                    <option value="long">긴 포스팅 (블로그형 긴 캡션)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label for="instaEmoji" class="block text-xs font-medium text-slate-300 mb-1">이모지 활용</label>
+                                <select id="instaEmoji" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="moderate" selected>적절함 (불릿 및 강조 포인트)</option>
+                                    <option value="rich">풍부하게 (젊고 활기찬 감성)</option>
+                                    <option value="minimal">절제됨 (깔끔한 감성)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="instaCta" class="block text-xs font-medium text-slate-300 mb-1">CTA</label>
+                                <select id="instaCta" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="save" selected>저장 & 공유 유도 ("나중에 보려면 저장!")</option>
+                                    <option value="comment">댓글 작성 유도</option>
+                                    <option value="link">프로필 링크 유도</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="instaVisualConcept" class="block text-xs font-medium text-slate-300 mb-1">시각 콘셉트</label>
+                                <select id="instaVisualConcept" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="clean" selected>모던 & 미니멀 트렌디 카드</option>
+                                    <option value="bold">강렬한 고대비 그래픽</option>
+                                    <option value="warm">감성적인 라이프스타일 이미지</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- [E] Facebook / Threads / LinkedIn / Pinterest 설정 -->
+                    <div id="typeOthers" class="type-section space-y-4 hidden">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label for="otherTone" class="block text-xs font-medium text-slate-300 mb-1">플랫폼 톤앤매너</label>
+                                <select id="otherTone" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="linkedin_pro" selected>LinkedIn: 전문성+실경험 균형 (AI 상투문 회피)</option>
+                                    <option value="threads_chat">Threads: 솔직하고 짧은 한두 줄 대화체</option>
+                                    <option value="fb_community">Facebook: 공감 유발 소식 및 긴 글 토론</option>
+                                    <option value="pin_search">Pinterest: 검색 친화적 키워드 & 비주얼 설명</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="otherHook" class="block text-xs font-medium text-slate-300 mb-1">첫 줄 후킹 스타일</label>
+                                <select id="otherHook" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="insight" selected>통찰력 있는 인사이트/통계 질문</option>
+                                    <option value="story">개인적 이야기/실패 극복 경험</option>
+                                    <option value="counter">상식을 깨는 반전 문구</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="otherHashtag" class="block text-xs font-medium text-slate-300 mb-1">해시태그 정책</label>
+                                <select id="otherHashtag" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                    <option value="3to5" selected>핵심 해시태그 3~5개</option>
+                                    <option value="none">사용 안 함 (플랫폼 권장사항)</option>
+                                    <option value="rich">관련 태그 10개 이상</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 03. 이미지/비주얼 프롬프트 패키지 (공통) -->
+                <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+                    <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
+                        <span class="flex items-center justify-center w-6 h-6 rounded-md bg-emerald-600/20 text-emerald-400 font-bold text-xs">03</span>
+                        <h2 class="text-base font-semibold text-slate-100">이미지 · 비주얼 프롬프트 패키지 <span class="text-xs font-normal text-slate-400">(공통)</span></h2>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label for="imgCount" class="block text-xs font-medium text-slate-300 mb-1">생성할 이미지 수</label>
+                            <select id="imgCount" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                <option value="3" selected>3개 (기본 이미지 구성)</option>
+                                <option value="none">이미지 프롬프트 생략</option>
+                                <option value="1">1개 (대표 썸네일/메인)</option>
+                                <option value="5">5개 (풍부한 비주얼)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="imgStyle" class="block text-xs font-medium text-slate-300 mb-1">이미지 스타일</label>
+                            <select id="imgStyle" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                <option value="photo" selected>자연스러운 실사 (Realistic Photo)</option>
+                                <option value="editorial">에디토리얼 / 잡지 화보</option>
+                                <option value="commercial">상업용 / 스튜디오 라이팅</option>
+                                <option value="cinematic">시네마틱 35mm 영화 컷</option>
+                                <option value="illustration">모던 2D 일러스트레이션</option>
+                                <option value="infographic">인포그래픽 / 3D 아이콘</option>
+                                <option value="3d">3D 렌더링 (Blender Style)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="imgAspect" class="block text-xs font-medium text-slate-300 mb-1">종횡비 (Aspect Ratio)</label>
+                            <select id="imgAspect" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-200">
+                                <option value="16:9" selected>16:9 (가로형 / 블로그 / 유튜브)</option>
+                                <option value="1:1">1:1 (정사각형 / 인스타그램)</option>
+                                <option value="9:16">9:16 (세로형 / 숏폼 / 스토어)</option>
+                                <option value="4:3">4:3 (일반)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="pt-2 border-t border-slate-800/80">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-xs text-slate-300">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="chkImgLocation" class="custom-checkbox rounded" checked> 이미지 삽입 추천 위치 지정 (본문 내)
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="chkImgAlt" class="custom-checkbox rounded" checked> Midjourney / DALL-E 전용 영문 프롬프트 함께 출력
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="chkImgAltText" class="custom-checkbox rounded" checked> 웹 접근성 ALT 텍스트 및 캡션 문구 제공
+                            </label>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Right Side: Sticky Prompt Output Panel -->
+            <div class="lg:col-span-5 lg:sticky lg:top-20 space-y-4">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4 flex flex-col h-full">
+                    
+                    <!-- Output Header -->
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-code text-blue-400"></i>
+                            <h2 class="text-base font-semibold text-slate-100">조립된 결과 프롬프트</h2>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs text-slate-400 font-mono">
+                            <span id="charCount">0자</span>
+                            <span>•</span>
+                            <span id="wordCount">0단어</span>
+                        </div>
+                    </div>
+
+                    <!-- Prompt Output Box -->
+                    <div class="relative flex-1 min-h-[420px] flex flex-col">
+                        <textarea id="promptOutput" readonly class="w-full flex-1 bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs font-mono text-slate-200 leading-relaxed resize-none focus:outline-none focus:border-blue-500" placeholder="좌측에서 조건을 입력하면 완벽한 프롬프트가 실시간 생성됩니다..."></textarea>
+                        
+                        <!-- Floating Toast Notification -->
+                        <div id="copyToast" class="absolute top-4 right-4 bg-emerald-500 text-slate-950 font-bold text-xs px-3 py-1.5 rounded-lg shadow-lg flex items-center gap-1.5 opacity-0 transition-opacity duration-300 pointer-events-none">
+                            <i class="fa-solid fa-check"></i> 클립보드에 복사됨!
+                        </div>
+                    </div>
+
+                    <!-- Copy Button -->
+                    <button id="btnCopy" class="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-sm rounded-xl shadow-lg shadow-blue-500/25 transition active:scale-[0.99] flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-copy"></i> 프롬프트 복사하기
+                    </button>
+
+                    <!-- Instructions Card -->
+                    <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-3.5 space-y-2 text-xs text-slate-400">
+                        <div class="font-medium text-slate-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-circle-question text-blue-400"></i> LLM 활용 방법 3단계
+                        </div>
+                        <ol class="list-decimal list-inside space-y-1 text-[11px] leading-relaxed text-slate-400">
+                            <li>위의 <strong class="text-slate-200">'프롬프트 복사하기'</strong> 버튼을 누릅니다.</li>
+                            <li><strong class="text-slate-200">ChatGPT, Claude, Gemini, Grok</strong> 등의 입력창에 붙여넣습니다.</li>
+                            <li>LLM이 프롬프트 조건을 분석하여 고품질 콘텐츠를 자동 생성합니다.</li>
+                        </ol>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        const LOCAL_STORAGE_KEY = "wavenox.content-prompt-settings";
+
+        // Platform Options Mapping by Content Type
+        const PLATFORM_OPTIONS = {
+            blog: [
+                { value: "general", label: "범용 블로그" },
+                { value: "naver", label: "네이버 블로그 (Naver Blog)" },
+                { value: "brunch", label: "브런치스토리 (Brunch)" },
+                { value: "wordpress", label: "워드프레스 (WordPress)" },
+                { value: "ghost", label: "Ghost" },
+                { value: "medium", label: "Medium" },
+                { value: "substack", label: "Substack" },
+                { value: "blogger", label: "Google Blogger" }
+            ],
+            youtube: [
+                { value: "youtube_long", label: "YouTube 메인 채널" }
+            ],
+            shorts: [
+                { value: "yt_shorts", label: "YouTube Shorts" },
+                { value: "ig_reels", label: "Instagram Reels" },
+                { value: "tiktok", label: "TikTok" }
+            ],
+            instagram: [
+                { value: "instagram_main", label: "Instagram Feed / Carousel" }
+            ],
+            facebook: [
+                { value: "facebook_main", label: "Facebook" }
+            ],
+            threads: [
+                { value: "threads_main", label: "Threads" }
+            ],
+            linkedin: [
+                { value: "linkedin_main", label: "LinkedIn" }
+            ],
+            pinterest: [
+                { value: "pinterest_main", label: "Pinterest" }
+            ]
+        };
+
+        const contentTypeEl = document.getElementById('contentType');
+        const platformEl = document.getElementById('platform');
+        const platformContainerEl = document.getElementById('platformContainer');
+        const languageEl = document.getElementById('language');
+        const factAccuracyEl = document.getElementById('factAccuracy');
+        const targetAudienceEl = document.getElementById('targetAudience');
+        const topicTitleEl = document.getElementById('topicTitle');
+        const referenceDataEl = document.getElementById('referenceData');
+        const realExperienceEl = document.getElementById('realExperience');
+        const userOpinionEl = document.getElementById('userOpinion');
+        const mustIncludeEl = document.getElementById('mustInclude');
+        const mustExcludeEl = document.getElementById('mustExclude');
+
+        // Output Panel Elements
+        const promptOutputEl = document.getElementById('promptOutput');
+        const charCountEl = document.getElementById('charCount');
+        const wordCountEl = document.getElementById('wordCount');
+        const btnCopyEl = document.getElementById('btnCopy');
+        const copyToastEl = document.getElementById('copyToast');
+
+        // Storage Buttons
+        const btnSaveEl = document.getElementById('btnSave');
+        const btnLoadEl = document.getElementById('btnLoad');
+        const btnResetEl = document.getElementById('btnReset');
+
+        function updatePlatformDropdown() {
+            const selectedType = contentTypeEl.value;
+            const platforms = PLATFORM_OPTIONS[selectedType] || [];
+            
+            platformEl.innerHTML = '';
+            platforms.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.value;
+                opt.textContent = p.label;
+                platformEl.appendChild(opt);
+            });
+
+            // Hide platform container if single options
+            if (platforms.length <= 1) {
+                platformContainerEl.classList.add('opacity-50', 'pointer-events-none');
+            } else {
+                platformContainerEl.classList.remove('opacity-50', 'pointer-events-none');
+            }
+        }
+
+        function updateTypeSections() {
+            const type = contentTypeEl.value;
+
+            // Hide all type sections
+            document.querySelectorAll('.type-section').forEach(el => el.classList.add('hidden'));
+
+            // Title Map
+            const titleMap = {
+                blog: "블로그 글",
+                youtube: "YouTube 롱폼",
+                shorts: "Shorts · Reels · TikTok",
+                instagram: "Instagram",
+                facebook: "Facebook",
+                threads: "Threads",
+                linkedin: "LinkedIn",
+                pinterest: "Pinterest"
+            };
+            document.getElementById('section02Title').textContent = titleMap[type] || "콘텐츠 유형별";
+
+            // Show selected section
+            if (type === 'blog') document.getElementById('typeBlog').classList.remove('hidden');
+            else if (type === 'youtube') document.getElementById('typeYoutube').classList.remove('hidden');
+            else if (type === 'shorts') document.getElementById('typeShorts').classList.remove('hidden');
+            else if (type === 'instagram') document.getElementById('typeInstagram').classList.remove('hidden');
+            else document.getElementById('typeOthers').classList.remove('hidden');
+        }
+
+        function toggleCustomInputs() {
+            // YouTube Length custom
+            const ytLengthVal = document.getElementById('ytLength').value;
+            const ytLengthCustom = document.getElementById('ytLengthCustom');
+            if (ytLengthVal === 'custom') ytLengthCustom.classList.remove('hidden');
+            else ytLengthCustom.classList.add('hidden');
+
+            // YouTube Visual custom
+            const ytVisualVal = document.getElementById('ytVisualType').value;
+            const ytVisualCustom = document.getElementById('ytVisualCustom');
+            if (ytVisualVal === 'custom') ytVisualCustom.classList.remove('hidden');
+            else ytVisualCustom.classList.add('hidden');
+
+            // Instagram Carousel slides container
+            const instaFormatVal = document.getElementById('instaFormat').value;
+            const instaSlideContainer = document.getElementById('instaSlideContainer');
+            if (instaFormatVal === 'carousel') instaSlideContainer.classList.remove('hidden');
+            else instaSlideContainer.classList.add('hidden');
+        }
+
+        function generatePrompt() {
+            const type = contentTypeEl.value;
+            const platformText = platformEl.options[platformEl.selectedIndex]?.text || "범용 플랫폼";
+            const topic = topicTitleEl.value.trim() || "[주제/작업 제목 미입력]";
+            const target = targetAudienceEl.value.trim();
+            const refData = referenceDataEl.value.trim();
+            const experience = realExperienceEl.value.trim();
+            const opinion = userOpinionEl.value.trim();
+            const mustInc = mustIncludeEl.value.trim();
+            const mustExc = mustExcludeEl.value.trim();
+            const lang = languageEl.value;
+            const factAccuracy = factAccuracyEl.value;
+
+            let blocks = [];
+
+            // 1. Role & Objective Declaration
+            let typeName = {
+                blog: "블로그 글",
+                youtube: "YouTube 롱폼 영상 대본",
+                shorts: "Shorts/Reels/TikTok 숏폼 대본",
+                instagram: "인스타그램 포스트",
+                facebook: "페이스북 포스트",
+                threads: "스레드(Threads) 글",
+                linkedin: "링크드인(LinkedIn) 아티클/포스트",
+                pinterest: "핀터레스트(Pinterest) 핀 설명"
+            }[type] || "콘텐츠";
+
+            blocks.push(`[역할 및 목적 선언]\n당신은 최고 수준의 전문 ${typeName} 기획자이자 카피라이터입니다. 아래에 제공된 조건, 플랫폼 특성, 참고자료를 철저히 반영하여 ${platformText} 게시용 최고 품질의 콘텐츠를 작성해주세요.`);
+
+            // 2. Topic, Target Audience, Context Block
+            let contextBlock = `[기본 정보 & 입력값]\n- 콘텐츠 주제/제목: ${topic}`;
+            if (target) contextBlock += `\n- 주요 타깃 독자: ${target}`;
+            if (refData) contextBlock += `\n- 제공 핵심 자료/원문:\n"""\n${refData}\n"""`;
+            if (opinion) contextBlock += `\n- 핵심 주관/관점: ${opinion}`;
+            blocks.push(contextBlock);
+
+            // Experience Policy (Crucial Guard)
+            if (experience) {
+                blocks.push(`[실제 경험 및 후기]\n아래 실제 경험 및 정황 데이터를 콘텐츠 내 자연스러운 에피소드로 녹여내세요:\n"${experience}"`);
+            } else {
+                blocks.push(`[경험 작성 지침 - 엄격]\n제공된 실제 경험이 없습니다. 절대 LLM 스스로 개인적 경험, 가짜 사용 후기, 허구의 개인적 에피소드를 지어내지(Hallucinate) 마십시오.`);
+            }
+
+            // 3. Platform & Type Specific Detailed Instructions
+            let specBlock = `[플랫폼 및 세부 제작 지시]\n`;
+
+            if (type === 'blog') {
+                const len = document.getElementById('blogLength').value;
+                const bType = document.getElementById('blogType').value;
+                const bTone = document.getElementById('blogTone').value;
+                const bFormat = document.getElementById('blogFormat').value;
+                const bSeo = document.getElementById('blogSeo').value;
+                const bTitle = document.getElementById('blogTitleStrategy').value;
+                const bCta = document.getElementById('blogCta').value;
+
+                const lenMap = {
+                    short: "800자 ~ 1,200자 내외로 핵심을 빠르고 명쾌하게 전달할 것.",
+                    medium: "1,500자 ~ 2,500자 내외로 충분한 가독성과 깊이를 확보할 것.",
+                    long: "3,000자 ~ 4,000자 내외로 상세한 설명과 풍부한 예시를 포함할 것.",
+                    deep: "5,000자 이상의 완벽 가이드 수준으로 주제를 심층 분석하되, 의미 없는 반복은 피할 것."
+                };
+                specBlock += `- 목표 분량: ${lenMap[len]}\n`;
+
+                const typeMap = {
+                    balanced: "정보 전달과 개인적 통찰이 잘 어우러진 균형 잡힌 구조.",
+                    info: "객관적인 지식과 체계적인 정보를 전달하는 포맷.",
+                    exp: "경험 공유 및 사례 분석 중심의 신뢰도 높은 글.",
+                    compare: "장단점 비교 표 및 선택 기준을 명확히 제시하는 비교 포맷.",
+                    review: "솔직하고 다각적인 분석이 담긴 솔직 리뷰 형식.",
+                    guide: "단계별(Step-by-Step) 실천 가능한 가이드 포맷.",
+                    opinion: "논리적 주장을 펼치는 칼럼/아티클 형식."
+                };
+                specBlock += `- 글 유형: ${typeMap[bType]}\n`;
+
+                const toneMap = {
+                    natural: "사람이 직접 쓴 듯 자연스럽고 읽기 쉬운 어조. 반복적인 AI 상투 문구(예: ~알아보았습니다, 결론적으로)를 절대 배제할 것.",
+                    friendly: "친근하고 편안한 대화체(~해요 체) 사용.",
+                    expert: "신뢰감 있고 전문적인 정중한 어조(~합니다 체) 사용.",
+                    explaining: "복잡한 개념도 쉽게 이해시키는 명쾌한 설명조.",
+                    persuasive: "설득력 있고 자신감 넘치는 어조.",
+                    neutral: "객관적이고 중립적인 톤 유지."
+                };
+                specBlock += `- 문체 및 톤: ${toneMap[bTone]}\n`;
+
+                if (bFormat === 'markdown') specBlock += `- 출력 형식: Markdown 포맷 (소제목 h2, h3, 글머리 기호 사용)\n`;
+                else if (bFormat === 'html') specBlock += `- 출력 형식: Clean HTML (본문 HTML 전용, <html>/<body>/<head>/인라인 CSS/스크립트 제외, 의미있는 h2/h3/p/ul/ol/strong 태그만 사용)\n`;
+                else specBlock += `- 출력 형식: 일반 텍스트 포맷\n`;
+
+                if (bSeo === 'aggressive') specBlock += `- SEO 정책: 소제목에 검색 의도 키워드를 적극 배치하고 연관 검색어(LSI)를 본문에 자연스럽게 녹일 것.\n`;
+                else if (bSeo === 'basic') specBlock += `- SEO 정책: 본문 주요 키워드가 자연스럽게 읽히도록 배치.\n`;
+
+                if (bTitle === 'candidates') specBlock += `- 제목 처리: 클릭률(CTR)을 극대화하는 매력적인 블로그 제목 후보 5개를 본문 맨 위에 우선 제시할 것.\n`;
+                else if (bTitle === 'improve') specBlock += `- 제목 처리: 지정된 작업 제목을 SEO 및 클릭률 관점에서 매끄럽게 다듬어 적용할 것.\n`;
+
+                if (bCta === 'natural') specBlock += `- CTA: 글 마무리에 자연스러운 댓글 소통 및 이웃 추가 유도 문구 포함.\n`;
+                else if (bCta === 'explicit') specBlock += `- CTA: 명확한 행동 유도(공유, 링크 클릭, 구독 등)를 직관적으로 포함.\n`;
+
+            } else if (type === 'youtube') {
+                const ytLen = document.getElementById('ytLength').value;
+                const ytLenCustom = document.getElementById('ytLengthCustom').value;
+                const ytScript = document.getElementById('ytScriptType').value;
+                const ytHook = document.getElementById('ytHook').value;
+                const ytSent = document.getElementById('ytSentenceStyle').value;
+                const ytFormat = document.getElementById('ytBodyFormat').value;
+                const ytVis = document.getElementById('ytVisualType').value;
+                const ytVisCustom = document.getElementById('ytVisualCustom').value;
+
+                let lenText = ytLen === 'custom' ? (ytLenCustom || "직접 지정 분량") : ytLen;
+                specBlock += `- 목표 영상 길이: ${lenText}\n`;
+
+                const scriptMap = {
+                    host: "1인 진행자가 시청자에게 직접 이야기하는 친근하고 몰입감 있는 구조.",
+                    narration: "성우/내레이션 중심의 격식 있고 안정된 흐름.",
+                    story: "흥미진진한 스토리텔링과 사건 전개 중심.",
+                    explanative: "체계적 시각 자료 설명을 보조하는 지식 해설형.",
+                    review: "직접 시연하며 느낀 점을 전달하는 리뷰형."
+                };
+                specBlock += `- 진행 스타일: ${scriptMap[ytScript]}\n`;
+
+                const hookMap = {
+                    super: "매우 강함 - 시작 5초 내 충격적인 수치/질문으로 이탈을 완벽히 방지할 것.",
+                    strong: "강함 - 문제제기와 이 영상을 끝까지 봐야 하는 명확한 이유 제시.",
+                    normal: "보통 - 자연스러운 화두 던지기로 시작.",
+                    soft: "약함 - 차분한 인사 후 서론 진행."
+                };
+                specBlock += `- 도입부 후킹: ${hookMap[ytHook]}\n`;
+
+                const formatMap = {
+                    production: "촬영/편집용 포맷 (대사 외에 [시각 연출 가이드], [BGM/효과음], [화면 전환] 기재)",
+                    pure: "순수 대사 텍스트 포맷 (TTS/성우 녹음용)",
+                    subtitle: "소제목과 핵심 대사 위주의 자막 중심 포맷"
+                };
+                specBlock += `- 대본 구성 방식: ${formatMap[ytFormat]}\n`;
+
+                if (ytVis === 'auto') {
+                    specBlock += `- 영상 제작 스타일: [자동 추천] 주제 및 독자에 맞춰 가장 적합한 영상 스타일(TalkingHead, 다큐, 인포그래픽 등)을 프롬프트 응답 시작 시 추천하고 이유를 밝힐 것.\n`;
+                } else {
+                    let visText = ytVis === 'custom' ? (ytVisCustom || "맞춤 스타일") : ytVis;
+                    specBlock += `- 영상 연출 스타일: ${visText}\n`;
+                }
+
+            } else if (type === 'shorts') {
+                const sLen = document.getElementById('shortsLength').value;
+                const sHook = document.getElementById('shortsHookPoint').value;
+                const sPacing = document.getElementById('shortsPacing').value;
+                const sStyle = document.getElementById('shortsStyle').value;
+                const sCta = document.getElementById('shortsCta').value;
+
+                specBlock += `- 목표 길이: ${sLen}\n`;
+                specBlock += `- 후킹 시점: ${sHook === '1s' ? '첫 1초 이내 시선 강탈' : '3초 이내 빠르게 주제 전달'}\n`;
+                specBlock += `- 전개 속도: ${sPacing === 'ultra' ? '숨돌릴 틈 없는 초고속 템포' : '빠르고 직관적인 템포'}\n`;
+                specBlock += `- 영상 스타일: ${sStyle}\n`;
+                if (sCta === 'loop') specBlock += `- 엔딩 처리: 영상의 끝과 시작이 이어지는 매끄러운 무한 반복(Loop) 대사 구성.\n`;
+
+            } else if (type === 'instagram') {
+                const iFormat = document.getElementById('instaFormat').value;
+                const iSlides = document.getElementById('instaSlides').value;
+                const iCaption = document.getElementById('instaCaptionLen').value;
+                const iEmoji = document.getElementById('instaEmoji').value;
+                const iCta = document.getElementById('instaCta').value;
+
+                specBlock += `- 인스타그램 포맷: ${iFormat}\n`;
+                if (iFormat === 'carousel') {
+                    specBlock += `- 카드뉴스 구성: 총 ${iSlides}장 슬라이드 (1장: 후킹 표지, 마지막장: CTA, 중간: 핵심 정보 분할).\n`;
+                }
+                specBlock += `- 캡션 분량: ${iCaption === 'short' ? '짧고 임팩트 있게' : '가독성 높은 paragraph'}\n`;
+                specBlock += `- 이모지 활용: ${iEmoji === 'rich' ? '다양하고 감성적인 이모지 사용' : '불릿 포인트 중심 절제된 사용'}\n`;
+                specBlock += `- CTA: ${iCta === 'save' ? '저장 및 친구 공유 유도' : '댓글 및 프로필 링크 접속 유도'}\n`;
+
+            } else { // Others (FB, Threads, LinkedIn, Pinterest)
+                const oTone = document.getElementById('otherTone').value;
+                const oHook = document.getElementById('otherHook').value;
+
+                const toneText = {
+                    linkedin_pro: "LinkedIn 전용 - 전문적인 인사이트와 실제 경험의 균형, 상투적 AI 문구(Let's dive in 등) 금지.",
+                    threads_chat: "Threads 전용 - 솔직하고 짧고 강렬한 구어체 한두 문장 스타일.",
+                    fb_community: "Facebook 전용 - 긴 글 스토리텔링과 자연스러운 대화 유발.",
+                    pin_search: "Pinterest 전용 - 검색 키워드가 풍부한 비주얼 설명 중심."
+                }[oTone] || "플랫폼 맞춤형 톤";
+
+                specBlock += `- 플랫폼 톤앤매너: ${toneText}\n`;
+                specBlock += `- 첫 줄 후킹: ${oHook === 'insight' ? '통찰력 있는 인사이트/질문으로 시작' : '개인적 경험/반전 문구로 시작'}\n`;
+            }
+
+            blocks.push(specBlock);
+
+            // 4. Must Include / Exclude Rules
+            if (mustInc || mustExc) {
+                let ruleBlock = `[제작 제약 조건]\n`;
+                if (mustInc) ruleBlock += `- 반드시 포함할 내용: ${mustInc}\n`;
+                if (mustExc) ruleBlock += `- 반드시 제외할 내용: ${mustExc}\n`;
+                blocks.push(ruleBlock);
+            }
+
+            // 5. Accuracy & Language Rules
+            let factText = "";
+            if (factAccuracy === 'high') {
+                factText = "제공된 자료로 확인되지 않은 정밀 수치, 연구 결과, 정책, 제품 스펙을 지어내지 말고 불확실한 부분은 '[검증 필요]'로 명시하세요.";
+            } else if (factAccuracy === 'latest') {
+                factText = "최신성 확보가 중요한 항목은 최근 기준임을 밝히고 추측성 사실 표현은 제외하세요.";
+            } else {
+                factText = "일반적인 사실에 입각하여 자연스럽게 작성하세요.";
+            }
+
+            let langText = lang === 'en' ? 'English' : (lang === 'keep' ? '입력된 언어를 유지하여' : '한국어');
+            blocks.push(`[사실성 및 언어 규칙]\n- 사실 정확성 검증: ${factText}\n- 최종 출력을 반드시 ${langText}로 작성하세요.`);
+
+            // 6. Extra Packages & Deliverables Specification
+            let extraBlock = `[결과물 출력 패키지 명세]\n아래 명시된 추가 패키지 항목을 빠짐없이 함께 출력해주세요:\n`;
+            let hasExtras = false;
+
+            if (type === 'blog') {
+                if (document.getElementById('chkBlogMeta').checked) { extraBlock += `- SEO 메타 패키지 (Meta Title: 30자 이내 / Meta Description: 80~120자)\n`; hasExtras = true; }
+                if (document.getElementById('chkBlogFaq').checked) { extraBlock += `- FAQ 3선 제안 (자주 묻는 질문 3개 및 명쾌한 답변)\n`; hasExtras = true; }
+                if (document.getElementById('chkBlogTags').checked) { extraBlock += `- 추천 블로그 카테고리 & 태그 10개\n`; hasExtras = true; }
+                if (document.getElementById('chkBlogMdAlso').checked) { extraBlock += `- [추가 본문] Markdown 버전 동시 출력\n`; hasExtras = true; }
+                if (document.getElementById('chkBlogTextAlso').checked) { extraBlock += `- [추가 본문] 일반 텍스트 버전 동시 출력\n`; hasExtras = true; }
+                if (document.getElementById('chkBlogHtmlAlso').checked) { extraBlock += `- [추가 본문] Clean HTML 코드 동시 출력\n`; hasExtras = true; }
+            } else if (type === 'youtube') {
+                if (document.getElementById('chkYtTitleCount')) {
+                    const count = document.getElementById('ytTitleCount').value;
+                    extraBlock += `- 유튜브 제목 후보 ${count}개 (클릭률 유발 키워드 조합)\n`; hasExtras = true;
+                }
+                if (document.getElementById('chkYtDesc').checked) { extraBlock += `- 유튜브 설명란 (Description) 요약 및 키워드 문구\n`; hasExtras = true; }
+                if (document.getElementById('chkYtChapters').checked) { extraBlock += `- 영상 타임스탬프 (Chapters) 예시 구조\n`; hasExtras = true; }
+                if (document.getElementById('chkYtTags').checked) { extraBlock += `- 유튜브 검색 태그 (Tags) 쉼표 구분 목록\n`; hasExtras = true; }
+                if (document.getElementById('chkYtThumb').checked) { extraBlock += `- 썸네일 카피 문구 3개 및 비주얼 이미지 기획안\n`; hasExtras = true; }
+                if (document.getElementById('chkYtStyleReason').checked) { extraBlock += `- 추천 영상 제작 스타일 및 선택 이유 요약\n`; hasExtras = true; }
+                if (document.getElementById('chkYtBroll').checked) { extraBlock += `- 타임라인별 추천 B-roll 및 화면 연출 가이드\n`; hasExtras = true; }
+            } else if (type === 'shorts') {
+                if (document.getElementById('chkShortsLoop').checked) { extraBlock += `- 자연스러운 반복 시청(Loop) 연결 기획\n`; hasExtras = true; }
+                if (document.getElementById('chkShortsCut').checked) { extraBlock += `- 컷별 구도 및 텍스트 자막 가이드\n`; hasExtras = true; }
+                if (document.getElementById('chkShortsCaption').checked) { extraBlock += `- 게시용 SNS 캡션 문구\n`; hasExtras = true; }
+                if (document.getElementById('chkShortsTags').checked) { extraBlock += `- 추천 해시태그 10개\n`; hasExtras = true; }
+                if (document.getElementById('chkShortsCover').checked) { extraBlock += `- 표지 썸네일 타이틀 이미지 구성안\n`; hasExtras = true; }
+            }
+
+            // Global Image Visual Package
+            const imgCount = document.getElementById('imgCount').value;
+            if (imgCount !== 'none') {
+                const imgStyle = document.getElementById('imgStyle').value;
+                const imgAspect = document.getElementById('imgAspect').value;
+                extraBlock += `\n[이미지 프롬프트 패키지]\n- 총 ${imgCount}개의 이미지 비주얼 제안\n- 이미지 스타일: ${imgStyle}\n- 종횡비: ${imgAspect}\n`;
+                if (document.getElementById('chkImgLocation').checked) extraBlock += `- 콘텐츠 본문 내 적절한 이미지 배치 위치 ([이미지 1 삽입 위치] 등) 지정\n`;
+                if (document.getElementById('chkImgAlt').checked) extraBlock += `- Midjourney/DALL-E에서 즉시 사용 가능한 생성용 영문 프롬프트 (Prompt:) 제공\n`;
+                if (document.getElementById('chkImgAltText').checked) extraBlock += `- 웹 접근성 대체 텍스트(ALT) 및 이미지 하단 캡션 문구 제공\n`;
+                hasExtras = true;
+            }
+
+            if (hasExtras) {
+                blocks.push(extraBlock);
+            }
+
+            // Combine Prompt
+            const finalPrompt = blocks.join('\n\n');
+            promptOutputEl.value = finalPrompt;
+
+            // Update Counts
+            const charLen = finalPrompt.length;
+            const wordLen = finalPrompt.trim() ? finalPrompt.trim().split(/\s+/).length : 0;
+            charCountEl.textContent = `${charLen.toLocaleString()}자`;
+            wordCountEl.textContent = `${wordLen.toLocaleString()}단어`;
+        }
+
+        function saveSettings() {
+            const inputs = document.querySelectorAll('input, select, textarea');
+            const data = {};
+            inputs.forEach(el => {
+                if (!el.id) return;
+                if (el.type === 'checkbox') data[el.id] = el.checked;
+                else data[el.id] = el.value;
+            });
+
+            try {
+                const jsonStr = JSON.stringify(data, null, 2);
+                const blob = new Blob([jsonStr], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const now = new Date();
+                const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+                const filename = `prompt_settings_${dateStr}.json`;
+
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                showToast("JSON 파일로 설정이 다운로드되었습니다.");
+            } catch (e) {
+                console.error("Save JSON failed", e);
+                showToast("JSON 저장 중 오류가 발생했습니다.");
+            }
+        }
+
+        function loadSettings() {
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput) {
+                fileInput.click();
+            }
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+
+                    // Restore Main content type first
+                    if (data.contentType) {
+                        contentTypeEl.value = data.contentType;
+                        updatePlatformDropdown();
+                        updateTypeSections();
+                    }
+
+                    Object.keys(data).forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) {
+                            if (el.type === 'checkbox') el.checked = data[id];
+                            else el.value = data[id];
+                        }
+                    });
+
+                    toggleCustomInputs();
+                    generatePrompt();
+                    showToast("JSON 파일에서 설정을 성공적으로 불러왔습니다.");
+                } catch (err) {
+                    console.error("Invalid JSON file", err);
+                    showToast("유효하지 않은 JSON 파일입니다.");
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        function resetSettings() {
+            const inputs = document.querySelectorAll('input, textarea');
+            inputs.forEach(el => {
+                if (el.type === 'checkbox') {
+                    // Default checkboxes
+                    el.checked = true;
+                } else {
+                    el.value = '';
+                }
+            });
+
+            // Reset selects to first/default option
+            contentTypeEl.value = 'blog';
+            updatePlatformDropdown();
+            updateTypeSections();
+            
+            languageEl.value = 'ko';
+            factAccuracyEl.value = 'high';
+            document.getElementById('blogLength').value = 'medium';
+            document.getElementById('blogType').value = 'balanced';
+            document.getElementById('blogTone').value = 'natural';
+            document.getElementById('blogFormat').value = 'markdown';
+            document.getElementById('blogSeo').value = 'basic';
+            document.getElementById('blogTitleStrategy').value = 'candidates';
+            document.getElementById('blogCta').value = 'natural';
+            document.getElementById('imgCount').value = '3';
+            document.getElementById('imgStyle').value = 'photo';
+            document.getElementById('imgAspect').value = '16:9';
+
+            toggleCustomInputs();
+            generatePrompt();
+            showToast("모든 설정이 초기화되었습니다.");
+        }
+
+        function copyToClipboard() {
+            const text = promptOutputEl.value;
+            if (!text) return;
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => {
+                    triggerCopyAnimation();
+                }).catch(() => {
+                    fallbackCopy(text);
+                });
+            } else {
+                fallbackCopy(text);
+            }
+        }
+
+        function fallbackCopy(text) {
+            promptOutputEl.select();
+            try {
+                document.execCommand('copy');
+                triggerCopyAnimation();
+            } catch (err) {
+                showToast("복사에 실패했습니다.");
+            }
+        }
+
+        function triggerCopyAnimation() {
+            copyToastEl.classList.remove('opacity-0');
+            copyToastEl.classList.add('opacity-100');
+            setTimeout(() => {
+                copyToastEl.classList.remove('opacity-100');
+                copyToastEl.classList.add('opacity-0');
+            }, 2000);
+        }
+
+        function showToast(msg) {
+            const originalText = copyToastEl.innerHTML;
+            copyToastEl.innerHTML = `<i class="fa-solid fa-info-circle"></i> ${msg}`;
+            triggerCopyAnimation();
+            setTimeout(() => {
+                copyToastEl.innerHTML = originalText;
+            }, 2000);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            // Initial setup
+            updatePlatformDropdown();
+            updateTypeSections();
+            toggleCustomInputs();
+            generatePrompt();
+
+            // Event bindings for real-time updates
+            contentTypeEl.addEventListener('change', () => {
+                updatePlatformDropdown();
+                updateTypeSections();
+                toggleCustomInputs();
+                generatePrompt();
+            });
+
+            document.getElementById('ytLength').addEventListener('change', toggleCustomInputs);
+            document.getElementById('ytVisualType').addEventListener('change', toggleCustomInputs);
+            document.getElementById('instaFormat').addEventListener('change', toggleCustomInputs);
+
+            // Listen to all inputs and selects for instant real-time assembly
+            document.querySelectorAll('input, select, textarea').forEach(el => {
+                el.addEventListener('input', generatePrompt);
+                el.addEventListener('change', generatePrompt);
+            });
+
+            // Global Action buttons
+            btnCopyEl.addEventListener('click', copyToClipboard);
+            btnSaveEl.addEventListener('click', saveSettings);
+            btnLoadEl.addEventListener('click', loadSettings);
+            document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+            btnResetEl.addEventListener('click', resetSettings);
+        });
+    </script>
+</body>
+</html>

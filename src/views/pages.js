@@ -184,7 +184,7 @@ function homePage({ site, apps, guides = GUIDES }) {
         ? `<div class="grid" id="appGrid">${apps.map((a) => appCard(a, { site })).join('')}</div>
            <p class="empty" id="gridEmpty" hidden>검색 조건에 맞는 앱이 없습니다.</p>`
         : '<p class="empty card">아직 등록된 앱이 없습니다. 곧 정리해서 올리겠습니다.</p>'}
-      ${adSlot(site, { slot: site.adsense?.slotInline, className: 'ad-inline' })}
+      ${adSlot(site, { slot: site.adsense?.slotInline, className: 'ad-inline ad-after-apps' })}
     </section>
 
     <section class="section split">
@@ -210,6 +210,8 @@ function homePage({ site, apps, guides = GUIDES }) {
       </div>
     </section>
 
+    ${adSlot(site, { slot: site.adsense?.slotInline, className: 'ad-inline ad-after-about' })}
+
     <section class="section">
       <div class="section-head">
         <h2>읽어볼 만한 안내</h2>
@@ -234,6 +236,7 @@ function homePage({ site, apps, guides = GUIDES }) {
       <div class="faq">
         ${FAQ.map((item) => `<details><summary>${esc(item.q)}</summary><p>${esc(item.a)}</p></details>`).join('')}
       </div>
+      ${adSlot(site, { slot: site.adsense?.slotInline, className: 'ad-inline ad-after-faq' })}
     </section>
 
     <section class="section cta">
@@ -284,7 +287,7 @@ function appsPage({ site, apps }) {
       ? `<div class="grid" id="appGrid">${apps.map((a) => appCard(a, { site })).join('')}</div>
          <p class="empty" id="gridEmpty" hidden>검색 조건에 맞는 앱이 없습니다.</p>`
       : '<div class="card empty">아직 등록된 앱이 없습니다.</div>'}
-    ${adSlot(site, { slot: site.adsense?.slotInline, className: 'ad-inline' })}
+    ${adSlot(site, { slot: site.adsense?.slotInline, className: 'ad-inline ad-after-grid' })}
     <section class="section prose">
       <h2>앱을 고르는 기준</h2>
       <p>모든 앱은 운영자가 직접 만들었고, 등록 전에 휴대폰 화면에서의 사용성과 실행 여부를 확인합니다. 외부 서버에서 자료를 불러오지 않는 앱을 우선하기 때문에, 인터넷이 느리거나 끊긴 환경에서도 대부분 그대로 동작합니다. 다만 AI 분석이나 영상 렌더링처럼 외부 서비스가 필요한 앱은 인터넷 연결이 필요하며, 그 사실을 상세 페이지에 적어 두었습니다.</p>
@@ -298,6 +301,7 @@ function appsPage({ site, apps }) {
       <h2>앱이 열리지 않을 때</h2>
       <p>브라우저를 최신 버전으로 업데이트한 뒤 새로고침해 보시고, 시크릿 모드에서는 저장 기능이 동작하지 않으니 일반 창에서 열어 주세요. 그래도 문제가 있으면 <a href="/contact">문의 페이지</a>로 알려 주시면 확인 후 반영합니다.</p>
     </section>
+    ${adSlot(site, { slot: site.adsense?.slotInline, className: 'ad-inline ad-end' })}
   </div>
   ${FILTER_SCRIPT}`;
 
@@ -535,6 +539,7 @@ function aboutPage({ site, apps, guides = GUIDES }) {
           ? `<ul class="timeline">${recent.map((a) => `<li><span class="muted small">${esc(formatDate(a.createdAt))}</span> <a href="/app/${attr(a.id)}">${esc(a.name)}</a> — ${esc(a.desc || '')}</li>`).join('')}</ul>`
           : '<p>아직 등록된 앱이 없습니다.</p>'}
       </section>
+      ${adSlot(site, { slot: site.adsense?.slotInline, className: 'ad-inline ad-about' })}
       <section class="prose-block">
         <h2>연락처</h2>
         <p>운영자: ${esc(site.owner)}${site.email ? ` · 이메일: <a href="mailto:${attr(site.email)}">${esc(site.email)}</a>` : ''}</p>
@@ -594,6 +599,7 @@ function contactPage({ site }) {
         </ul>
       </div>
     </div>
+    ${adSlot(site, { slot: site.adsense?.slotInline, className: 'ad-inline ad-contact' })}
     <div class="prose narrow">
       <section class="prose-block">
         <h2>답변 안내</h2>
@@ -661,10 +667,12 @@ function guideIndexPage({ site, apps, guides = GUIDES }) {
           <a class="more" href="/guide/${attr(g.slug)}">읽기 →</a>
         </article>`).join('')}
     </div>
+    ${adSlot(site, { slot: site.adsense?.slotInline, className: 'ad-inline ad-after-guides' })}
     <section class="section prose narrow">
       <h2>앱 목록으로 돌아가기</h2>
       <p>바로 앱을 써 보고 싶다면 <a href="/apps">앱 목록</a>에서 원하는 도구를 고르세요. 현재 ${apps.length}개의 앱이 등록되어 있습니다.</p>
     </section>
+    ${adSlot(site, { slot: site.adsense?.slotInline, className: 'ad-inline ad-end' })}
   </div>`;
 
   return layout({

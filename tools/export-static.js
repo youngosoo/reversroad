@@ -166,6 +166,12 @@ function injectAppHead(html, { app, site }) {
       const html = await fsp.readFile(entry, 'utf8');
       await fsp.writeFile(entry, injectAppHead(html, { app, site }), 'utf8');
     }
+    // 사용설명서(.md)도 정적 배포본에 함께 넣어 둡니다 (상세 페이지의 내려받기 링크)
+    if (app.manual) {
+      const manualPath = path.join(dest, 'manual.md');
+      await fsp.writeFile(manualPath, app.manual, 'utf8');
+      written.push(manualPath);
+    }
   }
 
   const size = await dirSize(OUT);

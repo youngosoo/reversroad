@@ -85,6 +85,7 @@ function publicSite(site, reqDomain = '') {
     domainReady: Boolean(domain) && !/localhost|127\.0\.0\.1/.test(domain) && domain.startsWith('https://'),
     adsenseReady: /^ca-pub-\d{10,}$/.test(client),
     adsPreview: preview,
+    adsensePreviewUsable: /^ca-pub-\d{10,}$/.test(client),
   };
 }
 

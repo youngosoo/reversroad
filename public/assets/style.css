@@ -365,10 +365,16 @@ header.top .theme-toggle { margin-left: 0; }
 .app-card .actions { margin-top: auto; display: flex; gap: 8px; flex-wrap: wrap; }
 
 .ad-slot {
-  margin: 2rem 0; padding: 12px; min-height: 120px;
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  margin: 2rem 0; padding: 12px;
+  display: block; /* 광고(<ins>)가 폭을 꽉 채우도록 flex 중앙정렬을 쓰지 않습니다 */
   background: var(--surface-2); border: 1px dashed var(--border-strong); border-radius: var(--radius);
 }
+/* AdSense 광고가 들어가는 자리: 폭 100%, 최소 높이 확보 (0px 로 접히면 보이지 않습니다) */
+.ad-slot .adsbygoogle, .ad-slot ins.adsbygoogle {
+  display: block !important; width: 100% !important; min-height: 100px;
+}
+.ad-slot .ad-label { display: block; margin-bottom: 6px; }
+.ad-slot:not(.ad-placeholder) { min-height: 130px; }
 .ad-placeholder-body {
   display: flex; flex-direction: column; gap: 4px; align-items: center; justify-content: center;
   text-align: center; width: 100%; min-height: 92px; color: var(--muted); font-size: 0.9375rem;
@@ -376,6 +382,9 @@ header.top .theme-toggle { margin-left: 0; }
 .ad-placeholder-body strong { color: var(--text-soft); }
 .ad-placeholder { border-style: dashed; background: repeating-linear-gradient(45deg, var(--surface-2), var(--surface-2) 10px, var(--surface) 10px, var(--surface) 20px); }
 .ad-placeholder .ad-label { color: var(--accent); }
+
+/* AdSense 가 채우지 않은 자리는 감춥니다 (빈 상자 방지) */
+.ad-slot.ad-empty { display: none !important; }
 
 .ad-label { font-size: 0.6875rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); align-self: flex-start; }
 

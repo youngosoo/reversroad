@@ -72,7 +72,17 @@ function adSlot(site, { slot = '', label = '광고', className = '', name = '' }
     </aside>`;
   }
 
-  // 자리표시자 (개발환경)
+  // 개발환경: 실제 광고 코드에 data-adtest="on" 을 붙여 테스트 광고를 요청합니다.
+  // (게시자 ID·슬롯 ID 가 없으면 자리만 표시)
+  if (site?.adsensePreviewUsable && id) {
+    return `
+    <aside class="ad-slot ${attr(className)}" aria-label="${attr(label)} 자리">
+      <span class="ad-label">${esc(label)} · 테스트(개발환경)</span>
+      <ins class="adsbygoogle" style="display:block" data-ad-client="${attr(site.adsense.client)}" data-ad-slot="${attr(id)}" data-ad-format="auto" data-full-width-responsive="true" data-adtest="on"></ins>
+      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </aside>`;
+  }
+
   const reason = !site?.adsense?.client
     ? '게시자 ID 미설정'
     : (site?.adsPreview ? '개발환경 미리보기' : '슬롯 ID 미설정');
@@ -257,6 +267,29 @@ ${body}
     <p class="muted small">이 사이트는 Google AdSense 등 제3자 광고를 통해 운영됩니다. 광고 게재 방식은 <a href="/privacy">개인정보처리방침</a>에서 확인할 수 있습니다.</p>
   </div>
 </footer>
+${site.adsenseReady && !site.adsPreview ? `<script>
+// 광고가 채워지지 않은 자리는 빈 상자로 남지 않도록 숨깁니다 (채워지면 다시 보입니다)
+(function () {
+  var checks = 0;
+  function sweep() {
+    checks += 1;
+    var pending = false;
+    var slots = document.querySelectorAll('.ad-slot ins.adsbygoogle');
+    for (var i = 0; i < slots.length; i++) {
+      var ins = slots[i];
+      var box = ins.closest ? ins.closest('.ad-slot') : null;
+      if (!box) continue;
+      var status = ins.getAttribute('data-ad-status');
+      if (status === 'filled') box.classList.remove('ad-empty');
+      else if (status === 'unfilled') box.classList.add('ad-empty');
+      else pending = true;
+    }
+    if (!pending || checks > 12) clearInterval(timer);
+  }
+  var timer = setInterval(sweep, 2000);
+  setTimeout(sweep, 6000);
+})();
+</script>` : ''}
 <div class="consent" id="consent" hidden>
   <p>이 사이트는 앱 실행과 광고 게재를 위해 브라우저 저장소와 쿠키를 사용합니다. 자세한 내용은 <a href="/privacy">개인정보처리방침</a>을 확인하세요.</p>
   <button class="btn small primary" type="button" id="consentOk">확인</button>

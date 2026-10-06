@@ -591,14 +591,17 @@ addForm.addEventListener('submit', async (e) => {
   btn.disabled = true;
   addStatus.textContent = '업로드 중...';
   try {
-    const { app } = await api('/api/apps', { method: 'POST', body: new FormData(addForm) });
+    const { app, secrets: removedSecrets, removedBlocks } = await api('/api/apps', { method: 'POST', body: new FormData(addForm) });
     addForm.reset();
     dropText.innerHTML = defaultDropText;
     analysisBox.innerHTML = '';
     lastAnalysis = null;
     reanalyzeBtn.disabled = true;
     addStatus.textContent = '';
-    say(`"${app.name}" 추가 완료 → /${app.path}`);
+    const secNote = (removedSecrets && removedSecrets.length)
+      ? ` · ⚠ 보안을 위해 API 키 ${removedSecrets.length}건(${removedSecrets.map((f) => f.name).join(', ')})을 제거했습니다. 키는 앱의 "API 키 관리"에서 직접 입력하세요.`
+      : (removedBlocks && removedBlocks.length ? ' · 업로드 파일에 포함돼 있던 외부 서비스 설정(키·토큰)을 제거했습니다.' : '');
+    say(`"${app.name}" 추가 완료 → /${app.path}${secNote}`, secNote ? 'info' : 'ok');
     await loadApps();
   } catch (err) {
     addStatus.textContent = '';
@@ -726,6 +729,28 @@ rows.addEventListener('click', async (e) => {
 
 document.getElementById('viewClose').addEventListener('click', () => viewModal.close());
 document.getElementById('editCancel').addEventListener('click', () => editModal.close());
+
+document.getElementById('editReplace').addEventListener('click', () => {
+  document.getElementById('editReplaceInput').click();
+});
+document.getElementById('editReplaceInput').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file || !editing) return;
+  if (!confirm(`"${editing.name}" 의 파일을 ${file.name} 로 교체할까요? (기존 파일은 대체됩니다)`)) return;
+  try {
+    const body = new FormData();
+    body.append('file', file);
+    const { app, secrets: removedSecrets } = await api(`/api/apps/${editing.id}/files`, { method: 'PUT', body });
+    editModal.close();
+    const note = (removedSecrets && removedSecrets.length) ? ` (API 키 ${removedSecrets.length}건 제거)` : '';
+    say(`"${app.name || editing.name}" 파일을 교체했습니다${note}`);
+    await loadApps();
+  } catch (err) {
+    say(err.message, 'err');
+  } finally {
+    e.target.value = '';
+  }
+});
 
 document.getElementById('editAnalyze').addEventListener('click', async () => {
   if (!editing) return;

@@ -4,6 +4,7 @@ const fs = require('fs');
 const fsp = require('fs/promises');
 const path = require('path');
 const AdmZip = require('adm-zip');
+const secrets = require('./secrets');
 const { isValidCategory, DEFAULT_SLUG, getCategory } = require('./categories');
 
 const ROOT = path.join(__dirname, '..');
@@ -155,11 +156,32 @@ async function addApp(input) {
   // Stage the upload first: the analysis needs to read index.html, and the
   // final app id may be derived from what the analysis finds.
   const stage = await fsp.mkdtemp(path.join(STAGING_DIR, 'stage-'));
+  let uploadSecrets = null;
   try {
     if (isZip) {
       await extractZip(file.buffer, stage);
+      // 압축 안의 html 도 정리
+      const collected = [];
+      const walkStage = async (dir, prefix = '') => {
+        for (const entry of await fsp.readdir(dir, { withFileTypes: true })) {
+          const full = path.join(dir, entry.name);
+          if (entry.isDirectory()) await walkStage(full, `${prefix}${entry.name}/`);
+          else collected.push({ path: `${prefix}${entry.name}`, full });
+        }
+      };
+      await walkStage(stage);
+      const { files: cleanedFiles, secrets: found, removedBlocks } = cleanUploadedFiles(
+        await Promise.all(collected.map(async (c) => ({ path: c.path, body: await fsp.readFile(c.full) })))
+      );
+      uploadSecrets = { secrets: found, removedBlocks };
+      for (const entry of cleanedFiles) {
+        if (!/\.html?$/i.test(entry.path)) continue;
+        await fsp.writeFile(path.join(stage, entry.path), entry.body, 'utf8');
+      }
     } else if (file) {
-      await fsp.writeFile(path.join(stage, 'index.html'), file.buffer);
+      const cleaned = secrets.cleanHtml(file.buffer.toString('utf8'));
+      uploadSecrets = { secrets: cleaned.findings, removedBlocks: cleaned.removed };
+      await fsp.writeFile(path.join(stage, 'index.html'), cleaned.html, 'utf8');
     } else {
       await fsp.writeFile(path.join(stage, 'index.html'), STARTER_HTML(String(name || '새 앱').trim()), 'utf8');
     }
@@ -212,7 +234,7 @@ async function addApp(input) {
     };
     apps.push(app);
     await writeApps(apps);
-    return { app, analysis };
+    return { app, analysis, secrets: uploadSecrets ? uploadSecrets.secrets : [], removedBlocks: uploadSecrets ? uploadSecrets.removedBlocks : [] };
   } finally {
     await fsp.rm(stage, { recursive: true, force: true }).catch(() => {});
   }
@@ -302,6 +324,64 @@ async function analyzeApp(id) {
   return { app, analysis: analyzeBuffer(html, `${id}/index.html`) };
 }
 
+/** 업로드된 HTML 에서 API 키·토큰을 제거합니다 (저장 전) */
+function cleanUploadedFiles(files) {
+  const findings = [];
+  const removedBlocks = [];
+  const cleaned = files.map((entry) => {
+    if (!/\.html?$/i.test(entry.path)) return entry;
+    const text = typeof entry.body === 'string' ? entry.body : Buffer.from(entry.body).toString('utf8');
+    const result = secrets.cleanHtml(text);
+    findings.push(...result.findings.map((f) => ({ ...f, file: entry.path })));
+    removedBlocks.push(...result.removed);
+    return { ...entry, body: result.html };
+  });
+  return { files: cleaned, secrets: findings, removedBlocks };
+}
+
+/** 등록된 앱의 파일만 교체합니다 (html 또는 zip 업로드) */
+async function replaceFiles(id, file) {
+  const app = await getApp(id);
+  if (!app) throw new HttpError(404, 'app not found');
+  const stage = await fsp.mkdtemp(path.join(STAGING_DIR, 'swap-'));
+  try {
+    const isZip = file.originalname.toLowerCase().endsWith('.zip') || file.mimetype === 'application/zip';
+    if (isZip) await extractZip(file.buffer, stage);
+    else await fsp.writeFile(path.join(stage, 'index.html'), file.buffer);
+
+    const collected = [];
+    const walk = async (dir, prefix = '') => {
+      for (const entry of await fsp.readdir(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) await walk(full, `${prefix}${entry.name}/`);
+        else collected.push({ path: `${prefix}${entry.name}`, body: await fsp.readFile(full) });
+      }
+    };
+    await walk(stage);
+
+    const { files: cleaned, secrets: found, removedBlocks } = cleanUploadedFiles(collected);
+    const destDir = assertInside(APPS_DIR, path.join(APPS_DIR, id));
+    await fsp.rm(destDir, { recursive: true, force: true });
+    await fsp.mkdir(destDir, { recursive: true });
+    for (const entry of cleaned) {
+      const target = assertInside(destDir, path.join(destDir, entry.path));
+      await fsp.mkdir(path.dirname(target), { recursive: true });
+      await fsp.writeFile(target, entry.body);
+    }
+
+    const apps = await readApps();
+    const record = apps.find((a) => a.id === id);
+    if (record) {
+      record.files = cleaned.map((f) => f.path);
+      record.updatedAt = new Date().toISOString();
+      await writeApps(apps);
+    }
+    return { app: record || app, secrets: found, removedBlocks };
+  } finally {
+    await fsp.rm(stage, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
 module.exports = {
   ROOT,
   APPS_DIR,
@@ -316,6 +396,8 @@ module.exports = {
   addApp,
   updateApp,
   removeApp,
+  replaceFiles,
+  cleanUploadedFiles,
   getApp,
   analyzeApp,
   normalizeMeta,

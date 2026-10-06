@@ -14,6 +14,7 @@ const manifest = require('./src/manifest');
 const meta = require('./src/meta');
 const markdownLib = require('./src/markdown');
 const miniappAds = require('./src/miniapp-ads');
+const secrets = require('./src/secrets');
 const analyze = require('./src/analyze');
 const auth = require('./src/auth');
 const siteStore = require('./src/site');
@@ -66,6 +67,17 @@ app.get('/api/apps', async (req, res, next) => {
     const wantsAll = req.query.all === '1' && req.session && req.session.user;
     const list = wantsAll ? all : meta.filterVisible(all);
     res.json({ apps: meta.stripManual(list) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// 등록된 앱의 파일 교체 (관리자) — 업로드본과 같은 정리(비밀값 제거)를 거칩니다
+app.put('/api/apps/:id/files', auth.requireAuth, upload.single('file'), async (req, res, next) => {
+  try {
+    if (!req.file) throw new HttpError(400, '교체할 파일을 선택하세요 (html 또는 zip)');
+    const updated = await manifest.replaceFiles(req.params.id, req.file);
+    res.json({ app: updated.app, secrets: updated.secrets, removedBlocks: updated.removedBlocks });
   } catch (err) {
     next(err);
   }
@@ -448,7 +460,7 @@ app.get([/^\/apps\/([a-z0-9-]+)\/$/i, /^\/apps\/([a-z0-9-]+)\/([^/]+\.html?)$/i]
     if (ads.inApps === false) return next();
     const target = path.join(APPS_DIR, slug, rel);
     if (!target.startsWith(APPS_DIR)) return next();
-    const html = await fsp.readFile(target, 'utf8');
+    const html = secrets.cleanHtml(await fsp.readFile(target, 'utf8')).html;
     res.type('html').send(miniappAds.injectAppAds(html, {
       client: ads.client,
       slot: ads.slotDisplay || ads.slotInline,

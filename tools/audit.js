@@ -211,6 +211,22 @@ for (const file of htmlFiles) {
 }
 console.log(`  금지 표현·플레이스홀더 검사 완료`);
 
+// ---------- 4-1) 비밀값(API 키·토큰) 노출
+console.log('\n■ 비밀값 노출 점검\n');
+const { scanSecrets } = require('../src/secrets');
+let secretHits = 0;
+for (const app of APPS) {
+  const target = path.join(DIST, 'apps', app.id, 'index.html');
+  if (!fs.existsSync(target)) continue;
+  const found = scanSecrets(fs.readFileSync(target, 'utf8'));
+  if (found.length) {
+    secretHits += found.length;
+    bad(`앱에 비밀값 노출: ${app.id} → ${found.map((f) => f.name).join(', ')}`);
+  }
+}
+console.log(`  앱 ${APPS.length}개 검사 · 비밀값 ${secretHits}건`);
+if (!secretHits) console.log('  (깨끗함)');
+
 // ---------- 5) 앱 파일
 console.log('\n■ 앱 파일 점검\n');
 for (const app of APPS) {

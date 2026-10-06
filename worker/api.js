@@ -197,6 +197,13 @@ async function handleApi(request, env, url) {
         },
       });
     }
+    if (action === '/files' && method === 'PUT') {
+      const body = await readBody(request);
+      const file = body._files && body._files.file;
+      if (!file) throw new HttpError(400, '교체할 파일을 선택하세요 (html 또는 zip)');
+      const result = await appService.replaceFiles(env, id, file);
+      return json({ app: result.app, secrets: result.secrets, removedBlocks: result.removedBlocks });
+    }
     if (action === '/manual' && method === 'PUT') {
       const body = await readBody(request);
       return json(await appService.setManual(env, id, body.markdown ?? ''));

@@ -19,6 +19,7 @@ const manifest = require('../src/manifest');
 const siteStore = require('../src/site');
 const build = require('../src/build');
 const { injectAppAds } = require('../src/miniapp-ads');
+const secrets = require('../src/secrets');
 
 const ROOT = path.join(__dirname, '..');
 const PUBLIC_DIR = path.join(ROOT, 'public');
@@ -172,8 +173,12 @@ function injectAppHead(html, { app, site }) {
     await copyDir(from, dest);
     const entry = path.join(dest, 'index.html');
     if (fs.existsSync(entry)) {
-      const html = await fsp.readFile(entry, 'utf8');
-      const withSeo = injectAppHead(html, { app, site });
+      const raw = await fsp.readFile(entry, 'utf8');
+      const cleaned = secrets.cleanHtml(raw);
+      if (cleaned.findings.length || cleaned.removed.length) {
+        console.warn(`  ⚠ ${app.id}: 비밀값 ${cleaned.findings.length}건 제거${cleaned.removed.length ? ` + 설정 블록 ${cleaned.removed.length}개` : ''}`);
+      }
+      const withSeo = injectAppHead(cleaned.html, { app, site });
       await fsp.writeFile(entry, injectAppAds(withSeo, {
         client: site.adsense?.client,
         slot: site.adsense?.slotDisplay || site.adsense?.slotInline,
@@ -183,7 +188,7 @@ function injectAppHead(html, { app, site }) {
     for (const file of await fsp.readdir(dest, { withFileTypes: true })) {
       if (!file.isFile() || !/\.html?$/i.test(file.name) || file.name === 'index.html') continue;
       const target = path.join(dest, file.name);
-      const html = await fsp.readFile(target, 'utf8');
+      const html = secrets.cleanHtml(await fsp.readFile(target, 'utf8')).html;
       await fsp.writeFile(target, injectAppAds(html, {
         client: site.adsense?.client,
         slot: site.adsense?.slotDisplay || site.adsense?.slotInline,

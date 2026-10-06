@@ -14,6 +14,7 @@ const store = require('./store');
 const auth = require('./auth');
 const build = require('../src/build');
 const { injectAppAds } = require('../src/miniapp-ads');
+const { redactSecrets } = require('../src/secrets');
 
 export default {
   async fetch(request, env) {
@@ -71,8 +72,9 @@ export default {
             if (/\.html?$/i.test(rel)) {
               const site = await store.readSite(env);
               const ads = site.adsense || {};
+              const served = redactSecrets(new TextDecoder().decode(body)).html; // 혹시 남아 있으면 내보내지 않음
               if (ads.inApps !== false) {
-                const html = injectAppAds(new TextDecoder().decode(body), {
+                const html = injectAppAds(served, {
                   client: ads.client,
                   slot: ads.slotDisplay || ads.slotInline,
                 });
@@ -80,6 +82,11 @@ export default {
                   headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
                 });
               }
+            }
+            if (/^text\/html/i.test(build.contentTypeFor(rel)) || /\.html?$/i.test(rel)) {
+              return new Response(redactSecrets(new TextDecoder().decode(body)).html, {
+                headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
+              });
             }
             return new Response(body, {
               headers: {
@@ -95,7 +102,7 @@ export default {
           const site = await store.readSite(env);
           const ads = site.adsense || {};
           if (ads.inApps !== false) {
-            const html = injectAppAds(await asset.text(), {
+            const html = injectAppAds(redactSecrets(await asset.text()).html, {
               client: ads.client,
               slot: ads.slotDisplay || ads.slotInline,
             });

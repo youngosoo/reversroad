@@ -3,6 +3,7 @@
 /** Worker 에서의 앱 관리(추가·수정·삭제·이름 변경) — KV 저장소 사용 */
 
 const analyze = require('../src/analyze');
+const secrets = require('../src/secrets');
 const meta = require('../src/meta');
 const { extractZipFiles, createZip } = require('./zip');
 const store = require('./store');
@@ -29,16 +30,49 @@ function uniqueSlug(apps, base) {
   return candidate;
 }
 
-/** 업로드(파일 또는 zip)에서 앱 파일 목록을 만듭니다 */
+/**
+ * 업로드(파일 또는 zip)에서 앱 파일 목록을 만듭니다.
+ * HTML 안에 들어 있는 API 키·토큰은 여기서 제거합니다 (비밀값은 서버에 저장하지 않음).
+ */
 function filesFromUpload({ file, name }) {
   if (!file) {
-    return [{ path: 'index.html', body: Buffer.from(STARTER_HTML(String(name || '새 앱').trim()), 'utf8') }];
+    return {
+      files: [{ path: 'index.html', body: Buffer.from(STARTER_HTML(String(name || '새 앱').trim()), 'utf8') }],
+      secrets: [],
+      removedBlocks: [],
+    };
   }
   const buffer = file.body;
   if (buffer.length > MAX_UPLOAD) throw new HttpError(413, '파일이 너무 큽니다 (20MB 이하)');
   const isZip = looksLikeZip(buffer) || /\.zip$/i.test(file.name || '');
-  if (isZip) return extractZipFiles(buffer);
-  return [{ path: 'index.html', body: Buffer.from(buffer) }];
+  const raw = isZip ? extractZipFiles(buffer) : [{ path: 'index.html', body: Buffer.from(buffer) }];
+
+  const findings = [];
+  const removedBlocks = [];
+  const files = raw.map((entry) => {
+    if (!/\.html?$/i.test(entry.path)) return entry;
+    const { html, findings: found, removed } = secrets.cleanHtml(Buffer.from(entry.body).toString('utf8'));
+    findings.push(...found.map((f) => ({ ...f, file: entry.path })));
+    removedBlocks.push(...removed);
+    return { path: entry.path, body: Buffer.from(html, 'utf8') };
+  });
+  return { files, secrets: findings, removedBlocks };
+}
+
+/** 이미 등록된 앱의 파일만 교체합니다 (index.html 등) */
+async function replaceFiles(env, id, file) {
+  const apps = await store.readApps(env);
+  const app = apps.find((a) => a.id === id);
+  if (!app) throw new HttpError(404, '앱을 찾을 수 없습니다');
+  const { files, secrets: found, removedBlocks } = filesFromUpload({ file, name: app.name });
+  const before = await store.listFiles(env, id);
+  await Promise.all(before.map((f) => env.MYHOME.delete(store.fileKey(id, f.path))));
+  await store.putFiles(env, id, files);
+  app.files = files.map((f) => f.path);
+  app.updatedAt = new Date().toISOString();
+  const saved = await store.writeApps(env, apps);
+  await store.rebuild(env, { apps: saved });
+  return { app, secrets: found, removedBlocks };
 }
 
 async function addApp(env, { slug, name, desc, icon, tags, howto, category, file }) {
@@ -47,7 +81,8 @@ async function addApp(env, { slug, name, desc, icon, tags, howto, category, file
   if (key && !isValidSlug(key)) throw new HttpError(400, 'id 는 영소문자·숫자·하이픈만 쓸 수 있습니다 (40자 이하)');
   if (key && apps.some((a) => a.id === key)) throw new HttpError(409, `앱 "${key}" 이(가) 이미 있습니다`);
 
-  const files = filesFromUpload({ file, name });
+  const upload = filesFromUpload({ file, name });
+  const files = upload.files;
   const entry = files.find((f) => f.path === 'index.html');
   const analysis = entry ? safeAnalyze(entry.body, (file && file.name) || 'index.html') : null;
   const guess = (analysis && analysis.guess) || {};
@@ -82,7 +117,7 @@ async function addApp(env, { slug, name, desc, icon, tags, howto, category, file
   apps.push(app);
   const saved = await store.writeApps(env, apps);
   const rebuild = await store.rebuild(env, { apps: saved });
-  return { app, analysis, rebuild };
+  return { app, analysis, rebuild, secrets: upload.secrets, removedBlocks: upload.removedBlocks };
 }
 
 async function updateApp(env, id, patch) {
@@ -171,4 +206,4 @@ async function downloadApp(env, id) {
   return { buffer: createZip(files, id), name: app.name };
 }
 
-module.exports = { addApp, updateApp, renameApp, removeApp, analyzeApp, downloadApp, setManual, safeAnalyze };
+module.exports = { addApp, updateApp, renameApp, removeApp, analyzeApp, downloadApp, setManual, replaceFiles, safeAnalyze };

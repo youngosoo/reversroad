@@ -420,7 +420,8 @@ function appDetailPage({ site, app, apps }) {
               ${relatedGuides.map((g) => `<li><a href="/guide/${attr(g.slug)}">${esc(g.title)}</a> — <span class="muted">${esc(g.summary)}</span></li>`).join('')}
             </ul>
           </section>` : ''}
-          ${adSlot(site, { slot: site.adsense?.slotInline, className: 'ad-inline' })}
+          ${adSlot(site, { slot: site.adsense?.slotDisplay, name: '디스플레이 반응형 광고', className: 'ad-inline ad-app-mid' })}
+          ${adSlot(site, { slot: site.adsense?.slotDisplay, name: '디스플레이 반응형 광고', className: 'ad-inline ad-app-bottom' })}
         </div>
         <aside class="detail-side">
           <div class="card info-card">
@@ -735,7 +736,8 @@ function guideDetailPage({ site, guide, apps = [] }) {
           return s.h ? `<section class="prose-block"><h2 id="${attr(slugifyHeading(s.h))}">${esc(s.h)}</h2>${inner}</section>` : inner;
         }).join('')}
       </div>
-      ${adSlot(site, { slot: site.adsense?.slotInline, className: 'ad-inline' })}
+      ${adSlot(site, { slot: site.adsense?.slotDisplay, name: '디스플레이 반응형 광고', className: 'ad-inline ad-guide-mid' })}
+      ${adSlot(site, { slot: site.adsense?.slotDisplay, name: '디스플레이 반응형 광고', className: 'ad-inline ad-guide-bottom' })}
       ${relatedAppList.length ? `
       <section class="section">
         <h2>이 글과 관련된 앱</h2>
@@ -902,7 +904,7 @@ function categoryPage({ site, apps, category }) {
           </article>`).join('')}
       </div>
     </section>` : ''}
-    ${adSlot(site, { slot: site.adsense?.slotInline, className: 'ad-inline' })}
+    ${adSlot(site, { slot: site.adsense?.slotDisplay, name: '디스플레이 반응형 광고', className: 'ad-inline ad-category' })}
     ${others.length ? `
     <section class="section">
       <h2>다른 분야</h2>

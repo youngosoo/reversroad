@@ -54,9 +54,24 @@ function merge(base, patch) {
 }
 
 
-/** 공개 페이지가 쓰는 값 (운영자·도메인·광고 준비 상태 등) */
+/**
+ * 공개 페이지가 쓰는 값 (운영자·도메인·광고 준비 상태 등).
+ *
+ * adsPreview: 개발환경(localhost 등)에서 광고 코드 대신 "자리표시자"를 그릴지 여부.
+ *   - 로컬 서버로 열면 true → 광고가 어디에 들어가는지 눈으로 확인할 수 있습니다.
+ *   - 배포 도메인에서는 false → 실제 광고 코드가 나갑니다.
+ *   - env.ADS_PREVIEW=1/0 으로 강제할 수 있습니다.
+ */
 function publicSite(site, reqDomain = '') {
   const domain = String(site.domain || reqDomain || '').replace(/\/+$/, '');
+  // 접속 호스트를 알면 그것으로, 모르면(서버에서 페이지를 만들 때) 설정된 도메인으로 판단합니다.
+  const servingHost = String(reqDomain || '') || domain;
+  const localServing = !servingHost
+    || /(^https?:\/\/)?(localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)(:\d+)?$/.test(servingHost)
+    || /\.local(:\d+)?$/.test(servingHost);
+  const preview = process.env.ADS_PREVIEW === '1' ? true
+    : process.env.ADS_PREVIEW === '0' ? false
+      : localServing;
   const owner = site.owner || '운영자';
   const email = site.email || '';
   const client = normalizeAdsClient(site.adsense?.client);
@@ -69,6 +84,7 @@ function publicSite(site, reqDomain = '') {
     emailReady: Boolean(email) && !isPlaceholderEmail(email),
     domainReady: Boolean(domain) && !/localhost|127\.0\.0\.1/.test(domain) && domain.startsWith('https://'),
     adsenseReady: /^ca-pub-\d{10,}$/.test(client),
+    adsPreview: preview,
   };
 }
 

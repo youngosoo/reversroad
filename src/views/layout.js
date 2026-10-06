@@ -51,16 +51,39 @@ function appCard(app, { site } = {}) {
     </article>`;
 }
 
-/** 광고 자리. 게시자 ID가 설정되어 있을 때만 실제 광고를 요청합니다. */
-function adSlot(site, { slot = '', label = '광고', className = '' } = {}) {
-  if (!site?.adsenseReady) return '';
+/**
+ * 광고 자리.
+ *
+ * - 배포 도메인: AdSense 코드를 그대로 내보냅니다.
+ * - 개발환경(localhost)·게시자 ID 미설정: 코드 대신 "자리표시자"를 그려서
+ *   어느 위치에 어떤 광고가 들어가는지 눈으로 확인할 수 있게 합니다.
+ */
+function adSlot(site, { slot = '', label = '광고', className = '', name = '' } = {}) {
   const id = String(slot || '').trim();
-  if (!id) return '';
-  return `
+  const ready = Boolean(site?.adsenseReady && id && !site?.adsPreview);
+  const position = className.replace(/\bad-inline\b/, '').trim().replace(/\s+/g, '·') || '기본';
+
+  if (ready) {
+    return `
     <aside class="ad-slot ${attr(className)}" aria-label="${attr(label)}">
       <span class="ad-label">${esc(label)}</span>
       <ins class="adsbygoogle" style="display:block" data-ad-client="${attr(site.adsense.client)}" data-ad-slot="${attr(id)}" data-ad-format="auto" data-full-width-responsive="true"></ins>
       <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    </aside>`;
+  }
+
+  // 자리표시자 (개발환경)
+  const reason = !site?.adsense?.client
+    ? '게시자 ID 미설정'
+    : (site?.adsPreview ? '개발환경 미리보기' : '슬롯 ID 미설정');
+  return `
+    <aside class="ad-slot ad-placeholder ${attr(className)}" aria-label="${attr(label)} 자리">
+      <span class="ad-label">${esc(label)} 자리 · ${esc(reason)}</span>
+      <div class="ad-placeholder-body">
+        <strong>${esc(name || '반응형 디스플레이 광고')}</strong>
+        <span class="mono">${id ? `slot ${esc(id)}` : 'slot 미설정'} · ${esc(position)}</span>
+        <span class="muted small">실제 광고는 배포 사이트에서 표시됩니다. 이 상자는 개발환경에만 보입니다.</span>
+      </div>
     </aside>`;
 }
 

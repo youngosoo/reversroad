@@ -84,37 +84,53 @@ async function kvDelete(token, key) {
   if (!res.ok) throw new Error(`KV 삭제 실패 (${key}): HTTP ${res.status}`);
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 async function main() {
   const token = wranglerToken();
   const appsRaw = await kvGet(token, 'data:apps');
-  const siteRaw = await kvGet(token, 'data:site');
   if (!appsRaw) throw new Error('KV 에 앱 목록(data:apps)이 없습니다. node tools/init-kv.js 로 먼저 올리세요.');
-
   const apps = JSON.parse(appsRaw);
-  const site = siteStore.publicSite(siteRaw ? JSON.parse(siteRaw) : { ...siteStore.DEFAULTS });
-  site.adminUrl = '/admin.html';
 
-  const rendered = build.renderSite({ site, apps });
-  const wanted = Object.keys(rendered);
-  console.log(`KV 페이지 재생성: ${wanted.length}개 (앱 ${apps.length}개 기준)`);
-
-  if (DRY) {
-    for (const rel of wanted.slice(0, 12)) console.log('  -', rel);
-    return;
-  }
-
-  const existing = await kvList(token, 'page:');
-  const stale = existing.map((k) => k.slice('page:'.length)).filter((rel) => !wanted.includes(rel));
-
+  // KV 는 쓰기 직후 옛 값을 읽을 수 있어(최대 60초), 설정이 최신인지 확인하며 최대 3회 다시 만듭니다.
   let done = 0;
-  for (const [rel, html] of Object.entries(rendered)) {
-    await kvPut(token, `page:${rel}`, html);
-    done += 1;
-  }
-  for (const rel of stale) await kvDelete(token, `page:${rel}`);
-  await kvPut(token, 'meta:generatedAt', new Date().toISOString());
+  let staleRemoved = 0;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const siteRaw = await kvGet(token, 'data:site');
+    const settings = siteRaw ? JSON.parse(siteRaw) : { ...siteStore.DEFAULTS };
+    const site = siteStore.publicSite(settings);
+    site.adminUrl = '/admin.html';
 
-  console.log(`✓ ${done}개 페이지를 KV 에 반영했습니다${stale.length ? ` (오래된 페이지 ${stale.length}개 삭제)` : ''}`);
+    const rendered = build.renderSite({ site, apps });
+    const wanted = Object.keys(rendered);
+    console.log(`KV 페이지 재생성 (${attempt}회차): ${wanted.length}개 · 사이트명 "${site.name}"`);
+
+    if (DRY) {
+      for (const rel of wanted.slice(0, 12)) console.log('  -', rel);
+      return;
+    }
+
+    const existing = await kvList(token, 'page:');
+    const stale = existing.map((k) => k.slice('page:'.length)).filter((rel) => !wanted.includes(rel));
+
+    done = 0;
+    for (const [rel, html] of Object.entries(rendered)) {
+      await kvPut(token, `page:${rel}`, html);
+      done += 1;
+    }
+    for (const rel of stale) await kvDelete(token, `page:${rel}`);
+    staleRemoved = stale.length;
+    await kvPut(token, 'meta:generatedAt', new Date().toISOString());
+
+    // 설정이 그사이 바뀌었는지 확인 (KV 읽기 지연 대비)
+    await sleep(4000);
+    const againRaw = await kvGet(token, 'data:site');
+    const again = againRaw ? JSON.parse(againRaw) : {};
+    if ((again.updatedAt || '') === (settings.updatedAt || '')) break;
+    console.log('  ↻ 설정이 더 최신입니다. 다시 생성합니다.');
+  }
+
+  console.log(`✓ ${done}개 페이지를 KV 에 반영했습니다${staleRemoved ? ` (오래된 페이지 ${staleRemoved}개 삭제)` : ''}`);
 }
 
 main().catch((err) => {

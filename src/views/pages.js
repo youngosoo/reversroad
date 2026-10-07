@@ -252,7 +252,7 @@ function homePage({ site, apps, guides = GUIDES }) {
   return layout({
     site,
     title: null,
-    description: `${site.tagline} — 설치 없이 브라우저에서 바로 쓰는 웹앱 ${apps.length}개를 소개합니다.`,
+    description: site.description,
     path: '/',
     body,
     nav: '',

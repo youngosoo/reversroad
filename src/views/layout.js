@@ -195,6 +195,7 @@ function layout({
 <title>${esc(fullTitle)}</title>
 <meta name="description" content="${attr(desc)}" />
 ${canonical ? `<link rel="canonical" href="${attr(canonical)}" />` : ''}
+${site.domain ? `<link rel="alternate" type="application/rss+xml" title="${attr(site.name)}" href="${attr(`${site.domain}/rss.xml`)}" />` : ''}
 <meta name="robots" content="${noIndex ? 'noindex, nofollow' : 'index, follow, max-image-preview:large'}" />
 <meta name="theme-color" id="themeColor" content="#f6f7fb" />
 <meta property="og:type" content="website" />

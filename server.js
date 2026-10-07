@@ -292,6 +292,16 @@ app.get('/robots.txt', async (req, res, next) => {
   }
 });
 
+app.get('/rss.xml', async (req, res, next) => {
+  try {
+    const site = await currentSite(req);
+    const apps = meta.filterVisible(await manifest.readApps());
+    res.type('application/rss+xml; charset=utf-8').send(seo.rss({ site, apps, guides: GUIDES }));
+  } catch (err) {
+    next(err);
+  }
+});
+
 app.get('/sitemap.xml', async (req, res, next) => {
   try {
     const site = await currentSite(req);

@@ -81,6 +81,69 @@ function robots({ site }) {
   return lines.join('\n');
 }
 
+/**
+ * RSS 2.0 피드 (앱 + 안내 글).
+ * pubDate 는 RFC 822 형식이어야 하므로 toUTCString() 을 씁니다.
+ */
+function rss({ site, apps = [], guides = GUIDES }) {
+  const base = String(site.domain || '').replace(/\/+$/, '');
+  const esc = xmlEscape;
+
+  const items = [];
+
+  for (const app of apps) {
+    const link = `${base}/app/${app.id}`;
+    const when = new Date(app.createdAt || Date.now());
+    items.push({
+      title: app.name,
+      link,
+      description: app.desc || `${app.name} — 설치 없이 쓰는 웹앱`,
+      date: Number.isNaN(when.getTime()) ? new Date() : when,
+      guid: link,
+      sort: Number.isNaN(when.getTime()) ? 0 : when.getTime(),
+    });
+  }
+
+  for (const guide of guides) {
+    const link = `${base}/guide/${guide.slug}`;
+    const when = new Date(guide.date || Date.now());
+    items.push({
+      title: guide.title,
+      link,
+      description: guide.summary,
+      date: Number.isNaN(when.getTime()) ? new Date() : when,
+      guid: link,
+      sort: Number.isNaN(when.getTime()) ? 0 : when.getTime(),
+    });
+  }
+
+  items.sort((a, b) => b.sort - a.sort);
+
+  const body = items
+    .map((item) => `    <item>
+      <title>${esc(item.title)}</title>
+      <link>${esc(item.link)}</link>
+      <description>${esc(item.description)}</description>
+      <pubDate>${item.date.toUTCString()}</pubDate>
+      <guid isPermaLink="true">${esc(item.guid)}</guid>
+    </item>`)
+    .join('\n');
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>${esc(site.name)}</title>
+    <link>${esc(base)}</link>
+    <description>${esc(site.description || site.tagline || '')}</description>
+    <language>${esc(site.locale || 'ko')}</language>
+    <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
+    <atom:link href="${esc(base)}/rss.xml" rel="self" type="application/rss+xml" />
+${body}
+  </channel>
+</rss>
+`;
+}
+
 /** AdSense 에서 요구하는 ads.txt (게시자 ID가 설정된 경우에만 내용을 만듭니다). */
 function adsTxt({ site }) {
   const client = String(site.adsense?.client || '').trim();
@@ -91,4 +154,4 @@ google.com, ${pub}, DIRECT, f08c47fec0942fa0
 `;
 }
 
-module.exports = { sitemap, robots, adsTxt, entries };
+module.exports = { sitemap, robots, adsTxt, rss, entries };

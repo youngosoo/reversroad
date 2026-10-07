@@ -45,6 +45,7 @@ function renderSite({ site, apps }) {
   out['404.html'] = pages.notFoundPage({ site });
 
   out['robots.txt'] = seo.robots({ site });
+  out['rss.xml'] = seo.rss({ site, apps: listed, guides: GUIDES });
   out['sitemap.xml'] = seo.sitemap({ site, apps: listed });
   const ads = seo.adsTxt({ site });
   if (ads) out['ads.txt'] = ads;
@@ -74,6 +75,7 @@ function isDynamicPageKey(key) {
     || key === 'terms/index.html'
     || key === 'disclaimer/index.html'
     || key === 'robots.txt'
+    || key === 'rss.xml'
     || key === 'sitemap.xml'
     || key === 'ads.txt'
     || /^(app|category|guide)\//.test(key);
@@ -95,6 +97,7 @@ const CONTENT_TYPES = {
 };
 
 function contentTypeFor(filePath) {
+  if (/\brss\.xml$/i.test(String(filePath))) return 'application/rss+xml; charset=utf-8';
   const ext = String(filePath).split('.').pop().toLowerCase();
   return CONTENT_TYPES[ext] || 'application/octet-stream';
 }

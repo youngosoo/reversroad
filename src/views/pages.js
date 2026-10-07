@@ -889,6 +889,12 @@ function categoryPage({ site, apps, category }) {
       ? `<div class="grid">${items.map((a) => appCard(a, { site })).join('')}</div>`
       : '<div class="card empty">이 분야에는 아직 앱이 없습니다. 다른 분야를 살펴보세요.</div>'}
     <section class="section prose narrow">
+      ${(category.tips || []).length ? `
+      <h2>이 분야 앱을 쓸 때 기억할 것</h2>
+      <ul class="tips">
+        ${category.tips.map((tip) => `<li>${esc(tip)}</li>`).join('')}
+      </ul>
+      <h2>이 분야는 어떤 곳인가요</h2>` : ''}
       ${(category.intro || []).map((t) => `<p>${esc(t)}</p>`).join('')}
       <p>분야가 잘못 묶였다고 생각되면 <a href="/contact">문의 페이지</a>로 알려 주세요. 확인 후 옮기겠습니다.</p>
     </section>

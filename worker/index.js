@@ -13,8 +13,27 @@ const { handleApi, json, HttpError } = require('./api');
 const store = require('./store');
 const auth = require('./auth');
 const build = require('../src/build');
-const { injectAppAds } = require('../src/miniapp-ads');
+const { injectAppAds, injectAppMeta } = require('../src/miniapp-ads');
 const { redactSecrets } = require('../src/secrets');
+
+const CANONICAL_HOST = 'www.reversroad.com';
+const PRODUCTION_HOSTS = new Set([CANONICAL_HOST, 'reversroad.com']);
+
+/** 같은 페이지가 여러 주소로 열리지 않도록 표준 주소로 301 (링크 점수 한 곳으로 모음) */
+function canonicalRedirect(request, url) {
+  if (!PRODUCTION_HOSTS.has(url.hostname)) return null; // 로컬·workers.dev 미리보기는 그대로
+  const proto = request.headers.get('x-forwarded-proto') || url.protocol.replace(':', '');
+  let path = url.pathname;
+  let changed = false;
+  if (/\/index\.html$/i.test(path)) {
+    path = path.replace(/\/index\.html$/i, '/');
+    changed = true;
+  }
+  if (proto !== 'https' || url.hostname !== CANONICAL_HOST || changed) {
+    return Response.redirect(`https://${CANONICAL_HOST}${path}${url.search}`, 301);
+  }
+  return null;
+}
 
 export default {
   async fetch(request, env) {
@@ -22,6 +41,9 @@ export default {
     const path = url.pathname;
 
     try {
+      const redirect = canonicalRedirect(request, url);
+      if (redirect) return redirect;
+
       // 1) API · 인증
       if (path.startsWith('/api/') || path.startsWith('/auth/')) {
         const response = await handleApi(request, env, url);
@@ -71,8 +93,11 @@ export default {
             // 앱 화면(HTML)에는 광고 코드를 끼워 넣어 내보냅니다 (파일 자체는 그대로)
             if (/\.html?$/i.test(rel)) {
               const site = await store.readSite(env);
+              const app = await store.getApp(env, id);
               const ads = site.adsense || {};
-              const served = redactSecrets(new TextDecoder().decode(body)).html; // 혹시 남아 있으면 내보내지 않음
+              const publicSite = store.publicSite(site, url.host);
+              let served = redactSecrets(new TextDecoder().decode(body)).html; // 혹시 남아 있으면 내보내지 않음
+              served = injectAppMeta(served, { app, site: publicSite });
               if (ads.inApps !== false) {
                 const html = injectAppAds(served, {
                   client: ads.client,
@@ -101,8 +126,11 @@ export default {
         if (asset && asset.status === 200 && /\.html?$/i.test(path) && /^\/apps\//.test(path)) {
           const site = await store.readSite(env);
           const ads = site.adsense || {};
+          const appId = (path.match(/^\/apps\/([^/]+)/) || [])[1];
+          const app = appId ? await store.getApp(env, decodeURIComponent(appId)) : null;
+          let text = injectAppMeta(redactSecrets(await asset.text()).html, { app, site: store.publicSite(site, url.host) });
           if (ads.inApps !== false) {
-            const html = injectAppAds(redactSecrets(await asset.text()).html, {
+            const html = injectAppAds(text, {
               client: ads.client,
               slot: ads.slotDisplay || ads.slotInline,
             });
@@ -110,6 +138,9 @@ export default {
               headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
             });
           }
+          return new Response(text, {
+            headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
+          });
         }
         return asset;
       }

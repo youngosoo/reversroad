@@ -36,6 +36,22 @@ const sessionSecret =
 const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
+
+// 표준 주소로 301 (http→https, non-www→www, /index.html→/) — 배포 도메인으로 접속했을 때만 동작
+const CANONICAL_HOST = 'www.reversroad.com';
+app.use((req, res, next) => {
+  const host = String(req.headers.host || '').split(':')[0].toLowerCase();
+  if (host !== CANONICAL_HOST && host !== 'reversroad.com') return next();
+  const proto = String(req.headers['x-forwarded-proto'] || req.protocol || 'http');
+  const [pathOnly, query] = req.originalUrl.split('?');
+  let path = pathOnly;
+  let changed = false;
+  if (/\/index\.html$/i.test(path)) { path = path.replace(/\/index\.html$/i, '/'); changed = true; }
+  if (proto !== 'https' || host !== CANONICAL_HOST || changed) {
+    return res.redirect(301, `https://${CANONICAL_HOST}${path}${query ? `?${query}` : ''}`);
+  }
+  next();
+});
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false }));
 app.use(
@@ -470,7 +486,8 @@ app.get([/^\/apps\/([a-z0-9-]+)\/$/i, /^\/apps\/([a-z0-9-]+)\/([^/]+\.html?)$/i]
     if (ads.inApps === false) return next();
     const target = path.join(APPS_DIR, slug, rel);
     if (!target.startsWith(APPS_DIR)) return next();
-    const html = secrets.cleanHtml(await fsp.readFile(target, 'utf8')).html;
+    let html = secrets.cleanHtml(await fsp.readFile(target, 'utf8')).html;
+    html = miniappAds.injectAppMeta(html, { app: await manifest.getApp(slug), site });
     res.type('html').send(miniappAds.injectAppAds(html, {
       client: ads.client,
       slot: ads.slotDisplay || ads.slotInline,

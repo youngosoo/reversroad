@@ -30,7 +30,8 @@ function formatDate(iso) {
 
 /** 앱 카드. 목록/상세/홈에서 공통으로 씁니다. */
 function appCard(app, { site } = {}) {
-  const href = `/${app.path || `apps/${app.id}/`}`;
+  const href = `/${app.path || `apps/${app.id}/`}`; // 실행 화면
+  const detailHref = `/app/${app.id}`; // 설명·사용법이 있는 상세 페이지 (검색 유입용)
   const category = getCategory(app.category);
   const haystack = [app.name, app.desc, app.id, ...(app.tags || [])].join(' ').toLowerCase();
   return `
@@ -38,7 +39,7 @@ function appCard(app, { site } = {}) {
       <div class="app-card-top">
         <span class="icon" aria-hidden="true">${esc(app.icon || '📦')}</span>
         <div class="app-card-head">
-          <h3><a href="${attr(href)}">${esc(app.name)}</a></h3>
+          <h3><a href="${attr(detailHref)}">${esc(app.name)}</a></h3>
           ${category ? `<a class="cat-badge" href="/category/${attr(category.slug)}"><span aria-hidden="true">${esc(category.icon)}</span> ${esc(category.label)}</a>` : ''}
           ${app.tags?.length ? `<div class="tags">${app.tags.slice(0, 4).map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : ''}
         </div>
@@ -174,8 +175,12 @@ function layout({
   jsonLd = [],
   noIndex = false,
   bodyClass = '',
+  ogImage = '',
+  ogType = 'website',
 }) {
-  const fullTitle = title ? `${title} · ${site.name}` : `${site.name} — ${site.tagline}`;
+  const fullTitle = title
+    ? `${title} · ${site.name}`
+    : (site.homeTitle ? `${site.homeTitle} | ${site.name}` : `${site.name} — ${site.tagline}`);
   const desc = description || site.description;
   const canonical = site.domain ? `${site.domain}${pagePath === '/' ? '/' : pagePath}` : null;
   const graphs = jsonLd.filter(Boolean);
@@ -198,15 +203,18 @@ ${canonical ? `<link rel="canonical" href="${attr(canonical)}" />` : ''}
 ${site.domain ? `<link rel="alternate" type="application/rss+xml" title="${attr(site.name)}" href="${attr(`${site.domain}/rss.xml`)}" />` : ''}
 <meta name="robots" content="${noIndex ? 'noindex, nofollow' : 'index, follow, max-image-preview:large'}" />
 <meta name="theme-color" id="themeColor" content="#f6f7fb" />
-<meta property="og:type" content="website" />
+<meta property="og:type" content="${attr(ogType)}" />
 <meta property="og:site_name" content="${attr(site.name)}" />
 <meta property="og:title" content="${attr(fullTitle)}" />
 <meta property="og:description" content="${attr(desc)}" />
 ${canonical ? `<meta property="og:url" content="${attr(canonical)}" />` : ''}
-<meta name="twitter:card" content="summary" />
+<meta name="twitter:card" content="summary_large_image" />
 <link rel="icon" href="${attr(assetUrl(resolveLogoName()))}" />
 <link rel="apple-touch-icon" href="${attr(assetUrl(resolveLogoName()))}" />
-${site.domain ? `<meta property="og:image" content="${attr(site.domain + logoPath())}" />` : ''}
+${site.domain ? `<meta property="og:image" content="${attr(site.domain + (ogImage || assetUrl('og-home.png')))}" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content="${attr(site.name)}" />` : ''}
 <script src="${attr(assetUrl('theme.js'))}"></script>
 <link rel="stylesheet" href="${attr(assetUrl('style.css'))}" />
 ${site.adsenseReady ? `<meta name="google-adsense-account" content="${attr(site.adsense.client)}" />
@@ -222,7 +230,7 @@ ${graphs.length ? `<script type="application/ld+json">${safeJson(graphs.length =
     <a class="brand" href="/">${brandLogo()}<span class="brand-text">${esc(site.name)}</span></a>
     <nav class="site-nav" aria-label="주요 메뉴">
       ${navItems.map((item) => `<a href="${attr(item.href)}"${nav === item.key ? ' class="active" aria-current="page"' : ''}>${esc(item.label)}</a>`).join('')}
-      ${site.hideAdmin ? '' : `<a class="nav-admin" href="${attr(site.adminUrl || '/admin.html')}"${site.adminUrl && !site.adminUrl.startsWith('/') ? ' target="_blank" rel="noopener"' : ''}>관리자</a>`}
+      ${site.hideAdmin || !site.showAdminLink ? '' : `<a class="nav-admin" href="${attr(site.adminUrl || '/admin.html')}"${site.adminUrl && !site.adminUrl.startsWith('/') ? ' target="_blank" rel="noopener"' : ''}>관리자</a>`}
       ${themeToggle()}
     </nav>
   </div>

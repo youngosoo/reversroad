@@ -76,6 +76,13 @@ function websiteJsonLd(site) {
       '@type': 'Organization',
       name: site.name,
       ...(site.email ? { email: site.email } : {}),
+      ...(site.domain ? { url: site.domain } : {}),
+      logo: {
+        '@type': 'ImageObject',
+        url: `${site.domain || ''}/assets/logo.png`,
+        width: 512,
+        height: 512,
+      },
     },
   };
 }
@@ -153,8 +160,8 @@ function homePage({ site, apps, guides = GUIDES }) {
   const body = `
   <section class="hero">
     <div class="shell hero-inner">
-      <p class="eyebrow">직접 만든 웹앱 모음</p>
-      <h1>${esc(site.name)}</h1>
+      <p class="eyebrow">${esc(site.name)}</p>
+      <h1>${esc(site.homeHeading || site.name)}</h1>
       <p class="lead">${esc(site.tagline)}</p>
       <p class="hero-desc">${esc(site.description)}</p>
       ${heroStats(apps, guides)}
@@ -249,14 +256,33 @@ function homePage({ site, apps, guides = GUIDES }) {
   </div>
   ${FILTER_SCRIPT}`;
 
+  const homeDescription = String(site.homeDescription || site.description || '')
+    .replace(/\{count\}/g, String(apps.length));
+
   return layout({
     site,
     title: null,
-    description: site.description,
+    description: homeDescription,
     path: '/',
     body,
     nav: '',
-    jsonLd: [websiteJsonLd(site), faqJsonLd()],
+    ogImage: '/assets/og-home.png',
+    jsonLd: [
+      websiteJsonLd(site),
+      faqJsonLd(),
+      {
+        '@context': 'https://schema.org',
+        '@type': 'ItemList',
+        name: `${site.name} 웹앱 목록`,
+        numberOfItems: apps.length,
+        itemListElement: apps.map((a, i) => ({
+          '@type': 'ListItem',
+          position: i + 1,
+          name: a.name,
+          ...(site.domain ? { url: `${site.domain}/app/${a.id}` } : {}),
+        })),
+      },
+    ],
   });
 }
 
@@ -473,6 +499,7 @@ function appDetailPage({ site, app, apps }) {
     path: `/app/${app.id}`,
     body,
     nav: 'apps',
+    ogImage: '/assets/og-app.png',
     noIndex: Boolean(app.hidden), // 비노출 앱은 검색엔진에 싣지 않습니다
     jsonLd: [
       crumbs.jsonLd,

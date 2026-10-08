@@ -62,4 +62,33 @@ function injectAppAds(html, { client, slot, adtest = false } = {}) {
   return out;
 }
 
-module.exports = { injectAppAds, headTag, adBlock, PUB_RE };
+/**
+ * 실행 화면(/apps/<id>/…)에 검색엔진용 태그를 넣습니다.
+ *  - canonical → 설명·사용법이 있는 상세 페이지(/app/<id>)
+ *  - meta description
+ *  - 접근성을 막는 viewport 옵션(user-scalable=no, maximum-scale=1) 제거
+ */
+function injectAppMeta(html, { app, site } = {}) {
+  if (typeof html !== 'string' || !app || !site?.domain) return html;
+  let out = html;
+  const canonical = `${String(site.domain).replace(/\/+$/, '')}/app/${app.id}`;
+  const desc = String(app.desc || `${app.name} — ${site.name}에서 제공하는 웹앱`).slice(0, 300);
+  const escAttr = (v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  // 접근성: 확대 금지 옵션 제거
+  out = out.replace(
+    /<meta[^>]+name=["']viewport["'][^>]*>/gi,
+    '<meta name="viewport" content="width=device-width, initial-scale=1" />'
+  );
+
+  const tags = [];
+  if (!/rel=["']canonical["']/i.test(out)) tags.push(`<link rel="canonical" href="${escAttr(canonical)}" />`);
+  if (!/name=["']description["']/i.test(out)) tags.push(`<meta name="description" content="${escAttr(desc)}" />`);
+  if (!tags.length) return out;
+  if (/<\/head>/i.test(out)) return out.replace(/<\/head>/i, `${tags.join('\n')}\n</head>`);
+  if (/<head[^>]*>/i.test(out)) return out.replace(/<head[^>]*>/i, (m) => `${m}\n${tags.join('\n')}`);
+  if (/<html[^>]*>/i.test(out)) return out.replace(/<html[^>]*>/i, (m) => `${m}\n<head>${tags.join('\n')}</head>`);
+  return `${tags.join('\n')}\n${out}`;
+}
+
+module.exports = { injectAppAds, injectAppMeta, headTag, adBlock, PUB_RE };

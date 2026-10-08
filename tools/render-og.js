@@ -23,6 +23,10 @@ const PORT = 9362;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const site = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'site.json'), 'utf8'));
+// 헤더 마크는 실제 로고(public/assets/logo.svg)를 그대로 씁니다.
+const logoSvg = fs.readFileSync(path.join(ROOT, 'public', 'assets', 'logo.svg'), 'utf8')
+  .replace(/<\?xml[^>]*\?>/, '')
+  .trim();
 const apps = JSON.parse(fs.readFileSync(path.join(ROOT, 'data', 'apps.json'), 'utf8')).filter((a) => !a.hidden);
 
 function esc(s) {
@@ -42,7 +46,8 @@ function page({ title, subtitle, chips, badge }) {
   .glow { position: absolute; right: -120px; top: -120px; width: 520px; height: 520px; border-radius: 50%; background: rgba(255,255,255,.35); }
   .glow2 { position: absolute; left: -160px; bottom: -220px; width: 480px; height: 480px; border-radius: 50%; background: rgba(0,0,0,.06); }
   header { display: flex; align-items: center; gap: 18px; position: relative; }
-  .mark { width: 72px; height: 72px; border-radius: 50%; background: #0D0D0D; color: #FFD400; display: grid; place-items: center; font: 700 46px/1 Georgia, "Times New Roman", serif; }
+  .mark { width: 76px; height: 76px; border-radius: 50%; overflow: hidden; background: #FFFFFF; display: block; flex: 0 0 auto; }
+  .mark svg { display: block; width: 76px; height: 76px; }
   .brand { font-size: 28px; font-weight: 800; letter-spacing: -0.01em; }
   main { position: relative; }
   h1 { font-size: 74px; line-height: 1.14; letter-spacing: -0.03em; max-width: 950px; }
@@ -52,7 +57,7 @@ function page({ title, subtitle, chips, badge }) {
   .badge { position: absolute; right: 72px; bottom: 64px; background: #0D0D0D; color: #FFD400; border-radius: 999px; padding: 14px 28px; font-size: 26px; font-weight: 800; }
 </style></head><body>
   <div class="glow"></div><div class="glow2"></div>
-  <header><span class="mark">R</span><span class="brand">${esc(site.name)}</span></header>
+  <header><span class="mark">${logoSvg}</span><span class="brand">${esc(site.name)}</span></header>
   <main><h1>${esc(title)}</h1><p class="sub">${esc(subtitle)}</p></main>
   <footer>${(chips || []).map((c) => `<span class="chip">${esc(c)}</span>`).join('')}</footer>
   ${badge ? `<div class="badge">${esc(badge)}</div>` : ''}

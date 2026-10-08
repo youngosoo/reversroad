@@ -20,6 +20,7 @@ const siteStore = require('../src/site');
 const build = require('../src/build');
 const { injectAppAds } = require('../src/miniapp-ads');
 const secrets = require('../src/secrets');
+const { assetUrl, resolveLogoName } = require('../src/assets');
 
 const ROOT = path.join(__dirname, '..');
 const PUBLIC_DIR = path.join(ROOT, 'public');
@@ -43,6 +44,17 @@ async function writeFile(rel, contents) {
   await fsp.mkdir(path.dirname(target), { recursive: true });
   await fsp.writeFile(target, contents, 'utf8');
   return target;
+}
+
+/** 정적 HTML 안의 로고 주소에 내용 해시(?v=)를 붙여 로고 교체가 즉시 반영되게 합니다. */
+async function copyHtmlWithLogoVersion(name) {
+  const from = path.join(PUBLIC_DIR, name);
+  const to = path.join(OUT, name);
+  let html = await fsp.readFile(from, 'utf8');
+  const href = assetUrl(resolveLogoName());
+  html = html.replace(/(src="|href=")\/assets\/logo\.[a-z]+(\?[^"]*)?/g, (m, attr) => `${attr}${href}`);
+  await fsp.mkdir(path.dirname(to), { recursive: true });
+  await fsp.writeFile(to, html, 'utf8');
 }
 
 async function copyFile(from, to) {
@@ -151,8 +163,8 @@ function injectAppHead(html, { app, site }) {
   written.push(await writeFile('_headers', build.HEADERS));
 
   // 관리자·로그인 화면도 함께 올립니다 (Worker 가 인증을 걸고 내려보냅니다)
-  await copyFile(path.join(PUBLIC_DIR, 'admin.html'), path.join(OUT, 'admin.html'));
-  await copyFile(path.join(PUBLIC_DIR, 'login.html'), path.join(OUT, 'login.html'));
+  await copyHtmlWithLogoVersion('admin.html');
+  await copyHtmlWithLogoVersion('login.html');
 
   // 그 밖의 public/ 최상위 파일(검색엔진 소유 확인 파일 등)도 그대로 올립니다.
   // 예: naver-site-verification, google-site-verification, BingSiteAuth.xml

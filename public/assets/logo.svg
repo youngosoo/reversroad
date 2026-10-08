@@ -1,9 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="리버스로드 CONTENT LAB">
   <title>리버스로드 CONTENT LAB</title>
-  <!-- 원본 로고를 public/assets/logo.png 로 넣으면 그 파일이 우선 사용됩니다.
-       이 SVG 는 시안/대체용이며, tools/render-logo.js 로 PNG 를 다시 만들 수 있습니다. -->
-  <circle cx="256" cy="256" r="252" fill="#FFD400" stroke="#0D0D0D" stroke-width="4" />
-  <text x="256" y="262" fill="#0D0D0D"
+  <!-- 확정 로고: 노란 원(#FFD400) + 검은 세리프 R (Times New Roman Bold).
+       바탕은 그리는 곳에서 정합니다 — 흰 바탕 PNG 는 tools/render-logo.js, 투명 PNG 는 마지막 인자에 'transparent'.
+       원본 이미지를 public/assets/logo.png 로 넣으면 그 파일이 우선 사용됩니다.
+       PNG 다시 만들기: node tools/render-logo.js public/assets/logo.svg public/assets/logo.png 512
+       잉크 실측값(em 1000): Times Bold 'R' 폭 712.4 · 윗선 662.1 · 왼쪽 여백 18.6
+       → 잉크 폭 452.6(원 지름 492의 92%)이 되도록 font-size 635.3, 잉크 중심을 원 중심에 맞춤 -->
+  <circle cx="256" cy="256" r="246" fill="#FFD400" stroke="#0D0D0D" stroke-width="3" />
+  <text x="17.9" y="466.3" fill="#0D0D0D"
         font-family="'Times New Roman', Times, Georgia, serif"
-        font-size="620" font-weight="bold" text-anchor="middle" dominant-baseline="central">R</text>
+        font-size="635.3" font-weight="bold">R</text>
 </svg>

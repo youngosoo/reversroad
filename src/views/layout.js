@@ -155,7 +155,7 @@ function themeToggle() {
  * 브랜드 로고 이미지. 원본 로고를 public/assets/logo.png 로 넣으면 그것이 쓰입니다.
  */
 function brandLogo({ size = 28, className = 'brand-logo' } = {}) {
-  const src = logoPath();
+  const src = assetUrl(resolveLogoName()); // 내용 해시를 붙여 로고 교체가 즉시 반영되게
   const type = src.endsWith('.svg') ? 'image/svg+xml' : '';
   return `<img class="${attr(className)}" src="${attr(src)}"${type ? ` type="${type}"` : ''} width="${size}" height="${size}" alt="" decoding="async" />`;
 }

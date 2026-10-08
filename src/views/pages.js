@@ -1,5 +1,6 @@
 'use strict';
 
+const { logoUrl } = require('../assets');
 const { layout, esc, attr, safeJson, formatDate, appCard, adSlot, breadcrumbs, prose } = require('./layout');
 const { GUIDES, findGuide } = require('../content/guides');
 const { CATEGORIES, getCategory, listCategories } = require('../categories');
@@ -79,9 +80,9 @@ function websiteJsonLd(site) {
       ...(site.domain ? { url: site.domain } : {}),
       logo: {
         '@type': 'ImageObject',
-        url: `${site.domain || ''}/assets/logo.png`,
-        width: 512,
-        height: 512,
+        url: `${site.domain || ''}${logoUrl(site)}`,
+        width: (site.logoMeta && site.logoMeta.width) || 512,
+        height: (site.logoMeta && site.logoMeta.height) || 512,
       },
     },
   };

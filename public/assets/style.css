@@ -555,6 +555,17 @@ header.top .brand span { color: var(--accent); }
 .panel h2 { margin-bottom: 0.2em; }
 .panel .hint { color: var(--muted); font-size: 0.875rem; margin: 0 0 1.25rem; }
 
+.logo-row { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; }
+.logo-preview {
+  width: 96px; height: 96px; flex: 0 0 auto; border-radius: 50%; overflow: hidden;
+  background: var(--surface-2); border: 1px solid var(--border); display: grid; place-items: center;
+}
+.logo-preview img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.logo-side { display: flex; flex-direction: column; gap: 10px; flex: 1 1 320px; min-width: 260px; }
+.logo-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.logo-actions input[type="file"] { font-size: 0.875rem; max-width: 100%; }
+.logo-meta { color: var(--muted); font-size: 0.8125rem; margin: 0; }
+
 .form-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field.full { grid-column: 1 / -1; }

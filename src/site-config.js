@@ -15,6 +15,10 @@ const DEFAULTS = {
   homeHeading: '설치 없이 바로 쓰는 무료 온라인 도구',
   homeDescription: 'WAV→MP3 변환, QR 코드 생성, 세로 영상·대본 제작 등 설치와 회원가입 없이 브라우저에서 바로 쓰는 무료 웹앱 {count}개를 모았습니다. 입력한 데이터는 서버로 전송되지 않습니다.',
   showAdminLink: false, // 상단 메뉴에 "관리자" 링크를 노출할지
+  // 관리자가 올린 로고의 내용 해시 — 페이지의 ?v= 주소에 쓰여 로고 교체가 즉시 반영됩니다.
+  logoVersion: '',
+  logoUploadedAt: null,
+  logoMeta: null, // { contentType, size, width, height, name }
   owner: '', // 비워 두면 푸터/소개 페이지에서 "운영자" 로 표시됩니다
   email: '', // AdSense 심사 전 반드시 실제 연락 가능한 주소로 채우세요
   domain: '', // 예: https://myhome.example.com (비우면 요청 도메인 사용)

@@ -9,3 +9,6 @@ uploads/*
 *.log
 dist/
 .wrangler/
+
+# 로컬 "기본 로고 백업"(관리자 로고 되돌리기용, 저장소에는 기본 로고만)
+public/assets/logo.default.png

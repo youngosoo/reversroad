@@ -17,6 +17,8 @@ const { injectAppAds, injectAppMeta } = require('../src/miniapp-ads');
 const { redactSecrets } = require('../src/secrets');
 
 const CANONICAL_HOST = 'www.reversroad.com';
+// 관리자가 올린 로고를 내려보내는 주소 (기본 로고 파일과 같은 이름)
+const LOGO_PATHS = new Set(['/assets/logo.png', '/assets/logo.jpg', '/assets/logo.jpeg', '/assets/logo.webp', '/assets/logo.gif']);
 const PRODUCTION_HOSTS = new Set([CANONICAL_HOST, 'reversroad.com']);
 
 /** 같은 페이지가 여러 주소로 열리지 않도록 표준 주소로 301 (링크 점수 한 곳으로 모음) */
@@ -62,7 +64,13 @@ export default {
         return serveAsset(request, env, path, { 'cache-control': 'no-store' });
       }
 
-      // 2-1) 사용설명서 원문(.md)
+      // 2-1) 관리자가 올린 로고 (KV) — 배포된 기본 로고 파일보다 우선
+      if (LOGO_PATHS.has(path) && (request.method === 'GET' || request.method === 'HEAD')) {
+        const uploaded = await store.readLogo(env);
+        if (uploaded) return logoResponse(request, uploaded);
+      }
+
+      // 2-2) 사용설명서 원문(.md)
       const manualMatch = path.match(/^\/apps\/([^/]+)\/manual\.md$/);
       if (manualMatch) {
         const id = decodeURIComponent(manualMatch[1]);
@@ -176,6 +184,21 @@ export default {
     }
   },
 };
+
+/**
+ * 관리자가 올린 로고를 내려보냅니다.
+ * 로고를 바꾸면 곧바로 보여야 하므로 캐시하지 않고(no-cache) ETag 로만 다시 확인합니다.
+ */
+function logoResponse(request, { body, meta }) {
+  const etag = `"${meta.version || meta.hash || 'logo'}"`;
+  const headers = {
+    'content-type': meta.contentType || 'image/png',
+    'cache-control': 'no-cache',
+    etag,
+  };
+  if (request.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers });
+  return new Response(request.method === 'HEAD' ? null : body, { headers });
+}
 
 function htmlResponse(html, key) {
   // 관리자가 바꾸면 즉시 반영되어야 하므로 엣지·브라우저 캐시를 쓰지 않습니다

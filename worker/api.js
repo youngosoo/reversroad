@@ -12,6 +12,8 @@ const appService = require('./apps');
 const meta = require('../src/meta');
 const categories = require('../src/categories');
 const siteStore = require('../src/site-config');
+const imageLib = require('../src/image');
+const { logoUrl } = require('../src/assets');
 
 const { HttpError } = meta;
 
@@ -20,6 +22,12 @@ function json(data, status = 200, headers = {}) {
     status,
     headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', ...headers },
   });
+}
+
+/** 업로드한 이미지의 내용 해시 (캐시 주소 ?v= 에 씁니다) */
+async function hashBytes(bytes) {
+  const digest = await crypto.subtle.digest('SHA-1', bytes);
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 8);
 }
 
 async function readBody(request) {
@@ -125,6 +133,18 @@ async function handleApi(request, env, url) {
     });
   }
 
+  if (path === '/api/logo' && method === 'GET') {
+    const site = store.publicSite(await store.readSite(env), host);
+    return json({
+      logo: {
+        url: logoUrl(site),
+        version: site.logoVersion || '',
+        uploadedAt: site.logoUploadedAt || null,
+        meta: site.logoMeta || null,
+      },
+    });
+  }
+
   /* -------------------------------------------- 관리자 전용 */
   const user = await auth.currentUser(request, env);
   if (!user) throw new HttpError(401, '로그인이 필요합니다');
@@ -150,6 +170,44 @@ async function handleApi(request, env, url) {
     const body = await readBody(request);
     const markdownLib = require('../src/markdown');
     return json({ html: markdownLib.renderMarkdown(String(body.markdown || '').slice(0, 200000)) });
+  }
+
+  if (path === '/api/logo' && method === 'POST') {
+    const body = await readBody(request);
+    const file = (body._files && (body._files.file || body._files.logo)) || null;
+    if (!file) throw new HttpError(400, '올릴 로고 이미지 파일을 선택하세요');
+    const check = imageLib.validate(file.body);
+    if (!check.ok) throw new HttpError(400, check.error);
+
+    const version = await hashBytes(file.body);
+    const meta = {
+      contentType: check.image.type,
+      size: check.image.bytes,
+      width: check.image.width,
+      height: check.image.height,
+      name: String(file.name || '').slice(0, 120),
+      version,
+      uploadedAt: new Date().toISOString(),
+    };
+    await store.writeLogo(env, { body: file.body, meta });
+    const saved = await store.writeSite(env, {
+      logoVersion: version,
+      logoUploadedAt: meta.uploadedAt,
+      logoMeta: meta,
+    });
+    const result = await store.rebuild(env, { host, site: saved });
+    return json({
+      logo: { url: `/assets/logo.png?v=${version}`, version, uploadedAt: meta.uploadedAt, meta },
+      site: store.publicSite(saved, host),
+      rebuild: result,
+    });
+  }
+
+  if (path === '/api/logo' && method === 'DELETE') {
+    await store.deleteLogo(env);
+    const saved = await store.writeSite(env, { logoVersion: '', logoUploadedAt: null, logoMeta: null });
+    const result = await store.rebuild(env, { host, site: saved });
+    return json({ ok: true, site: store.publicSite(saved, host), rebuild: result });
   }
 
   if (path === '/api/rebuild' && method === 'POST') {

@@ -83,6 +83,16 @@ async function main() {
     console.log('△ 사이트 설정은 건너뜀(없음)');
   }
 
+  // 관리자가 올린 로고도 이 PC 로 내려받아 두면 로컬 미리보기·정적 빌드가 배포본과 같아집니다.
+  try {
+    const logo = await getValue(token, 'asset:logo');
+    fs.mkdirSync(path.join(outRoot, 'public', 'assets'), { recursive: true });
+    fs.writeFileSync(path.join(outRoot, 'public', 'assets', 'logo.png'), logo);
+    console.log(`✓ 올린 로고 ${Math.round(logo.length / 1024)}KB → public/assets/logo.png`);
+  } catch {
+    console.log('△ 올린 로고 없음(기본 로고 사용 중)');
+  }
+
   const fileKeys = await listKeys(token, 'file:');
   let count = 0;
   for (const key of fileKeys) {

@@ -136,6 +136,27 @@
     </form>
   </section>
 
+  <section class="card panel logo-panel">
+    <h2>브랜드 로고</h2>
+    <p class="hint">
+      상단 메뉴·파비콘·검색 결과·관리자 화면에 쓰이는 로고입니다. 이미지를 올리면 모든 페이지에 바로 적용됩니다.
+    </p>
+    <div class="logo-row">
+      <div class="logo-preview"><img id="logoPreview" alt="현재 로고" decoding="async" /></div>
+      <div class="logo-side">
+        <div class="logo-actions">
+          <input id="logoFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+          <button class="btn primary small" type="button" id="logoUploadBtn">올리기</button>
+          <button class="btn small" type="button" id="logoResetBtn">기본 로고로 되돌리기</button>
+        </div>
+        <p class="logo-meta" id="logoStatus">불러오는 중…</p>
+        <p class="logo-meta">
+          정사각형 이미지를 권장합니다(예: 512×512, 투명 배경 PNG). PNG · JPG · WEBP · GIF, 2MB 이하.
+        </p>
+      </div>
+    </div>
+  </section>
+
   <section class="card panel">
     <h2>사이트 설정</h2>
     <p class="hint">
@@ -830,6 +851,80 @@ document.getElementById('logout').addEventListener('click', async () => {
   location.href = '/';
 });
 
+// ------------------------------------------------------------- 브랜드 로고
+
+const logoBox = {
+  preview: document.getElementById('logoPreview'),
+  file: document.getElementById('logoFile'),
+  upload: document.getElementById('logoUploadBtn'),
+  reset: document.getElementById('logoResetBtn'),
+  status: document.getElementById('logoStatus'),
+};
+let logoData = {};
+
+function renderLogo(logo) {
+  logoData = logo || {};
+  logoBox.preview.src = logoData.url || '/assets/logo.png';
+  const meta = logoData.meta || {};
+  if (logoData.version) {
+    const bits = [`${meta.width || '?'}×${meta.height || '?'}px`];
+    if (meta.size) bits.push(`${Math.round(meta.size / 1024)}KB`);
+    if (meta.name) bits.push(meta.name);
+    if (logoData.uploadedAt) bits.push(`올린 시각 ${new Date(logoData.uploadedAt).toLocaleString('ko-KR')}`);
+    logoBox.status.textContent = bits.join(' · ');
+  } else {
+    logoBox.status.textContent = '기본 로고를 쓰는 중입니다.';
+  }
+  logoBox.reset.disabled = !logoData.version;
+}
+
+async function loadLogo() {
+  try {
+    const { logo } = await api('/api/logo');
+    renderLogo(logo);
+  } catch (err) {
+    logoBox.status.textContent = `로고 정보를 불러오지 못했습니다: ${err.message}`;
+  }
+}
+
+logoBox.file.addEventListener('change', () => {
+  if (logoBox.file.files && logoBox.file.files[0]) logoBox.upload.click();
+});
+
+logoBox.upload.addEventListener('click', async () => {
+  const file = logoBox.file.files && logoBox.file.files[0];
+  if (!file) { say('올릴 이미지 파일을 선택하세요', 'err'); return; }
+  const body = new FormData();
+  body.append('file', file);
+  logoBox.upload.disabled = true;
+  logoBox.status.textContent = '올리는 중...';
+  try {
+    const { logo } = await api('/api/logo', { method: 'POST', body });
+    renderLogo(logo);
+    logoBox.file.value = '';
+    say('로고를 적용했습니다. 모든 페이지에 반영됩니다.');
+  } catch (err) {
+    logoBox.status.textContent = `올리지 못했습니다: ${err.message}`;
+    say(err.message, 'err');
+  } finally {
+    logoBox.upload.disabled = false;
+  }
+});
+
+logoBox.reset.addEventListener('click', async () => {
+  if (logoData.version && !confirm('올린 로고를 지우고 기본 로고로 되돌릴까요?')) return;
+  logoBox.reset.disabled = true;
+  try {
+    await api('/api/logo', { method: 'DELETE' });
+    await loadLogo();
+    say('기본 로고로 되돌렸습니다.');
+  } catch (err) {
+    say(err.message, 'err');
+  } finally {
+    logoBox.reset.disabled = false;
+  }
+});
+
 // ------------------------------------------------------------- 사이트 설정
 
 const S = {
@@ -1018,6 +1113,7 @@ function renderChecklist() {
 }
 
 loadUser().catch(() => {});
+loadLogo();
 loadCategories()
   .then(loadApps)
   .then(loadSite)

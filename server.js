@@ -19,6 +19,8 @@ const analyze = require('./src/analyze');
 const auth = require('./src/auth');
 const siteStore = require('./src/site');
 const categories = require('./src/categories');
+const imageLib = require('./src/image');
+const { logoUrl } = require('./src/assets');
 const passwordStore = require('./src/password');
 const seo = require('./src/seo');
 const pages = require('./src/views/pages');
@@ -288,6 +290,86 @@ app.put('/api/site', auth.requireAuth, async (req, res, next) => {
   try {
     const saved = await siteStore.writeSite(req.body || {});
     res.json({ site: siteStore.publicSite(saved, `${req.protocol}://${req.get('host')}`) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------- 로고 (관리자 업로드) ----------------
+
+const LOGO_FILE = path.join(PUBLIC_DIR, 'assets', 'logo.png');
+const LOGO_BACKUP = path.join(PUBLIC_DIR, 'assets', 'logo.default.png');
+
+const logoHash = (buffer) => crypto.createHash('sha1').update(buffer).digest('hex').slice(0, 8);
+
+function badRequest(message) {
+  const err = new Error(message);
+  err.status = 400;
+  return err;
+}
+
+app.get('/api/logo', async (req, res, next) => {
+  try {
+    const site = await currentSite(req);
+    res.json({
+      logo: {
+        url: logoUrl(site),
+        version: site.logoVersion || '',
+        uploadedAt: site.logoUploadedAt || null,
+        meta: site.logoMeta || null,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.post('/api/logo', auth.requireAuth, upload.single('file'), async (req, res, next) => {
+  try {
+    const file = req.file;
+    if (!file) throw badRequest('올릴 로고 이미지 파일을 선택하세요');
+    const check = imageLib.validate(new Uint8Array(file.buffer));
+    if (!check.ok) throw badRequest(check.error);
+
+    // 처음 올릴 때 기본 로고를 따로 보관 → "되돌리기" 로 복원
+    try {
+      await fsp.access(LOGO_BACKUP);
+    } catch {
+      try { await fsp.copyFile(LOGO_FILE, LOGO_BACKUP); } catch { /* 기본 로고가 없으면 백업도 없음 */ }
+    }
+    await fsp.mkdir(path.dirname(LOGO_FILE), { recursive: true });
+    await fsp.writeFile(LOGO_FILE, file.buffer);
+
+    const meta = {
+      contentType: check.image.type,
+      size: check.image.bytes,
+      width: check.image.width,
+      height: check.image.height,
+      name: String(file.originalname || '').slice(0, 120),
+      version: logoHash(file.buffer),
+      uploadedAt: new Date().toISOString(),
+    };
+    const saved = await siteStore.writeSite({ logoVersion: meta.version, logoUploadedAt: meta.uploadedAt, logoMeta: meta });
+    res.json({
+      logo: { url: `/assets/logo.png?v=${meta.version}`, version: meta.version, uploadedAt: meta.uploadedAt, meta },
+      site: siteStore.publicSite(saved, `${req.protocol}://${req.get('host')}`),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.delete('/api/logo', auth.requireAuth, async (req, res, next) => {
+  try {
+    let restored = false;
+    try {
+      await fsp.copyFile(LOGO_BACKUP, LOGO_FILE);
+      restored = true;
+    } catch {
+      try { await fsp.unlink(LOGO_FILE); } catch { /* 이미 없음 */ }
+    }
+    const saved = await siteStore.writeSite({ logoVersion: '', logoUploadedAt: null, logoMeta: null });
+    res.json({ ok: true, restored, site: siteStore.publicSite(saved, `${req.protocol}://${req.get('host')}`) });
   } catch (err) {
     next(err);
   }

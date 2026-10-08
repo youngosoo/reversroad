@@ -1,6 +1,6 @@
 'use strict';
 
-const { logoPath, assetUrl, resolveLogoName } = require('../assets');
+const { logoUrl, assetUrl } = require('../assets');
 const { getCategory } = require('../categories');
 
 function esc(value) {
@@ -155,8 +155,8 @@ function themeToggle() {
 /**
  * 브랜드 로고 이미지. 원본 로고를 public/assets/logo.png 로 넣으면 그것이 쓰입니다.
  */
-function brandLogo({ size = 28, className = 'brand-logo' } = {}) {
-  const src = assetUrl(resolveLogoName()); // 내용 해시를 붙여 로고 교체가 즉시 반영되게
+function brandLogo({ size = 28, className = 'brand-logo', site = null } = {}) {
+  const src = logoUrl(site); // 내용 해시를 붙여 로고 교체가 즉시 반영되게
   const type = src.endsWith('.svg') ? 'image/svg+xml' : '';
   return `<img class="${attr(className)}" src="${attr(src)}"${type ? ` type="${type}"` : ''} width="${size}" height="${size}" alt="" decoding="async" />`;
 }
@@ -209,8 +209,8 @@ ${site.domain ? `<link rel="alternate" type="application/rss+xml" title="${attr(
 <meta property="og:description" content="${attr(desc)}" />
 ${canonical ? `<meta property="og:url" content="${attr(canonical)}" />` : ''}
 <meta name="twitter:card" content="summary_large_image" />
-<link rel="icon" href="${attr(assetUrl(resolveLogoName()))}" />
-<link rel="apple-touch-icon" href="${attr(assetUrl(resolveLogoName()))}" />
+<link rel="icon" href="${attr(logoUrl(site))}" />
+<link rel="apple-touch-icon" href="${attr(logoUrl(site))}" />
 ${site.domain ? `<meta property="og:image" content="${attr(site.domain + (ogImage || assetUrl('og-home.png')))}" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
@@ -227,7 +227,7 @@ ${graphs.length ? `<script type="application/ld+json">${safeJson(graphs.length =
 <a class="skip-link" href="#main">본문으로 바로 가기</a>
 <header class="site-header">
   <div class="shell header-inner">
-    <a class="brand" href="/">${brandLogo()}<span class="brand-text">${esc(site.name)}</span></a>
+    <a class="brand" href="/">${brandLogo({ site })}<span class="brand-text">${esc(site.name)}</span></a>
     <nav class="site-nav" aria-label="주요 메뉴">
       ${navItems.map((item) => `<a href="${attr(item.href)}"${nav === item.key ? ' class="active" aria-current="page"' : ''}>${esc(item.label)}</a>`).join('')}
       ${site.hideAdmin || !site.showAdminLink ? '' : `<a class="nav-admin" href="${attr(site.adminUrl || '/admin.html')}"${site.adminUrl && !site.adminUrl.startsWith('/') ? ' target="_blank" rel="noopener"' : ''}>관리자</a>`}
@@ -241,7 +241,7 @@ ${body}
 <footer class="site-footer">
   <div class="shell footer-grid">
     <div>
-      <p class="footer-brand">${brandLogo({ size: 22, className: 'brand-logo footer-logo' })}${esc(site.name)}</p>
+      <p class="footer-brand">${brandLogo({ site, size: 22, className: 'brand-logo footer-logo' })}${esc(site.name)}</p>
       <p class="muted">${esc(site.tagline)}</p>
       <p class="muted small">${esc(site.description)}</p>
     </div>

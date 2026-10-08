@@ -13,6 +13,8 @@
  *   file:<id>/<경로>   앱 파일 (index.html 등)
  *   gone:<id>          삭제된 앱 표시 (정적 배포본에 남은 파일을 가리기 위함)
  *   rl:<ip>            로그인 시도 횟수
+ *   asset:logo         관리자가 올린 로고 이미지(원본 바이트)
+ *   asset:logo-meta    올린 로고 정보(형식·크기·해시)
  */
 
 const { renderSite } = require('../src/build');
@@ -25,6 +27,9 @@ const KEY = {
   generatedAt: 'meta:generatedAt',
   sessionSecret: 'meta:sessionSecret',
 };
+
+const LOGO_KEY = 'asset:logo';
+const LOGO_META_KEY = 'asset:logo-meta';
 
 const fileKey = (id, rel) => `file:${id}/${rel}`;
 const pageKey = (rel) => `page:${rel}`;
@@ -166,6 +171,27 @@ async function rebuild(env, { host = '', apps: appsInput = null, site: siteInput
   return { ...result, apps: apps.length };
 }
 
+/* ------------------------------------------------ 로고 (관리자 업로드) */
+
+/** 관리자가 올린 로고 — 없으면 null (이때는 배포된 기본 로고 파일을 씁니다) */
+async function readLogo(env) {
+  const body = await kv(env).get(LOGO_KEY, 'arrayBuffer');
+  if (!body) return null;
+  const meta = await readJson(env, LOGO_META_KEY, null);
+  return { body, meta: meta || {} };
+}
+
+async function writeLogo(env, { body, meta }) {
+  await kv(env).put(LOGO_KEY, body);
+  await kv(env).put(LOGO_META_KEY, JSON.stringify(meta || {}));
+  return meta;
+}
+
+async function deleteLogo(env) {
+  await kv(env).delete(LOGO_KEY);
+  await kv(env).delete(LOGO_META_KEY);
+}
+
 /* ------------------------------------------------ 세션 키 */
 
 async function sessionSecret(env) {
@@ -179,6 +205,11 @@ async function sessionSecret(env) {
 
 module.exports = {
   KEY,
+  LOGO_KEY,
+  LOGO_META_KEY,
+  readLogo,
+  writeLogo,
+  deleteLogo,
   readJson,
   fileKey,
   pageKey,

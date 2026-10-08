@@ -39,6 +39,17 @@ function logoPath() {
 }
 
 /**
+ * 로고 주소.
+ * 관리자가 로고를 올렸으면 그 내용 해시(site.logoVersion)를 붙여 즉시 반영되게 하고,
+ * 아니면 파일 내용 해시(assetUrl)를 씁니다.
+ */
+function logoUrl(site) {
+  const name = resolveLogoName();
+  const version = site && site.logoVersion ? String(site.logoVersion) : '';
+  return version ? `/assets/${name}?v=${encodeURIComponent(version)}` : assetUrl(name);
+}
+
+/**
  * 파일 내용 해시를 붙인 자산 주소 (예: /assets/style.css?v=ab12cd34).
  * 자산을 오래 캐시해도 내용이 바뀌면 새 주소가 되어 즉시 반영됩니다.
  */
@@ -69,4 +80,4 @@ function assetUrl(name) {
   return `/assets/${name}?v=${hash}`;
 }
 
-module.exports = { logoPath, assetUrl, resolveLogoName };
+module.exports = { logoPath, logoUrl, assetUrl, resolveLogoName };

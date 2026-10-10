@@ -10,7 +10,9 @@
     "dev": "node --watch server.js",
     "build:static": "node tools/export-static.js",
     "deploy": "node tools/deploy.js",
-    "rebuild:remote": "node tools/rebuild-kv-pages.js"
+    "rebuild:remote": "node tools/rebuild-kv-pages.js",
+    "favicons": "node tools/make-favicons.js",
+    "seo": "node tools/seo-audit.js"
   },
   "dependencies": {
     "adm-zip": "^0.5.16",

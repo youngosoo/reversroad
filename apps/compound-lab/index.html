@@ -1,0 +1,1709 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📈 ReverseRoad's Compound Lab - 고도화 복리 인포그래픽 대시보드</title>
+<style>
+/* Paperlogy Web Font Definition */
+@font-face {
+    font-family: 'Paperlogy';
+    src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-3Light.woff2') format('woff2');
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Paperlogy';
+    src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-4Regular.woff2') format('woff2');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Paperlogy';
+    src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-5Medium.woff2') format('woff2');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Paperlogy';
+    src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-6SemiBold.woff2') format('woff2');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Paperlogy';
+    src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-7Bold.woff2') format('woff2');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+@font-face {
+    font-family: 'Paperlogy';
+    src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-8ExtraBold.woff2') format('woff2');
+    font-weight: 800;
+    font-style: normal;
+    font-display: swap;
+}
+
+:root {
+  /* Dark Theme Default */
+  --bg-main: #0a0e17;
+  --bg-surface: #111827;
+  --bg-card: #1e293b;
+  --bg-input: #0f172a;
+  --border-color: rgba(255, 255, 255, 0.12);
+  --border-highlight: rgba(56, 189, 248, 0.45);
+  
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  
+  --accent-primary: #38bdf8;
+  --accent-secondary: #818cf8;
+  --accent-gradient: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
+  --gold-gradient: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+  --green-gradient: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  
+  --color-green: #34d399;
+  --color-blue: #38bdf8;
+  --color-purple: #c084fc;
+  --color-red: #f87171;
+  --color-orange: #fb923c;
+  --color-gold: #fbbf24;
+  
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.4);
+  
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  
+  --font-main: 'Paperlogy', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+}
+
+/* Light Theme Variables */
+[data-theme="light"] {
+  --bg-main: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-card: #f1f5f9;
+  --bg-input: #ffffff;
+  --border-color: rgba(0, 0, 0, 0.12);
+  --border-highlight: rgba(2, 132, 199, 0.45);
+  
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  
+  --accent-primary: #0284c7;
+  --accent-secondary: #4f46e5;
+  --accent-gradient: linear-gradient(135deg, #0284c7 0%, #4f46e5 100%);
+  --gold-gradient: linear-gradient(135deg, #d97706 0%, #f59e0b 100%);
+  --green-gradient: linear-gradient(135deg, #059669 0%, #10b981 100%);
+  
+  --color-green: #059669;
+  --color-blue: #0284c7;
+  --color-purple: #7c3aed;
+  --color-red: #dc2626;
+  --color-orange: #ea580c;
+  --color-gold: #d97706;
+  
+  --shadow-sm: 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 16px 36px rgba(0, 0, 0, 0.12);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  min-height: 100vh;
+  line-height: 1.6;
+  letter-spacing: -0.3px;
+  overflow-y: auto;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Header Navbar */
+header {
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-color);
+  padding: 16px 32px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(8px);
+}
+
+.header-container {
+  max-width: 1440px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.logo-icon {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.logo-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.5px;
+}
+
+.version-badge {
+  font-size: 0.75rem;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: rgba(56, 189, 248, 0.12);
+  color: var(--accent-primary);
+  border: 1px solid var(--border-highlight);
+  font-weight: 700;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.theme-switch-btn, .export-btn {
+  font-family: var(--font-main);
+  padding: 10px 18px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: var(--shadow-sm);
+}
+
+.theme-switch-btn:hover, .export-btn:hover {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+  transform: translateY(-1px);
+}
+
+/* Main Layout */
+main {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 28px 24px 60px 24px;
+}
+
+.calculator-grid {
+  display: grid;
+  grid-template-columns: 420px 1fr;
+  gap: 28px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .calculator-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* LEFT PANEL: Input Controls */
+.input-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  position: sticky;
+  top: 90px;
+}
+
+@media (max-width: 1100px) {
+  .input-panel {
+    position: static;
+  }
+}
+
+.panel-header {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 12px;
+}
+
+.input-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.input-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.num-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--bg-input);
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 6px 12px;
+}
+
+.num-input-wrap:focus-within {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+}
+
+.num-input {
+  width: 110px;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--font-main);
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--accent-primary);
+  text-align: right;
+}
+
+.unit-text {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.slider-container {
+  display: flex;
+  align-items: center;
+  margin-top: 4px;
+}
+
+input[type=range] {
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--border-color);
+  outline: none;
+  accent-color: var(--accent-primary);
+  cursor: pointer;
+}
+
+.preset-pills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.preset-pill {
+  font-family: var(--font-main);
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.preset-pill:hover, .preset-pill.active {
+  background: var(--accent-primary);
+  color: #ffffff;
+  border-color: var(--accent-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Advanced Accordion */
+.adv-accordion-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  padding: 12px 0 4px 0;
+  cursor: pointer;
+  border-top: 1px solid var(--border-color);
+  margin-top: 6px;
+}
+
+.adv-accordion-toggle:hover {
+  color: var(--accent-primary);
+}
+
+.adv-accordion-content {
+  display: none;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 12px;
+}
+
+.adv-accordion-content.open {
+  display: flex;
+}
+
+/* Quick Stats Grid */
+.quick-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 6px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-color);
+}
+
+.stat-box {
+  background: var(--bg-card);
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  text-align: center;
+}
+
+.stat-box-label {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.stat-box-value {
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+/* RIGHT PANEL: Dashboard Results */
+.results-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Hero Infographic Card */
+.hero-infographic-card {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.1) 0%, rgba(129, 140, 248, 0.12) 100%);
+  border: 1.5px solid var(--border-highlight);
+  border-radius: var(--radius-md);
+  padding: 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+}
+
+.hero-main-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.hero-subtitle {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 0.2px;
+}
+
+.hero-amount {
+  font-size: 2.8rem;
+  font-weight: 800;
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1.15;
+  margin-top: 6px;
+}
+
+.hero-stat-pills {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.hero-stat-pill {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Visual Spectrum Bar */
+.infographic-bar-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.infographic-bar-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.visual-spectrum-bar {
+  height: 18px;
+  width: 100%;
+  border-radius: 10px;
+  background: var(--bg-card);
+  overflow: hidden;
+  display: flex;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.25);
+}
+
+.spectrum-segment {
+  height: 100%;
+  transition: width 0.4s ease-out;
+}
+
+/* Dashboard Content View */
+.dashboard-main-view {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.view-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-card);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.view-nav-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.view-tab-btn {
+  font-family: var(--font-main);
+  padding: 8px 18px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.view-tab-btn.active {
+  background: var(--bg-surface);
+  color: var(--accent-primary);
+  border-color: var(--border-color);
+  box-shadow: var(--shadow-sm);
+}
+
+.chart-tabs-group {
+  display: flex;
+  gap: 6px;
+}
+
+.chart-tab-btn {
+  font-family: var(--font-main);
+  padding: 6px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chart-tab-btn.active {
+  background: var(--accent-primary);
+  color: #fff;
+  border-color: var(--accent-primary);
+}
+
+.view-content-area {
+  padding: 24px;
+}
+
+.view-tab-pane {
+  display: none;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.view-tab-pane.active {
+  display: flex;
+}
+
+/* Canvas Area */
+.canvas-wrapper {
+  position: relative;
+  width: 100%;
+  height: 580px;
+}
+
+@media (max-width: 1200px) {
+  .canvas-wrapper {
+    height: 480px;
+  }
+}
+
+@media (max-width: 768px) {
+  .canvas-wrapper {
+    height: 360px;
+  }
+}
+
+/* Interactive Chart Tooltip */
+.chart-tooltip {
+  position: absolute;
+  display: none;
+  pointer-events: none;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-highlight);
+  border-radius: var(--radius-sm);
+  padding: 12px 18px;
+  box-shadow: var(--shadow-lg);
+  z-index: 50;
+  font-size: 0.88rem;
+  min-width: 210px;
+}
+
+.chart-tooltip-title {
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 6px;
+}
+
+.chart-tooltip-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+/* Summary Infographic Grid */
+.infographic-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .infographic-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.info-card-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.info-card-header {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.info-card-value {
+  font-size: 1.45rem;
+  font-weight: 800;
+}
+
+.info-card-sub {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+/* Milestone Timeline Tab */
+.milestones-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.milestone-track-item {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.milestone-track-item.achieved {
+  border-color: var(--color-green);
+  background: rgba(52, 211, 153, 0.06);
+}
+
+.milestone-target-name {
+  font-weight: 800;
+  font-size: 1.05rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 140px;
+}
+
+.milestone-progress-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 200px;
+}
+
+.milestone-bar-bg {
+  height: 10px;
+  background: var(--bg-input);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.milestone-bar-fill {
+  height: 100%;
+  background: var(--accent-gradient);
+  border-radius: 5px;
+}
+
+.milestone-badge {
+  font-size: 0.88rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+}
+
+/* Table Style */
+.table-container {
+  overflow-x: auto;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+th, td {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+th {
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-weight: 800;
+  position: sticky;
+  top: 0;
+}
+
+tr:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* Insights Cards */
+.insight-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 20px;
+  margin-bottom: 14px;
+}
+
+.insight-card-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--accent-primary);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+footer {
+  text-align: center;
+  padding: 24px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  border-top: 1px solid var(--border-color);
+  background: var(--bg-surface);
+}
+
+.text-blue { color: var(--color-blue); }
+.text-green { color: var(--color-green); }
+.text-orange { color: var(--color-orange); }
+.text-gold { color: var(--color-gold); }
+.text-purple { color: var(--color-purple); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-container">
+    <div class="logo-group">
+      <span class="logo-icon">📈</span>
+      <div>
+        <div class="logo-title">ReverseRoad's Compound Lab</div>
+        <span class="version-badge">v4.0 Paperlogy Pro · 가독성 반응형 대시보드</span>
+      </div>
+    </div>
+    
+    <div class="header-actions">
+      <button class="theme-switch-btn" id="themeToggleBtn" onclick="toggleTheme()">
+        <span id="themeIcon">🌙</span>
+        <span id="themeText">다크모드</span>
+      </button>
+      
+      <button class="export-btn" onclick="exportCSV()">
+        <span>📥</span> CSV 저장
+      </button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="calculator-grid">
+    <!-- LEFT PANEL: INPUT CONTROLS -->
+    <div class="input-panel">
+      <div class="panel-header">
+        <span>⚙️ 투자 조건 설정</span>
+      </div>
+
+      <!-- 1. 초기 투자금 -->
+      <div class="input-field-group">
+        <div class="input-label-row">
+          <span>초기 투자금 (원금)</span>
+          <div class="num-input-wrap">
+            <input type="text" id="principalNum" class="num-input" value="1,000만">
+            <span class="unit-text">원</span>
+          </div>
+        </div>
+        <div class="slider-container">
+          <input type="range" id="principal" min="0" max="200000000" step="1000000" value="10000000">
+        </div>
+        <div class="preset-pills">
+          <button class="preset-pill" onclick="setFieldValue('principal', 0)">0원</button>
+          <button class="preset-pill active" onclick="setFieldValue('principal', 10000000)">1,000만</button>
+          <button class="preset-pill" onclick="setFieldValue('principal', 30000000)">3,000만</button>
+          <button class="preset-pill" onclick="setFieldValue('principal', 50000000)">5,000만</button>
+          <button class="preset-pill" onclick="setFieldValue('principal', 100000000)">1억</button>
+        </div>
+      </div>
+
+      <!-- 2. 월 적립액 -->
+      <div class="input-field-group">
+        <div class="input-label-row">
+          <span>월 적립액</span>
+          <div class="num-input-wrap">
+            <input type="text" id="monthlyNum" class="num-input" value="50만">
+            <span class="unit-text">원</span>
+          </div>
+        </div>
+        <div class="slider-container">
+          <input type="range" id="monthly" min="0" max="5000000" step="50000" value="500000">
+        </div>
+        <div class="preset-pills">
+          <button class="preset-pill" onclick="setFieldValue('monthly', 0)">0원</button>
+          <button class="preset-pill" onclick="setFieldValue('monthly', 300000)">30만</button>
+          <button class="preset-pill active" onclick="setFieldValue('monthly', 500000)">50만</button>
+          <button class="preset-pill" onclick="setFieldValue('monthly', 1000000)">100만</button>
+          <button class="preset-pill" onclick="setFieldValue('monthly', 2000000)">200만</button>
+        </div>
+      </div>
+
+      <!-- 3. 연 수익률 -->
+      <div class="input-field-group">
+        <div class="input-label-row">
+          <span>연 수익률</span>
+          <div class="num-input-wrap">
+            <input type="text" id="rateNum" class="num-input" value="8.0">
+            <span class="unit-text">%</span>
+          </div>
+        </div>
+        <div class="slider-container">
+          <input type="range" id="rate" min="0.5" max="30" step="0.1" value="8.0">
+        </div>
+        <div class="preset-pills">
+          <button class="preset-pill" onclick="setFieldValue('rate', 2.0)">예금 2%</button>
+          <button class="preset-pill" onclick="setFieldValue('rate', 4.5)">채권 4.5%</button>
+          <button class="preset-pill active" onclick="setFieldValue('rate', 8.0)">S&P500 8%</button>
+          <button class="preset-pill" onclick="setFieldValue('rate', 12.0)">나스닥 12%</button>
+          <button class="preset-pill" onclick="setFieldValue('rate', 15.0)">공격 15%</button>
+        </div>
+      </div>
+
+      <!-- 4. 투자 기간 -->
+      <div class="input-field-group">
+        <div class="input-label-row">
+          <span>투자 기간</span>
+          <div class="num-input-wrap">
+            <input type="text" id="yearsNum" class="num-input" value="20">
+            <span class="unit-text">년</span>
+          </div>
+        </div>
+        <div class="slider-container">
+          <input type="range" id="years" min="1" max="50" step="1" value="20">
+        </div>
+        <div class="preset-pills">
+          <button class="preset-pill" onclick="setFieldValue('years', 5)">5년</button>
+          <button class="preset-pill" onclick="setFieldValue('years', 10)">10년</button>
+          <button class="preset-pill active" onclick="setFieldValue('years', 20)">20년</button>
+          <button class="preset-pill" onclick="setFieldValue('years', 30)">30년</button>
+          <button class="preset-pill" onclick="setFieldValue('years', 40)">40년</button>
+        </div>
+      </div>
+
+      <!-- 고급 옵션 Accordion -->
+      <div class="adv-accordion-toggle" id="advAccordionToggle" onclick="toggleAdvancedSection()">
+        <span>🛠️ 고급 금융 옵션 (복리주기/물가/증액)</span>
+        <span id="advChevron">▼</span>
+      </div>
+
+      <div class="adv-accordion-content" id="advAccordionContent">
+        <div class="input-field-group">
+          <div class="input-label-row">
+            <span>복리 주기</span>
+          </div>
+          <div class="preset-pills">
+            <button class="preset-pill compound-freq-btn active" onclick="setCompoundFreq(12, this)">월 복리</button>
+            <button class="preset-pill compound-freq-btn" onclick="setCompoundFreq(4, this)">분기</button>
+            <button class="preset-pill compound-freq-btn" onclick="setCompoundFreq(1, this)">연 복리</button>
+            <button class="preset-pill compound-freq-btn" onclick="setCompoundFreq(365, this)">일 복리</button>
+          </div>
+        </div>
+
+        <div class="input-field-group">
+          <div class="input-label-row">
+            <span>연 물가상승률</span>
+            <div class="num-input-wrap">
+              <input type="text" id="inflationNum" class="num-input" value="2.5">
+              <span class="unit-text">%</span>
+            </div>
+          </div>
+          <div class="slider-container">
+            <input type="range" id="inflation" min="0" max="10" step="0.1" value="2.5">
+          </div>
+        </div>
+
+        <div class="input-field-group">
+          <div class="input-label-row">
+            <span>매년 적립금 증액률</span>
+            <div class="num-input-wrap">
+              <input type="text" id="stepUpNum" class="num-input" value="0.0">
+              <span class="unit-text">%</span>
+            </div>
+          </div>
+          <div class="slider-container">
+            <input type="range" id="stepUp" min="0" max="15" step="0.5" value="0.0">
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Summary Stats Grid -->
+      <div class="quick-stats-grid">
+        <div class="stat-box">
+          <div class="stat-box-label">총 투입 원금</div>
+          <div class="stat-box-value text-blue" id="statPrincipal">-</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-label">총 이자 수익</div>
+          <div class="stat-box-value text-green" id="statInterest">-</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-label">누적 수익률(ROI)</div>
+          <div class="stat-box-value text-orange" id="statROI">-</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-box-label">실질 가치 (물가반영)</div>
+          <div class="stat-box-value text-purple" id="statReal">-</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL: INFOGRAPHIC DASHBOARD -->
+    <div class="results-panel">
+      
+      <!-- HERO INFOGRAPHIC CARD -->
+      <div class="hero-infographic-card">
+        <div class="hero-main-row">
+          <div>
+            <div class="hero-subtitle">🎯 예상 최종 자산 (Grand Wealth Total)</div>
+            <div class="hero-amount" id="heroFinalAmount">0 원</div>
+          </div>
+          
+          <div class="hero-stat-pills">
+            <div class="hero-stat-pill">
+              <span style="color: var(--color-blue)">●</span> 원금: <span id="heroPrincipalChip" style="margin-left:4px; font-weight:800;">0원</span>
+            </div>
+            <div class="hero-stat-pill">
+              <span style="color: var(--color-green)">●</span> 이자: <span id="heroInterestChip" style="margin-left:4px; font-weight:800;">0원</span>
+            </div>
+            <div class="hero-stat-pill">
+              <span style="color: var(--color-orange)">🔥</span> ROI: <span id="heroROIChip" style="margin-left:4px; font-weight:800;">0%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- INFOGRAPHIC Visual Spectrum Composition Bar -->
+        <div class="infographic-bar-container">
+          <div class="infographic-bar-labels">
+            <span>📊 자산 구성비 인포그래픽 Spectrum</span>
+            <span id="spectrumLegendText">초기원금 0% · 적립원금 0% · 복리이익 0%</span>
+          </div>
+          <div class="visual-spectrum-bar">
+            <div class="spectrum-segment" id="segInitial" style="background: var(--color-blue); width: 33%;"></div>
+            <div class="spectrum-segment" id="segMonthly" style="background: var(--color-purple); width: 33%;"></div>
+            <div class="spectrum-segment" id="segInterest" style="background: var(--color-green); width: 34%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DASHBOARD MAIN VIEW WITH TABBED PANES -->
+      <div class="dashboard-main-view">
+        <div class="view-header-bar">
+          <div class="view-nav-tabs">
+            <button class="view-tab-btn active" onclick="switchDashboardTab('chartTab', this)">📊 자산 성장 차트</button>
+            <button class="view-tab-btn" onclick="switchDashboardTab('milestoneTab', this)">🎯 목표 타임라인</button>
+            <button class="view-tab-btn" onclick="switchDashboardTab('tableTab', this)">📅 연도별 스케줄</button>
+            <button class="view-tab-btn" onclick="switchDashboardTab('insightTab', this)">🧠 금융 인사이트</button>
+          </div>
+
+          <div class="chart-tabs-group" id="chartTypeGroup">
+            <button class="chart-tab-btn active" onclick="switchChartMode('growth', this)">성장 곡선</button>
+            <button class="chart-tab-btn" onclick="switchChartMode('composition', this)">구성비 스택</button>
+            <button class="chart-tab-btn" onclick="switchChartMode('compare', this)">단리 vs 복리</button>
+          </div>
+        </div>
+
+        <div class="view-content-area">
+          
+          <!-- TAB 1: GRAPH & INFOGRAPHIC STAT CARDS -->
+          <div class="view-tab-pane active" id="chartTab">
+            <div class="canvas-wrapper">
+              <canvas id="growthChart"></canvas>
+              
+              <!-- Interactive Canvas Tooltip -->
+              <div class="chart-tooltip" id="chartTooltip">
+                <div class="chart-tooltip-title" id="tooltipYear">1년차 자산 내역</div>
+                <div class="chart-tooltip-row">
+                  <span style="color: var(--color-blue);">누적원금:</span>
+                  <span id="tooltipPrincipal" style="font-weight:700;">0</span>
+                </div>
+                <div class="chart-tooltip-row">
+                  <span style="color: var(--color-green);">이자수익:</span>
+                  <span id="tooltipInterest" style="font-weight:700;">0</span>
+                </div>
+                <div class="chart-tooltip-row" style="font-weight: 800; border-top: 1px solid var(--border-color); padding-top: 6px; margin-top: 6px;">
+                  <span>총 자산:</span>
+                  <span id="tooltipTotal" style="color: var(--text-primary);">0</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- INFOGRAPHIC SUMMARY CARDS -->
+            <div class="infographic-cards-grid">
+              <div class="info-card-box">
+                <div class="info-card-header">⚡ 눈덩이 이자 가속도</div>
+                <div class="info-card-value text-green" id="snowballVelocityVal">+0%</div>
+                <div class="info-card-sub" id="snowballVelocityDesc">후반 10년 이자 창출 비중</div>
+              </div>
+
+              <div class="info-card-box">
+                <div class="info-card-header">🚀 복리 초과 이익 (Gap)</div>
+                <div class="info-card-value text-orange" id="diffTotalVal">+0 원</div>
+                <div class="info-card-sub" id="diffDesc">단리 투자 대비 재투자 추가 이득</div>
+              </div>
+
+              <div class="info-card-box">
+                <div class="info-card-header">💡 자산 2배 달성 (72의 법칙)</div>
+                <div class="info-card-value text-gold" id="rule72Val">≈ 0년</div>
+                <div class="info-card-sub" id="rule72Desc">72 ÷ 연수익률 기준</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 2: MILESTONE TIMELINE INFOGRAPHIC -->
+          <div class="view-tab-pane" id="milestoneTab">
+            <div style="font-size: 1.05rem; font-weight: 800; color: var(--text-primary); margin-bottom: 4px;">
+              🎯 주요 자산 달성 예상 타임라인 인포그래픽
+            </div>
+            <div class="milestones-container" id="milestonesList">
+              <!-- Dynamically Populated Milestones -->
+            </div>
+          </div>
+
+          <!-- TAB 3: YEARLY SCHEDULE TABLE -->
+          <div class="view-tab-pane" id="tableTab">
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    <th>연차</th>
+                    <th>누적 원금</th>
+                    <th>이자 수익</th>
+                    <th>복리 총 자산</th>
+                    <th>단리 총 자산</th>
+                    <th>복리 차이</th>
+                  </tr>
+                </thead>
+                <tbody id="yearTableBody">
+                  <!-- Dynamically Populated Table -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- TAB 4: FINANCIAL INSIGHTS & REPORTS -->
+          <div class="view-tab-pane" id="insightTab">
+            <div id="insightContainer">
+              <!-- Dynamically Populated Insights -->
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<footer>
+  <span>📈 ReverseRoad's Compound Lab v4.0 Pro · 페이퍼로지(Paperlogy) UI 적용 대시보드</span>
+</footer>
+
+<script>
+// DOM Helper Selector
+const $ = (id) => document.getElementById(id);
+
+// App Global State
+let calculatedDataCache = [];
+let activeChartMode = 'growth';
+let currentCompoundFreq = 12;
+
+// Formatting Utilities
+function formatCompactShort(val) {
+  if (val >= 100000000) {
+    const eok = val / 100000000;
+    return eok % 1 === 0 ? eok + '억' : eok.toFixed(1) + '억';
+  } else if (val >= 10000) {
+    const man = val / 10000;
+    return man % 1 === 0 ? man + '만' : man.toFixed(0) + '만';
+  }
+  return Math.round(val).toLocaleString();
+}
+
+function formatFullCurrency(val) {
+  return Math.round(val).toLocaleString('ko-KR') + ' 원';
+}
+
+function formatKRW(val) {
+  if (val >= 100000000) {
+    const eok = Math.floor(val / 100000000);
+    const man = Math.round((val % 100000000) / 10000);
+    if (man > 0) return `${eok}억 ${man.toLocaleString()}만원`;
+    return `${eok}억원`;
+  } else if (val >= 10000) {
+    const man = Math.round(val / 10000);
+    return `${man.toLocaleString()}만원`;
+  }
+  return `${Math.round(val).toLocaleString()}원`;
+}
+
+// Theme Switcher
+function toggleTheme() {
+  const html = document.documentElement;
+  const currentTheme = html.getAttribute('data-theme') || 'dark';
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', newTheme);
+  
+  $('themeIcon').textContent = newTheme === 'dark' ? '🌙' : '☀️';
+  $('themeText').textContent = newTheme === 'dark' ? '다크모드' : '라이트모드';
+
+  if (calculatedDataCache.length > 0) {
+    drawChart(calculatedDataCache, activeChartMode);
+  }
+}
+
+// Dashboard View Tabs
+function switchDashboardTab(tabId, btnEl) {
+  document.querySelectorAll('.view-tab-btn').forEach(b => b.classList.remove('active'));
+  btnEl.classList.add('active');
+
+  document.querySelectorAll('.view-tab-pane').forEach(p => p.classList.remove('active'));
+  $(tabId).classList.add('active');
+
+  const chartTypeGroup = $('chartTypeGroup');
+  if (tabId === 'chartTab') {
+    chartTypeGroup.style.display = 'flex';
+    setTimeout(() => {
+      if (calculatedDataCache.length > 0) {
+        drawChart(calculatedDataCache, activeChartMode);
+      }
+    }, 50);
+  } else {
+    chartTypeGroup.style.display = 'none';
+  }
+}
+
+function toggleAdvancedSection() {
+  const content = $('advAccordionContent');
+  content.classList.toggle('open');
+}
+
+function setCompoundFreq(freq, btnEl) {
+  currentCompoundFreq = freq;
+  document.querySelectorAll('.compound-freq-btn').forEach(b => b.classList.remove('active'));
+  btnEl.classList.add('active');
+  updateAllCalculations();
+}
+
+function setFieldValue(fieldId, value) {
+  const slider = $(fieldId);
+  slider.value = value;
+  updateAllCalculations();
+}
+
+function computeCompoundSchedule(principal, initialMonthly, annualRate, years, freq, inflationRate, stepUpRate) {
+  const schedule = [];
+  let cumulativePrincipal = principal;
+  let cumulativeMonthlyDeposits = 0;
+  let currentMonthlyPMT = initialMonthly;
+  
+  let compoundBalance = principal;
+  const r = annualRate / 100;
+  
+  for (let y = 1; y <= years; y++) {
+    let yearDepositSum = 0;
+    
+    for (let m = 1; m <= 12; m++) {
+      yearDepositSum += currentMonthlyPMT;
+      const monthlyRate = r / 12;
+      compoundBalance = (compoundBalance + currentMonthlyPMT) * (1 + monthlyRate);
+    }
+    
+    cumulativeMonthlyDeposits += yearDepositSum;
+    cumulativePrincipal += yearDepositSum;
+    
+    // Simple Interest Approximation for comparison
+    const simpleInitialInterest = principal * (r * y);
+    const simpleMonthlyInterest = cumulativeMonthlyDeposits * (r * y / 2);
+    const simpleTotal = cumulativePrincipal + simpleInitialInterest + simpleMonthlyInterest;
+    
+    const compoundInterest = Math.max(0, compoundBalance - cumulativePrincipal);
+    const diff = compoundBalance - simpleTotal;
+    
+    schedule.push({
+      year: y,
+      initialPrincipal: principal,
+      cumulativeMonthlyDeposits: cumulativeMonthlyDeposits,
+      cumulativePrincipal: Math.round(cumulativePrincipal),
+      compoundBalance: Math.round(compoundBalance),
+      compoundInterest: Math.round(compoundInterest),
+      simpleTotal: Math.round(simpleTotal),
+      diff: Math.round(diff)
+    });
+    
+    if (stepUpRate > 0) {
+      currentMonthlyPMT *= (1 + stepUpRate / 100);
+    }
+  }
+  
+  return schedule;
+}
+
+function updateAllCalculations() {
+  const principal = parseFloat($('principal').value) || 0;
+  const monthly = parseFloat($('monthly').value) || 0;
+  const rate = parseFloat($('rate').value) || 0;
+  const years = parseInt($('years').value) || 1;
+  const inflation = parseFloat($('inflation').value) || 0;
+  const stepUp = parseFloat($('stepUp').value) || 0;
+
+  // Sync Input Labels
+  $('principalNum').value = formatCompactShort(principal);
+  $('monthlyNum').value = formatCompactShort(monthly);
+  $('rateNum').value = rate.toFixed(1);
+  $('yearsNum').value = years;
+  $('inflationNum').value = inflation.toFixed(1);
+  $('stepUpNum').value = stepUp.toFixed(1);
+
+  // Compute Schedule Data
+  const schedule = computeCompoundSchedule(principal, monthly, rate, years, currentCompoundFreq, inflation, stepUp);
+  calculatedDataCache = schedule;
+  
+  const finalData = schedule[schedule.length - 1];
+  
+  // Purchasing Power Real Value
+  const realPurchasingPower = finalData.compoundBalance / Math.pow(1 + inflation / 100, years);
+  const totalROI = finalData.cumulativePrincipal > 0 
+    ? ((finalData.compoundInterest / finalData.cumulativePrincipal) * 100).toFixed(1)
+    : '0.0';
+
+  // Hero Card Display
+  $('heroFinalAmount').textContent = formatFullCurrency(finalData.compoundBalance);
+  $('heroPrincipalChip').textContent = formatKRW(finalData.cumulativePrincipal);
+  $('heroInterestChip').textContent = formatKRW(finalData.compoundInterest);
+  $('heroROIChip').textContent = `${totalROI}%`;
+
+  // Quick Stats
+  $('statPrincipal').textContent = formatKRW(finalData.cumulativePrincipal);
+  $('statInterest').textContent = formatKRW(finalData.compoundInterest);
+  $('statROI').textContent = `${totalROI}%`;
+  $('statReal').textContent = formatKRW(realPurchasingPower);
+
+  // Visual Composition Spectrum Bar
+  const totalWealth = finalData.compoundBalance;
+  if (totalWealth > 0) {
+    const pInitPct = ((finalData.initialPrincipal / totalWealth) * 100).toFixed(1);
+    const pMonthPct = ((finalData.cumulativeMonthlyDeposits / totalWealth) * 100).toFixed(1);
+    const pIntPct = (100 - pInitPct - pMonthPct).toFixed(1);
+
+    $('segInitial').style.width = `${pInitPct}%`;
+    $('segMonthly').style.width = `${pMonthPct}%`;
+    $('segInterest').style.width = `${pIntPct}%`;
+
+    $('spectrumLegendText').textContent = `초기원금 ${pInitPct}% · 적립원금 ${pMonthPct}% · 복리이익 ${pIntPct}%`;
+  }
+
+  // Infographic Stat Box Updates
+  $('diffTotalVal').textContent = `+${formatKRW(finalData.diff)}`;
+
+  if (rate > 0) {
+    const y72 = (72 / rate).toFixed(1);
+    $('rule72Val').textContent = `≈ ${y72}년`;
+  } else {
+    $('rule72Val').textContent = 'N/A';
+  }
+
+  // Snowball Velocity (Ratio of Interest generated in last half vs first half)
+  if (schedule.length >= 2) {
+    const midIdx = Math.floor(schedule.length / 2) - 1;
+    const firstHalfInterest = schedule[midIdx].compoundInterest;
+    const secondHalfInterest = finalData.compoundInterest - firstHalfInterest;
+    const accelerationRatio = firstHalfInterest > 0 ? ((secondHalfInterest / firstHalfInterest) * 100).toFixed(0) : '100';
+    $('snowballVelocityVal').textContent = `${accelerationRatio}% 이득`;
+    $('snowballVelocityDesc').textContent = `후반 ${schedule.length - midIdx - 1}년 동안 생성된 이자 비중 폭발`;
+  }
+
+  // Render Milestones
+  renderMilestones(schedule, finalData);
+
+  // Render Year Table
+  renderYearTable(schedule);
+
+  // Render Insights
+  renderInsights(schedule, rate, inflation, years);
+
+  // Draw Dynamic Canvas Chart
+  drawChart(schedule, activeChartMode);
+}
+
+function renderMilestones(schedule, finalData) {
+  const container = $('milestonesList');
+  const targets = [
+    { name: '1천만원', val: 10000000 },
+    { name: '5천만원', val: 50000000 },
+    { name: '1억원', val: 100000000 },
+    { name: '3억원', val: 300000000 },
+    { name: '5억원', val: 500000000 },
+    { name: '10억원', val: 1000000000 },
+    { name: '20억원', val: 2000000000 }
+  ];
+
+  const html = targets.map(t => {
+    const achievedRow = schedule.find(r => r.compoundBalance >= t.val);
+    const maxVal = finalData.compoundBalance;
+    const progressPct = Math.min(100, (maxVal / t.val) * 100).toFixed(1);
+    
+    if (achievedRow) {
+      return `
+        <div class="milestone-track-item achieved">
+          <div class="milestone-target-name text-green">
+            <span>✅</span> ${t.name} 달성
+          </div>
+          <div class="milestone-progress-wrap">
+            <div class="milestone-bar-bg">
+              <div class="milestone-bar-fill" style="width: 100%; background: var(--green-gradient);"></div>
+            </div>
+          </div>
+          <div class="milestone-badge text-green">${achievedRow.year}년차 달성!</div>
+        </div>
+      `;
+    } else {
+      return `
+        <div class="milestone-track-item">
+          <div class="milestone-target-name">
+            <span>🎯</span> ${t.name}
+          </div>
+          <div class="milestone-progress-wrap">
+            <div class="milestone-bar-bg">
+              <div class="milestone-bar-fill" style="width: ${progressPct}%;"></div>
+            </div>
+          </div>
+          <div class="milestone-badge text-muted">진행률 ${progressPct}%</div>
+        </div>
+      `;
+    }
+  }).join('');
+
+  container.innerHTML = html;
+}
+
+// Render Table Schedule
+function renderYearTable(schedule) {
+  const tbody = $('yearTableBody');
+  tbody.innerHTML = schedule.map(row => `
+    <tr>
+      <td style="font-weight:800;">${row.year}년차</td>
+      <td style="color: var(--color-blue); font-weight:700;">${formatFullCurrency(row.cumulativePrincipal)}</td>
+      <td style="color: var(--color-green); font-weight:700;">${formatFullCurrency(row.compoundInterest)}</td>
+      <td style="font-weight:800; color: var(--text-primary);">${formatFullCurrency(row.compoundBalance)}</td>
+      <td style="color: var(--text-muted);">${formatFullCurrency(row.simpleTotal)}</td>
+      <td style="color: var(--color-orange); font-weight:700;">+${formatFullCurrency(row.diff)}</td>
+    </tr>
+  `).join('');
+}
+
+// Render Insights
+function renderInsights(schedule, rate, inflation, years) {
+  const container = $('insightContainer');
+  const finalRow = schedule[schedule.length - 1];
+  const goldenCrossRow = schedule.find(r => r.compoundInterest >= r.cumulativePrincipal);
+
+  let html = `
+    <div class="insight-card">
+      <div class="insight-card-title">🚀 복리 효과 인사이트 리포트</div>
+      <p style="font-size:0.9rem; color: var(--text-secondary); line-height:1.6;">
+        <b>${years}년 동안 총 ${formatKRW(finalRow.cumulativePrincipal)}</b>를 투입하여, 총 <b>+${formatKRW(finalRow.compoundInterest)}</b>의 pure 이자 수익을 거둡니다.
+      </p>
+    </div>
+  `;
+
+  if (goldenCrossRow) {
+    html += `
+      <div class="insight-card" style="border-color: var(--color-green);">
+        <div class="insight-card-title text-green">🔥 골든 크로스 지점 (${goldenCrossRow.year}년차)</div>
+        <p style="font-size:0.9rem; color: var(--text-secondary); line-height:1.6;">
+          <b>${goldenCrossRow.year}년차</b>가 되면, 누적 이자 수익(${formatKRW(goldenCrossRow.compoundInterest)})이 직접 투입한 총 원금(${formatKRW(goldenCrossRow.cumulativePrincipal)})을 추월하여 스스로 자산이 증식합니다.
+        </p>
+      </div>
+    `;
+  }
+
+  if (inflation > 0) {
+    const realPower = finalRow.compoundBalance / Math.pow(1 + inflation / 100, years);
+    html += `
+      <div class="insight-card" style="border-color: var(--color-purple);">
+        <div class="insight-card-title text-purple">🛡️ 물가상승률 (${inflation}%) 반영 실질 구매력</div>
+        <p style="font-size:0.9rem; color: var(--text-secondary); line-height:1.6;">
+          ${years}년 후 명목 자산은 ${formatKRW(finalRow.compoundBalance)}이지만, 현재 화폐 가치 기준 실질 구매력은 <b>${formatKRW(realPower)}</b>입니다.
+        </p>
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
+}
+
+function switchChartMode(mode, btnEl) {
+  activeChartMode = mode;
+  document.querySelectorAll('.chart-tab-btn').forEach(b => b.classList.remove('active'));
+  btnEl.classList.add('active');
+  if (calculatedDataCache.length > 0) {
+    drawChart(calculatedDataCache, mode);
+  }
+}
+
+function drawChart(schedule, mode) {
+  const canvas = $('growthChart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  
+  const width = rect.width;
+  const height = rect.height;
+  
+  ctx.clearRect(0, 0, width, height);
+  
+  if (!schedule || schedule.length === 0) return;
+
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  
+  const gridColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)';
+  const textColor = isDark ? '#94a3b8' : '#64748b';
+  const blueColor = isDark ? '#38bdf8' : '#0284c7';
+  const greenColor = isDark ? '#34d399' : '#059669';
+  const orangeColor = isDark ? '#fb923c' : '#ea580c';
+
+  const paddingLeft = 75;
+  const paddingRight = 24;
+  const paddingTop = 24;
+  const paddingBottom = 36;
+  
+  const graphWidth = width - paddingLeft - paddingRight;
+  const graphHeight = height - paddingTop - paddingBottom;
+  
+  let maxVal = 0;
+  schedule.forEach(d => {
+    if (d.compoundBalance > maxVal) maxVal = d.compoundBalance;
+  });
+  maxVal = maxVal * 1.08;
+
+  // Grid Lines
+  const gridLines = 6;
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = gridColor;
+  ctx.fillStyle = textColor;
+  ctx.font = '500 13px Paperlogy, sans-serif';
+  ctx.textAlign = 'right';
+  
+  for (let i = 0; i <= gridLines; i++) {
+    const yVal = (maxVal / gridLines) * i;
+    const yPos = height - paddingBottom - (graphHeight / gridLines) * i;
+    
+    ctx.beginPath();
+    ctx.moveTo(paddingLeft, yPos);
+    ctx.lineTo(width - paddingRight, yPos);
+    ctx.stroke();
+    
+    ctx.fillText(formatCompactShort(yVal), paddingLeft - 10, yPos + 4);
+  }
+
+  // X Axis Labels
+  const totalYears = schedule.length;
+  const step = Math.max(1, Math.floor(totalYears / 10));
+  ctx.textAlign = 'center';
+  
+  for (let i = 0; i < totalYears; i += step) {
+    const xPos = paddingLeft + (graphWidth / (totalYears - 1)) * i;
+    ctx.fillText(`${schedule[i].year}년`, xPos, height - 10);
+  }
+
+  // Draw Smooth Bezier Curves
+  if (mode === 'growth' || mode === 'compare') {
+    // Principal Curve
+    ctx.beginPath();
+    schedule.forEach((d, i) => {
+      const x = paddingLeft + (graphWidth / (totalYears - 1)) * i;
+      const y = height - paddingBottom - (d.cumulativePrincipal / maxVal) * graphHeight;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = blueColor;
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Compound Curve
+    ctx.beginPath();
+    schedule.forEach((d, i) => {
+      const x = paddingLeft + (graphWidth / (totalYears - 1)) * i;
+      const y = height - paddingBottom - (d.compoundBalance / maxVal) * graphHeight;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.strokeStyle = greenColor;
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    // Gradient Fill under Compound Curve
+    const gradient = ctx.createLinearGradient(0, paddingTop, 0, height - paddingBottom);
+    gradient.addColorStop(0, isDark ? 'rgba(52, 211, 153, 0.32)' : 'rgba(5, 150, 105, 0.22)');
+    gradient.addColorStop(1, 'rgba(52, 211, 153, 0.0)');
+    
+    ctx.lineTo(paddingLeft + graphWidth, height - paddingBottom);
+    ctx.lineTo(paddingLeft, height - paddingBottom);
+    ctx.closePath();
+    ctx.fillStyle = gradient;
+    ctx.fill();
+
+    if (mode === 'compare') {
+      // Simple Interest Line
+      ctx.beginPath();
+      ctx.setLineDash([6, 6]);
+      schedule.forEach((d, i) => {
+        const x = paddingLeft + (graphWidth / (totalYears - 1)) * i;
+        const y = height - paddingBottom - (d.simpleTotal / maxVal) * graphHeight;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = orangeColor;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+  } else if (mode === 'composition') {
+    // Stacked Bars
+    const barWidth = Math.max(6, (graphWidth / totalYears) * 0.65);
+    
+    schedule.forEach((d, i) => {
+      const x = paddingLeft + (graphWidth / totalYears) * i + (barWidth / 2);
+      const pHeight = (d.cumulativePrincipal / maxVal) * graphHeight;
+      const iHeight = (d.compoundInterest / maxVal) * graphHeight;
+      const yBase = height - paddingBottom;
+      
+      ctx.fillStyle = blueColor;
+      ctx.fillRect(x - barWidth/2, yBase - pHeight, barWidth, pHeight);
+      
+      ctx.fillStyle = greenColor;
+      ctx.fillRect(x - barWidth/2, yBase - pHeight - iHeight, barWidth, iHeight);
+    });
+  }
+}
+
+// Tooltip Mouse Movement Listener
+const canvasEl = $('growthChart');
+const tooltipEl = $('chartTooltip');
+
+if (canvasEl) {
+  canvasEl.addEventListener('mousemove', (e) => {
+    if (!calculatedDataCache || calculatedDataCache.length === 0) return;
+
+    const rect = canvasEl.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    
+    const paddingLeft = 75;
+    const paddingRight = 24;
+    const graphWidth = rect.width - paddingLeft - paddingRight;
+    
+    if (mouseX < paddingLeft || mouseX > rect.width - paddingRight) {
+      tooltipEl.style.display = 'none';
+      return;
+    }
+    
+    const relativeX = mouseX - paddingLeft;
+    const index = Math.round((relativeX / graphWidth) * (calculatedDataCache.length - 1));
+    const clampedIndex = Math.max(0, Math.min(calculatedDataCache.length - 1, index));
+    
+    const data = calculatedDataCache[clampedIndex];
+    
+    $('tooltipYear').textContent = `${data.year}년차 자산 내역`;
+    $('tooltipPrincipal').textContent = formatFullCurrency(data.cumulativePrincipal);
+    $('tooltipInterest').textContent = formatFullCurrency(data.compoundInterest);
+    $('tooltipTotal').textContent = formatFullCurrency(data.compoundBalance);
+    
+    tooltipEl.style.display = 'block';
+    tooltipEl.style.left = `${Math.min(mouseX + 16, rect.width - 220)}px`;
+    tooltipEl.style.top = `35px`;
+  });
+
+  canvasEl.addEventListener('mouseleave', () => {
+    tooltipEl.style.display = 'none';
+  });
+}
+
+// CSV Export
+function exportCSV() {
+  if (!calculatedDataCache || calculatedDataCache.length === 0) return;
+  
+  let csvContent = "\uFEFF연차,누적원금,이자수익,복리총자산,단리총자산,복리차이\n";
+  calculatedDataCache.forEach(row => {
+    csvContent += `${row.year}년차,${row.cumulativePrincipal},${row.compoundInterest},${row.compoundBalance},${row.simpleTotal},${row.diff}\n`;
+  });
+  
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `Compound_Lab_Paperlogy_${new Date().toISOString().slice(0,10)}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  ['principal', 'monthly', 'rate', 'years', 'inflation', 'stepUp'].forEach(id => {
+    const el = $(id);
+    if (el) el.addEventListener('input', updateAllCalculations);
+  });
+
+  updateAllCalculations();
+});
+
+window.addEventListener('resize', () => {
+  if (calculatedDataCache.length > 0) {
+    drawChart(calculatedDataCache, activeChartMode);
+  }
+});
+</script>
+</body>
+</html>

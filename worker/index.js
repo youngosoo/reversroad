@@ -93,6 +93,9 @@ export default {
       if (appFileMatch) {
         const id = decodeURIComponent(appFileMatch[1]);
         const rel = appFileMatch[2] && appFileMatch[2].length ? appFileMatch[2] : 'index.html';
+        // 이름을 바꾼 앱의 옛 주소는 새 주소로 301 (색인된 링크·북마크 보존)
+        const moved = await formerAppRedirect(request, env, url, id);
+        if (moved && !(await store.getApp(env, id))) return moved;
         const generated = await store.isGenerated(env);
         if (generated) {
           if (await store.isGone(env, id)) return notFound(request, env);
@@ -160,6 +163,11 @@ export default {
           if (await store.isGenerated(env)) {
             const html = await store.getPage(env, key);
             if (html !== null) return htmlResponse(html, key);
+            const appPage = key.match(/^app\/([^/]+)\/index\.html$/);
+            if (appPage) {
+              const moved = await formerAppRedirect(request, env, url, decodeURIComponent(appPage[1]));
+              if (moved) return moved;
+            }
             return notFound(request, env); // 관리자가 지운 페이지
           }
           const asset = await fetchAsset(request, env, `/${key}`);
@@ -208,6 +216,16 @@ function htmlResponse(html, key) {
       'cache-control': 'no-store',
     },
   });
+}
+
+/** 이름을 바꾼 앱의 옛 id 로 들어오면 새 주소로 301 합니다 */
+async function formerAppRedirect(request, env, url, id) {
+  const apps = await store.readApps(env);
+  const target = apps.find((a) => Array.isArray(a.formerIds) && a.formerIds.includes(id));
+  if (!target) return null;
+  const rest = url.pathname.replace(/^\/apps\/[^/]+\/?/, '');
+  const suffix = url.pathname.startsWith('/app/') ? '' : (rest && rest !== 'index.html' ? `/${rest}` : '/');
+  return Response.redirect(`${url.origin}${url.pathname.startsWith('/app/') ? '/app/' : '/apps/'}${target.id}${suffix}${url.search}`, 301);
 }
 
 /** 정적 자산을 그대로 가져옵니다 (없으면 null) */

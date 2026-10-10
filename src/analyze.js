@@ -620,15 +620,18 @@ function collectAbsolutePaths($) {
   return [...hits].slice(0, 10);
 }
 
-function collectExternal($) {
+function collectExternal($, styleText = '') {
   const hits = new Set();
+  const add = (v) => {
+    if (typeof v === 'string' && /^https?:\/\//i.test(v)) hits.add(v.replace(/[)"'\s]+$/, ''));
+  };
   $('[src], [href]').each((_, el) => {
     const $el = $(el);
-    for (const attr of ['src', 'href']) {
-      const v = $el.attr(attr);
-      if (typeof v === 'string' && /^https?:\/\//i.test(v)) hits.add(v);
-    }
+    for (const attr of ['src', 'href']) add($el.attr(attr));
   });
+  // CSS(@import, @font-face url(...), background: url(...)) 안의 외부 주소도 인터넷이 필요합니다
+  for (const m of String(styleText).matchAll(/url\(\s*['"]?(https?:\/\/[^)'"\s]+)/gi)) add(m[1]);
+  for (const m of String(styleText).matchAll(/@import\s+(?:url\()?\s*['"]?(https?:\/\/[^)'"\s;]+)/gi)) add(m[1]);
   return [...hits];
 }
 
@@ -661,7 +664,7 @@ function analyzeHtml(html, meta = {}) {
   const libraries = unique(
     LIBRARIES.filter(([re]) => re.test(html)).map(([, name]) => name)
   );
-  const externalResources = collectExternal($);
+  const externalResources = collectExternal($, `${styleText}\n${cssText}`);
   const absolutePaths = collectAbsolutePaths($);
   const features = collectFeatures(scriptText, `${html}`, $);
   const shortcuts = collectShortcuts(scriptText, $);

@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⚗️ ReverseRoad's Periodic Lab</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root[data-theme="dark"] {
+  --bg:#0a0e17;--bg2:#111827;--bg3:#1e293b;--surface:#1e293b;
+  --text:#e2e8f0;--text2:#94a3b8;--border:rgba(255,255,255,.08);
+  --accent:#38bdf8;--accent2:#818cf8;
+  --green:#34d399;--red:#f87171;--orange:#fb923c;--pink:#f472b6;
+  --alkali:#ef4444;--alkaline:#f59e0b;--transition:#3b82f6;
+  --post-transition:#8b5cf6;--metalloid:#14b8a6;--nonmetal:#22c55e;
+  --halogen:#06b6d4;--noble:#a855f7;--lanthanide:#ec4899;--actinide:#f43f5e;
+  --unknown:#64748b;
+  --radius:12px;--radius-sm:8px;
+  --shadow:0 4px 24px rgba(0,0,0,.4);
+  --font:'Segoe UI',system-ui,-apple-system,sans-serif;
+  --mono:'Fira Code','JetBrains Mono','Cascadia Code',monospace;
+}
+
+:root[data-theme="light"] {
+  --bg:#f8fafc;--bg2:#ffffff;--bg3:#f1f5f9;--surface:#ffffff;
+  --text:#0f172a;--text2:#475569;--border:rgba(0,0,0,.1);
+  --accent:#0284c7;--accent2:#4f46e5;
+  --green:#10b981;--red:#ef4444;--orange:#f97316;--pink:#ec4899;
+  --alkali:#dc2626;--alkaline:#d97706;--transition:#2563eb;
+  --post-transition:#7c3aed;--metalloid:#0d9488;--nonmetal:#16a34a;
+  --halogen:#0891b2;--noble:#9333ea;--lanthanide:#db2777;--actinide:#e11d48;
+  --unknown:#475569;
+  --radius:12px;--radius-sm:8px;
+  --shadow:0 4px 20px rgba(0,0,0,.08);
+  --font:'Segoe UI',system-ui,-apple-system,sans-serif;
+  --mono:'Fira Code','JetBrains Mono','Cascadia Code',monospace;
+}
+
+html{font-size:16px;scroll-behavior:smooth}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;transition:background-color .3s, color .3s}
+
+::-webkit-scrollbar{width:8px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--accent);border-radius:4px}
+
+header{
+  background:var(--bg2);
+  border-bottom:1px solid var(--border);
+  padding:14px 24px;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;backdrop-filter:blur(12px);
+  box-shadow: 0 2px 10px rgba(0,0,0,.05);
+}
+.logo{display:flex;align-items:center;gap:12px}
+.logo h1{font-size:1.3rem;font-weight:700;background:linear-gradient(135deg,var(--accent),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo .tag{font-family:var(--mono);font-size:.7rem;color:var(--text2);background:var(--bg3);padding:2px 8px;border-radius:4px;border:1px solid var(--border)}
+
+.header-actions{display:flex;align-items:center;gap:12px}
+
+.theme-btn{
+  display:flex;align-items:center;gap:6px;padding:8px 14px;
+  border-radius:20px;border:1px solid var(--border);
+  background:var(--bg3);color:var(--text);font-size:.8rem;font-weight:600;
+  cursor:pointer;transition:all .2s ease;
+}
+.theme-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+.nav-tabs{display:flex;gap:4px;background:var(--bg3);border-radius:var(--radius);padding:4px;border:1px solid var(--border)}
+.nav-tab{
+  padding:8px 18px;border-radius:var(--radius-sm);border:none;
+  background:transparent;color:var(--text2);cursor:pointer;
+  font-size:.85rem;font-weight:500;transition:all .2s;font-family:var(--font);
+}
+.nav-tab:hover{color:var(--text);background:rgba(255,255,255,.08)}
+.nav-tab.active{background:var(--accent);color:#ffffff;font-weight:600}
+
+main{padding:20px;max-width:1440px;margin:0 auto}
+.view{display:none}
+.view.active{display:block}
+
+.controls{
+  display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:16px;
+  padding:14px 18px;background:var(--bg2);border-radius:var(--radius);
+  border:1px solid var(--border);box-shadow:var(--shadow);
+}
+.search-box{
+  flex:1;min-width:240px;position:relative;
+}
+.search-box input{
+  width:100%;padding:10px 14px 10px 38px;background:var(--bg);
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  color:var(--text);font-size:.9rem;outline:none;transition:border .2s;
+}
+.search-box input:focus{border-color:var(--accent)}
+.search-box::before{
+  content:'🔍';position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:.85rem;opacity:.7;
+}
+
+.filter-group{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.filter-btn{
+  padding:6px 14px;border-radius:20px;border:1px solid var(--border);
+  background:var(--bg3);color:var(--text2);cursor:pointer;font-size:.75rem;
+  transition:all .2s;font-family:var(--font);font-weight:500;
+}
+.filter-btn:hover{color:var(--text);border-color:var(--accent)}
+.filter-btn.active{background:var(--accent);color:#ffffff;border-color:var(--accent);font-weight:700}
+
+.ptable{
+  display:grid;
+  grid-template-columns:repeat(18,1fr);
+  gap:4px;
+  margin-bottom:16px;
+}
+.element-cell{
+  aspect-ratio:1;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  border-radius:var(--radius-sm);cursor:pointer;
+  transition:transform .15s ease, opacity .2s ease, box-shadow .2s ease;
+  position:relative;
+  border:1px solid var(--border);
+  padding:2px;min-width:0;overflow:hidden;
+  user-select:none;
+}
+.element-cell:hover{
+  transform:scale(1.18);z-index:20;
+  box-shadow:0 0 16px var(--accent);
+}
+.element-cell.dimmed{opacity:.15;filter:grayscale(80%)}
+.element-cell.highlight{transform:scale(1.08);box-shadow:0 0 12px var(--accent);z-index:10;border-color:var(--accent)}
+
+.element-cell .number{font-size:clamp(.45rem,.7vw,.65rem);color:var(--text);opacity:.7;line-height:1;position:absolute;top:3px;left:4px}
+.element-cell .symbol{font-size:clamp(.75rem,1.3vw,1.15rem);font-weight:800;line-height:1.2;margin-top:4px}
+.element-cell .name{font-size:clamp(.35rem,.55vw,.5rem);color:var(--text);opacity:.8;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;width:100%;text-align:center}
+.element-cell .mass{font-size:clamp(.3rem,.45vw,.45rem);color:var(--text2);line-height:1}
+
+/* Category colors with themes */
+.cat-alkali-metal{background:rgba(239,68,68,.15);border-color:var(--alkali);color:var(--text)}
+.cat-alkaline-earth{background:rgba(245,158,11,.15);border-color:var(--alkaline);color:var(--text)}
+.cat-transition{background:rgba(59,130,246,.15);border-color:var(--transition);color:var(--text)}
+.cat-post-transition{background:rgba(139,92,246,.15);border-color:var(--post-transition);color:var(--text)}
+.cat-metalloid{background:rgba(20,184,166,.15);border-color:var(--metalloid);color:var(--text)}
+.cat-nonmetal{background:rgba(34,197,94,.15);border-color:var(--nonmetal);color:var(--text)}
+.cat-halogen{background:rgba(6,182,212,.15);border-color:var(--halogen);color:var(--text)}
+.cat-noble-gas{background:rgba(168,85,247,.15);border-color:var(--noble);color:var(--text)}
+.cat-lanthanide{background:rgba(236,72,153,.15);border-color:var(--lanthanide);color:var(--text)}
+.cat-actinide{background:rgba(244,63,94,.15);border-color:var(--actinide);color:var(--text)}
+.cat-unknown{background:rgba(100,116,139,.15);border-color:var(--unknown);color:var(--text)}
+
+.placeholder-cell{
+  aspect-ratio:1;border:1px dashed var(--border);border-radius:var(--radius-sm);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:.65rem;color:var(--text2);text-align:center;background:rgba(0,0,0,.02);
+}
+
+.la-row,.ac-row{
+  display:grid;grid-template-columns:repeat(15,1fr);
+  gap:4px;max-width:calc((100% / 18) * 15);margin-left:calc((100% / 18) * 3);
+}
+.la-label,.ac-label{
+  text-align:left;font-size:.75rem;font-weight:600;color:var(--accent);margin-left:calc((100% / 18) * 3);padding:10px 0 4px;
+}
+
+.modal-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);
+  z-index:200;align-items:center;justify-content:center;
+  backdrop-filter:blur(6px);
+}
+.modal-overlay.show{display:flex}
+.modal{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:16px;padding:28px;max-width:580px;width:92%;
+  max-height:88vh;overflow-y:auto;position:relative;
+  box-shadow:var(--shadow);color:var(--text);
+}
+.modal-close{
+  position:absolute;top:14px;right:16px;background:var(--bg3);border:none;
+  color:var(--text2);width:32px;height:32px;border-radius:50%;font-size:1.2rem;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;
+}
+.modal-close:hover{color:var(--red);background:rgba(239,68,68,.1)}
+
+.modal-header{display:flex;align-items:center;gap:20px;margin-bottom:20px}
+.modal-symbol{
+  width:84px;height:84px;border-radius:16px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;font-size:2.2rem;font-weight:800;
+  border:2px solid var(--accent);box-shadow:0 0 15px rgba(56,189,248,.2);
+}
+.modal-info h2{font-size:1.6rem;margin-bottom:2px;font-weight:700}
+.modal-info .sub{color:var(--text2);font-size:.85rem}
+
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.detail-card{
+  background:var(--bg3);border-radius:var(--radius-sm);padding:10px 14px;
+  border:1px solid var(--border);
+}
+.detail-card .label{font-size:.7rem;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+.detail-card .value{font-size:1rem;font-weight:600;font-family:var(--mono)}
+
+.modal-section{margin-top:18px}
+.modal-section h3{font-size:.9rem;color:var(--accent);margin-bottom:6px;font-weight:700}
+.modal-section p{font-size:.88rem;color:var(--text);line-height:1.6;opacity:.9}
+.electron-config{font-family:var(--mono);font-size:.85rem;color:var(--green);background:var(--bg3);padding:8px 12px;border-radius:var(--radius-sm);border:1px solid var(--border)}
+.shell-visual{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.shell-ring{
+  width:34px;height:34px;border-radius:50%;border:2px solid var(--accent);
+  display:flex;align-items:center;justify-content:center;font-size:.75rem;
+  font-weight:700;position:relative;background:var(--bg);
+}
+
+.quiz-container{max-width:640px;margin:0 auto;text-align:center}
+.quiz-header{margin-bottom:24px}
+.quiz-score{display:flex;justify-content:center;gap:32px;margin:16px 0}
+.score-item{text-align:center}
+.score-item .num{font-size:2rem;font-weight:800;font-family:var(--mono)}
+.score-item .lbl{font-size:.75rem;color:var(--text2);text-transform:uppercase}
+.score-correct .num{color:var(--green)}
+.score-wrong .num{color:var(--red)}
+.score-streak .num{color:var(--orange)}
+
+.progress-bar{width:100%;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;margin:12px 0}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:3px;transition:width .4s ease}
+
+.quiz-question{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:var(--radius);padding:28px;margin-bottom:20px;
+  box-shadow:var(--shadow);
+}
+.quiz-question .q-label{font-size:.8rem;color:var(--accent);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;font-weight:700}
+.quiz-question .q-text{font-size:1.35rem;font-weight:700;line-height:1.5}
+.quiz-question .q-hint{font-size:.85rem;color:var(--text2);margin-top:8px}
+
+.quiz-options{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.quiz-opt{
+  padding:14px;border-radius:var(--radius-sm);border:2px solid var(--border);
+  background:var(--bg2);color:var(--text);cursor:pointer;font-size:1rem;
+  font-weight:600;transition:all .2s;text-align:center;font-family:var(--font);
+}
+.quiz-opt:hover{border-color:var(--accent);background:var(--bg3)}
+.quiz-opt.correct{border-color:var(--green);background:rgba(52,211,153,.15);color:var(--green)}
+.quiz-opt.wrong{border-color:var(--red);background:rgba(248,113,113,.15);color:var(--red)}
+
+.quiz-next{
+  margin-top:16px;padding:12px 32px;border:none;border-radius:var(--radius-sm);
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#ffffff;font-size:1rem;font-weight:700;cursor:pointer;
+  transition:transform .15s;font-family:var(--font);box-shadow:0 4px 12px rgba(0,0,0,.15);
+}
+.quiz-next:hover{transform:scale(1.04)}
+
+.quiz-type-selector{display:flex;gap:8px;justify-content:center;margin-bottom:20px;flex-wrap:wrap}
+.quiz-type-btn{
+  padding:8px 18px;border-radius:20px;border:1px solid var(--border);
+  background:var(--bg2);color:var(--text2);cursor:pointer;font-size:.8rem;
+  transition:all .2s;font-family:var(--font);font-weight:500;
+}
+.quiz-type-btn.active{background:var(--accent2);color:#ffffff;border-color:var(--accent2);font-weight:700}
+
+.learn-container{max-width:800px;margin:0 auto}
+.learn-card{
+  background:var(--bg2);border:1px solid var(--border);
+  border-radius:var(--radius);padding:24px;margin-bottom:20px;box-shadow:var(--shadow);
+}
+.learn-card h3{color:var(--accent);margin-bottom:12px;font-size:1.15rem;font-weight:700}
+.learn-card p{color:var(--text);line-height:1.7;font-size:.92rem;opacity:.9}
+
+.trend-visual{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:16px 0}
+.trend-box{padding:12px;border-radius:var(--radius-sm);text-align:center;border:1px solid var(--border);background:var(--bg3)}
+.trend-box .arrow{font-size:1.5rem}
+.trend-box .t-label{font-size:.75rem;color:var(--text2);margin-top:4px}
+
+.mnemonic{
+  font-family:var(--mono);font-size:1.05rem;color:var(--green);
+  background:var(--bg3);padding:10px 14px;border-radius:var(--radius-sm);
+  border-left:4px solid var(--green);margin:10px 0;font-weight:600;
+}
+.mnemonic-sub{font-size:.8rem;color:var(--text2);margin-top:4px;font-family:var(--font)}
+
+footer{
+  text-align:center;padding:24px;color:var(--text2);font-size:.8rem;
+  border-top:1px solid var(--border);margin-top:40px;
+}
+
+@media(max-width:900px){
+  .ptable{gap:2px}
+  .element-cell .name,.element-cell .mass{display:none}
+  header{flex-direction:column;gap:12px}
+  .quiz-options{grid-template-columns:1fr}
+  .detail-grid{grid-template-columns:1fr}
+  .la-row,.ac-row{margin-left:0;max-width:100%;grid-template-columns:repeat(15,1fr)}
+  .la-label,.ac-label{margin-left:0}
+  .trend-visual{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <h1>⚗️ ReverseRoad's Periodic Lab</h1>
+    <span class="tag">v2.1 // 118 Elements</span>
+  </div>
+  <div class="header-actions">
+    <button class="theme-btn" id="themeToggleBtn" onclick="toggleTheme()">
+      <span id="themeIcon">☀️</span> <span id="themeText">라이트 모드</span>
+    </button>
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-view="table" onclick="switchTab('table')">주기율표</button>
+      <button class="nav-tab" data-view="quiz" onclick="switchTab('quiz')">퀴즈 모드</button>
+      <button class="nav-tab" data-view="learn" onclick="switchTab('learn')">학습 가이드</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <!-- ===== TABLE VIEW ===== -->
+  <div id="view-table" class="view active">
+    <div class="controls">
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="원소명, 기호, 번호로 검색... (예: Au, 금, 79)">
+      </div>
+      <div class="filter-group" id="filterGroup">
+        <button class="filter-btn active" data-cat="all">전체</button>
+        <button class="filter-btn" data-cat="alkali-metal">알칼리 금속</button>
+        <button class="filter-btn" data-cat="alkaline-earth">알칼리토 금속</button>
+        <button class="filter-btn" data-cat="transition">전이 금속</button>
+        <button class="filter-btn" data-cat="post-transition">전이후 금속</button>
+        <button class="filter-btn" data-cat="metalloid">준금속</button>
+        <button class="filter-btn" data-cat="nonmetal">비금속</button>
+        <button class="filter-btn" data-cat="halogen">할로겐</button>
+        <button class="filter-btn" data-cat="noble-gas">비활성 기체</button>
+        <button class="filter-btn" data-cat="lanthanide">란타넘족</button>
+        <button class="filter-btn" data-cat="actinide">악티늄족</button>
+      </div>
+    </div>
+    <div class="ptable" id="ptable"></div>
+    <div class="la-label">란타넘족 (57-71)</div>
+    <div class="la-row" id="laRow"></div>
+    <div class="ac-label">악티늄족 (89-103)</div>
+    <div class="ac-row" id="acRow"></div>
+  </div>
+
+  <!-- ===== QUIZ VIEW ===== -->
+  <div id="view-quiz" class="view">
+    <div class="quiz-container">
+      <div class="quiz-header">
+        <h2 style="margin-bottom:6px;font-size:1.5rem;font-weight:700">🧠 원소 퀴즈 챌린지</h2>
+        <p style="color:var(--text2);font-size:.9rem">주기율표 원소들의 특징과 기호를 완벽하게 마스터하세요</p>
+        <div class="quiz-type-selector" id="quizTypeSelector">
+          <button class="quiz-type-btn active" data-type="symbol">기호 맞추기</button>
+          <button class="quiz-type-btn" data-type="name">이름 맞추기</button>
+          <button class="quiz-type-btn" data-type="number">번호 맞추기</button>
+          <button class="quiz-type-btn" data-type="category">분류 맞추기</button>
+        </div>
+        <div class="quiz-score">
+          <div class="score-item score-correct"><div class="num" id="qCorrect">0</div><div class="lbl">정답</div></div>
+          <div class="score-item score-wrong"><div class="num" id="qWrong">0</div><div class="lbl">오답</div></div>
+          <div class="score-item score-streak"><div class="num" id="qStreak">0</div><div class="lbl">연속</div></div>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="qProgress" style="width:0%"></div></div>
+      </div>
+      <div class="quiz-question" id="quizQ">
+        <div class="q-label">Question</div>
+        <div class="q-text" id="qText">퀴즈를 시작하려면 아래 버튼을 클릭하세요</div>
+        <div class="q-hint" id="qHint"></div>
+      </div>
+      <div class="quiz-options" id="quizOpts"></div>
+      <button class="quiz-next" id="quizNext" onclick="nextQuiz()">시작하기</button>
+    </div>
+  </div>
+
+  <!-- ===== LEARN VIEW ===== -->
+  <div id="view-learn" class="view">
+    <div class="learn-container">
+      <div class="learn-card">
+        <h3>📐 주기율표란?</h3>
+        <p>주기율표는 118개의 원소를 원자번호 순으로 배열하되, 비슷한 화학적 성질을 가진 원소들이 같은 세로줄(족)에 오도록 설계한 표입니다. 가로줄은 '주기'라 하여 전자 껍질 수를 나타내고, 세로줄은 '족'이라 하여 최외각 전자 수를 나타냅니다.</p>
+      </div>
+      <div class="learn-card">
+        <h3>🎵 필수 암기법: 1~20번 원소</h3>
+        <div class="mnemonic">"수헬리베 붕탄질산 플네"</div>
+        <div class="mnemonic-sub">수소(H) → 헬륨(He) → 리튬(Li) → 베릴륨(Be) → 붕소(B) → 탄소(C) → 질소(N) → 산소(O) → 플루오린(F) → 네온(Ne)</div>
+        <div class="mnemonic">"나마알 규인황 염아 칼카"</div>
+        <div class="mnemonic-sub">나트륨(Na) → 마그네슘(Mg) → 알루미늄(Al) → 규소(Si) → 인(P) → 황(S) → 염소(Cl) → 아르곤(Ar) → 칼륨(K) → 칼슘(Ca)</div>
+      </div>
+      <div class="learn-card">
+        <h3>📊 주기적 경향성</h3>
+        <div class="trend-visual">
+          <div class="trend-box">
+            <div class="arrow">→ 📉</div>
+            <div class="t-label">원자 반지름<br><small>오른쪽↓</small></div>
+          </div>
+          <div class="trend-box">
+            <div class="arrow">→ 📈</div>
+            <div class="t-label">이온화 에너지<br><small>오른쪽↑</small></div>
+          </div>
+          <div class="trend-box">
+            <div class="arrow">→ 📈</div>
+            <div class="t-label">전기음성도<br><small>오른쪽↑</small></div>
+          </div>
+          <div class="trend-box">
+            <div class="arrow">↙️ 🏗️</div>
+            <div class="t-label">금속성<br><small>왼쪽아래↑</small></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ===== ELEMENT DETAIL MODAL ===== -->
+<div class="modal-overlay" id="modal" onclick="closeModalOnOverlay(event)">
+  <div class="modal" id="modalContent">
+    <button class="modal-close" onclick="closeModal()">&times;</button>
+    <div class="modal-header">
+      <div class="modal-symbol" id="modalSymbol"></div>
+      <div class="modal-info">
+        <h2 id="modalName"></h2>
+        <div class="sub" id="modalSub"></div>
+      </div>
+    </div>
+    <div class="detail-grid" id="detailGrid"></div>
+    <div class="modal-section">
+      <h3>전자 배치</h3>
+      <div class="electron-config" id="electronConfig"></div>
+      <div class="shell-visual" id="shellVisual"></div>
+    </div>
+    <div class="modal-section">
+      <h3>알아두면 좋은 사실</h3>
+      <p id="funFact"></p>
+    </div>
+  </div>
+</div>
+
+<footer>
+  ⚗️ ReverseRoad's Periodic Lab — 프로그래머를 위한 원소 학습 도구<br>
+  118개 원소 데이터 내장 · 실시간 검색 & 분류 필터 · 테마 모드 지원
+</footer>
+
+<script>
+const ELEMENTS = [
+  {z:1,sym:"H",name:"수소",nameEn:"Hydrogen",mass:1.008,cat:"nonmetal",group:1,period:1,phase:"gas",density:0.00009,melt:-259.16,boil:-252.87,eneg:2.20,ionE:1312,radius:53,shells:[1],econfig:"1s¹",discovered:1766,discoverer:"캐번디시",funFact:"우주 질량의 약 75%를 차지하는 가장 풍부한 원소입니다."},
+  {z:2,sym:"He",name:"헬륨",nameEn:"Helium",mass:4.003,cat:"noble-gas",group:18,period:1,phase:"gas",density:0.000164,melt:-272.2,boil:-268.93,eneg:null,ionE:2372,radius:31,shells:[2],econfig:"1s²",discovered:1868,discoverer:"얀센/록이어",funFact:"태양(Helios)에서 먼저 발견된 유일한 원소입니다."},
+  {z:3,sym:"Li",name:"리튬",nameEn:"Lithium",mass:6.941,cat:"alkali-metal",group:1,period:2,phase:"solid",density:0.534,melt:180.54,boil:1342,eneg:0.98,ionE:520,radius:167,shells:[2,1],econfig:"[He] 2s¹",discovered:1817,discoverer:"아르페드손",funFact:"가장 가벼운 금속으로 2차 전지의 핵심 원소입니다."},
+  {z:4,sym:"Be",name:"베릴륨",nameEn:"Beryllium",mass:9.012,cat:"alkaline-earth",group:2,period:2,phase:"solid",density:1.85,melt:1287,boil:2470,eneg:1.57,ionE:900,radius:112,shells:[2,2],econfig:"[He] 2s²",discovered:1798,discoverer:"보클랭",funFact:"제임스 웹 우주망원경 주거울의 재료입니다."},
+  {z:5,sym:"B",name:"붕소",nameEn:"Boron",mass:10.81,cat:"metalloid",group:13,period:2,phase:"solid",density:2.34,melt:2076,boil:3927,eneg:2.04,ionE:801,radius:87,shells:[2,3],econfig:"[He] 2s² 2p¹",discovered:1808,discoverer:"데이비/게이뤼삭",funFact:"내열유리(파이렉스) 제작에 필수적인 원소입니다."},
+  {z:6,sym:"C",name:"탄소",nameEn:"Carbon",mass:12.011,cat:"nonmetal",group:14,period:2,phase:"solid",density:2.267,melt:3550,boil:4027,eneg:2.55,ionE:1087,radius:77,shells:[2,4],econfig:"[He] 2s² 2p²",discovered:"고대",discoverer:"고대",funFact:"다이아몬드, 흑연, 그래핀의 구성 원소입니다."},
+  {z:7,sym:"N",name:"질소",nameEn:"Nitrogen",mass:14.007,cat:"nonmetal",group:15,period:2,phase:"gas",density:0.00125,melt:-210.1,boil:-195.79,eneg:3.04,ionE:1402,radius:75,shells:[2,5],econfig:"[He] 2s² 2p³",discovered:1772,discoverer:"러더퍼드",funFact:"지구 대기의 약 78%를 차지합니다."},
+  {z:8,sym:"O",name:"산소",nameEn:"Oxygen",mass:15.999,cat:"nonmetal",group:16,period:2,phase:"gas",density:0.00143,melt:-218.79,boil:-182.96,eneg:3.44,ionE:1314,radius:73,shells:[2,6],econfig:"[He] 2s² 2p⁴",discovered:1774,discoverer:"프리스틀리",funFact:"인체 질량의 약 65%를 차지하는 생명의 필수 원소입니다."},
+  {z:9,sym:"F",name:"플루오린",nameEn:"Fluorine",mass:18.998,cat:"halogen",group:17,period:2,phase:"gas",density:0.0017,melt:-219.67,boil:-188.12,eneg:3.98,ionE:1681,radius:71,shells:[2,7],econfig:"[He] 2s² 2p⁵",discovered:1886,discoverer:"무아상",funFact:"모든 원소 중 전기음성도가 가장 높습니다."},
+  {z:10,sym:"Ne",name:"네온",nameEn:"Neon",mass:20.180,cat:"noble-gas",group:18,period:2,phase:"gas",density:0.0009,melt:-248.59,boil:-246.08,eneg:null,ionE:2081,radius:58,shells:[2,8],econfig:"[He] 2s² 2p⁶",discovered:1898,discoverer:"램지",funFact:"방전 시 붉은주홍빛 라이트를 냅니다."},
+  {z:11,sym:"Na",name:"나트륨",nameEn:"Sodium",mass:22.990,cat:"alkali-metal",group:1,period:3,phase:"solid",density:0.971,melt:97.72,boil:883,eneg:0.93,ionE:496,radius:190,shells:[2,8,1],econfig:"[Ne] 3s¹",discovered:1807,discoverer:"데이비",funFact:"소금(NaCl)의 주요 성분으로 반응성이 매우 큽니다."},
+  {z:12,sym:"Mg",name:"마그네슘",nameEn:"Magnesium",mass:24.305,cat:"alkaline-earth",group:2,period:3,phase:"solid",density:1.738,melt:650,boil:1090,eneg:1.31,ionE:738,radius:145,shells:[2,8,2],econfig:"[Ne] 3s²",discovered:1755,discoverer:"블랙",funFact:"연소 시 강렬한 흰색 빛을 내는 경금속입니다."},
+  {z:13,sym:"Al",name:"알루미늄",nameEn:"Aluminum",mass:26.982,cat:"post-transition",group:13,period:3,phase:"solid",density:2.698,melt:660.32,boil:2519,eneg:1.61,ionE:577,radius:118,shells:[2,8,3],econfig:"[Ne] 3s² 3p¹",discovered:1825,discoverer:"외르스테드",funFact:"지각에서 가장 풍부한 금속 원소입니다."},
+  {z:14,sym:"Si",name:"규소",nameEn:"Silicon",mass:28.086,cat:"metalloid",group:14,period:3,phase:"solid",density:2.329,melt:1414,boil:3265,eneg:1.90,ionE:786,radius:111,shells:[2,8,4],econfig:"[Ne] 3s² 3p²",discovered:1824,discoverer:"베르셀리우스",funFact:"현대 반도체 산업의 핵심 재료입니다."},
+  {z:15,sym:"P",name:"인",nameEn:"Phosphorus",mass:30.974,cat:"nonmetal",group:15,period:3,phase:"solid",density:1.82,melt:44.15,boil:280.5,eneg:2.19,ionE:1012,radius:98,shells:[2,8,5],econfig:"[Ne] 3s² 3p³",discovered:1669,discoverer:"브란트",funFact:"성냥, 성냥갑 및 DNA 골격의 원소입니다."},
+  {z:16,sym:"S",name:"황",nameEn:"Sulfur",mass:32.06,cat:"nonmetal",group:16,period:3,phase:"solid",density:2.067,melt:115.21,boil:444.72,eneg:2.58,ionE:1000,radius:88,shells:[2,8,6],econfig:"[Ne] 3s² 3p⁴",discovered:"고대",discoverer:"고대",funFact:"화산 지대에서 흔히 보이는 노란색 원소입니다."},
+  {z:17,sym:"Cl",name:"염소",nameEn:"Chlorine",mass:35.45,cat:"halogen",group:17,period:3,phase:"gas",density:0.0032,melt:-101.5,boil:-34.04,eneg:3.16,ionE:1251,radius:79,shells:[2,8,7],econfig:"[Ne] 3s² 3p⁵",discovered:1774,discoverer:"셸레",funFact:"수돗물과 수영장 소독에 쓰이는 기체입니다."},
+  {z:18,sym:"Ar",name:"아르곤",nameEn:"Argon",mass:39.948,cat:"noble-gas",group:18,period:3,phase:"gas",density:0.00178,melt:-189.34,boil:-185.85,eneg:null,ionE:1521,radius:71,shells:[2,8,8],econfig:"[Ne] 3s² 3p⁶",discovered:1894,discoverer:"레일리",funFact:"대기 중에서 3번째로 많은 비율을 차지합니다."},
+  {z:19,sym:"K",name:"칼륨",nameEn:"Potassium",mass:39.098,cat:"alkali-metal",group:1,period:4,phase:"solid",density:0.862,melt:63.5,boil:759,eneg:0.82,ionE:419,radius:243,shells:[2,8,8,1],econfig:"[Ar] 4s¹",discovered:1807,discoverer:"데이비",funFact:"바나나에 풍부한 신경/근육 기능 필수 미네랄입니다."},
+  {z:20,sym:"Ca",name:"칼슘",nameEn:"Calcium",mass:40.078,cat:"alkaline-earth",group:2,period:4,phase:"solid",density:1.55,melt:842,boil:1484,eneg:1.00,ionE:590,radius:194,shells:[2,8,8,2],econfig:"[Ar] 4s²",discovered:1808,discoverer:"데이비",funFact:"뼈와 치아의 주성분이 되는 대표 금속 원소입니다."},
+  {z:21,sym:"Sc",name:"스칸듐",nameEn:"Scandium",mass:44.956,cat:"transition",group:3,period:4,phase:"solid",density:2.989,melt:1541,boil:2830,eneg:1.36,ionE:633,radius:184,shells:[2,8,9,2],econfig:"[Ar] 3d¹ 4s²",discovered:1879,discoverer:"닐손",funFact:"스포츠 용품 및 항공기 합금에 사용됩니다."},
+  {z:22,sym:"Ti",name:"타이타늄",nameEn:"Titanium",mass:47.867,cat:"transition",group:4,period:4,phase:"solid",density:4.54,melt:1668,boil:3287,eneg:1.54,ionE:659,radius:176,shells:[2,8,10,2],econfig:"[Ar] 3d² 4s²",discovered:1791,discoverer:"그레고르",funFact:"강철보다 가볍고 강하며 인체 친화적인 금속입니다."},
+  {z:23,sym:"V",name:"바나듐",nameEn:"Vanadium",mass:50.942,cat:"transition",group:5,period:4,phase:"solid",density:6.11,melt:1910,boil:3407,eneg:1.63,ionE:651,radius:171,shells:[2,8,11,2],econfig:"[Ar] 3d³ 4s²",discovered:1801,discoverer:"델리오",funFact:"특수강의 강도를 높여주는 금속 원소입니다."},
+  {z:24,sym:"Cr",name:"크로뮴",nameEn:"Chromium",mass:51.996,cat:"transition",group:6,period:4,phase:"solid",density:7.15,melt:1907,boil:2671,eneg:1.66,ionE:653,radius:166,shells:[2,8,13,1],econfig:"[Ar] 3d⁵ 4s¹",discovered:1797,discoverer:"보클랭",funFact:"스테인리스 스틸의 도금 및 은빛 광택의 주인공입니다."},
+  {z:25,sym:"Mn",name:"망가니즈",nameEn:"Manganese",mass:54.938,cat:"transition",group:7,period:4,phase:"solid",density:7.44,melt:1246,boil:2061,eneg:1.55,ionE:717,radius:161,shells:[2,8,13,2],econfig:"[Ar] 3d⁵ 4s²",discovered:1774,discoverer:"간",funFact:"건전지와 철강 합금 제작에 널리 쓰입니다."},
+  {z:26,sym:"Fe",name:"철",nameEn:"Iron",mass:55.845,cat:"transition",group:8,period:4,phase:"solid",density:7.874,melt:1538,boil:2861,eneg:1.83,ionE:762,radius:156,shells:[2,8,14,2],econfig:"[Ar] 3d⁶ 4s²",discovered:"고대",discoverer:"고대",funFact:"인류 문명을 받쳐온 가장 중요한 금속입니다."},
+  {z:27,sym:"Co",name:"코발트",nameEn:"Cobalt",mass:58.933,cat:"transition",group:9,period:4,phase:"solid",density:8.90,melt:1495,boil:2927,eneg:1.88,ionE:760,radius:152,shells:[2,8,15,2],econfig:"[Ar] 3d⁷ 4s²",discovered:1735,discoverer:"브란트",funFact:"아름다운 코발트 블루 안료 및 배터리에 쓰입니다."},
+  {z:28,sym:"Ni",name:"니켈",nameEn:"Nickel",mass:58.693,cat:"transition",group:10,period:4,phase:"solid",density:8.908,melt:1455,boil:2730,eneg:1.91,ionE:737,radius:149,shells:[2,8,16,2],econfig:"[Ar] 3d⁸ 4s²",discovered:1751,discoverer:"크론스테트",funFact:"동전과 도금 소재로 잘 알려진 금속입니다."},
+  {z:29,sym:"Cu",name:"구리",nameEn:"Copper",mass:63.546,cat:"transition",group:11,period:4,phase:"solid",density:8.96,melt:1084.62,boil:2562,eneg:1.90,ionE:745,radius:145,shells:[2,8,18,1],econfig:"[Ar] 3d¹⁰ 4s¹",discovered:"고대",discoverer:"고대",funFact:"우수한 전기 전도성으로 전선의 기본 재료입니다."},
+  {z:30,sym:"Zn",name:"아연",nameEn:"Zinc",mass:65.38,cat:"transition",group:12,period:4,phase:"solid",density:7.14,melt:419.53,boil:907,eneg:1.65,ionE:906,radius:142,shells:[2,8,18,2],econfig:"[Ar] 3d¹⁰ 4s²",discovered:"고대",discoverer:"고대",funFact:"부식을 방지하는 도금 소재입니다."},
+  {z:31,sym:"Ga",name:"갈륨",nameEn:"Gallium",mass:69.723,cat:"post-transition",group:13,period:4,phase:"solid",density:5.91,melt:29.76,boil:2204,eneg:1.81,ionE:579,radius:136,shells:[2,8,18,3],econfig:"[Ar] 3d¹⁰ 4s² 4p¹",discovered:1875,discoverer:"부아보드란",funFact:"손바닥 체온(29.76°C)에 액체로 녹는 금속입니다."},
+  {z:32,sym:"Ge",name:"저마늄",nameEn:"Germanium",mass:72.630,cat:"metalloid",group:14,period:4,phase:"solid",density:5.323,melt:938.25,boil:2833,eneg:2.01,ionE:762,radius:125,shells:[2,8,18,4],econfig:"[Ar] 3d¹⁰ 4s² 4p²",discovered:1886,discoverer:"빙클러",funFact:"초기 트랜지스터에 활용되었던 반도체 원소입니다."},
+  {z:33,sym:"As",name:"비소",nameEn:"Arsenic",mass:74.922,cat:"metalloid",group:15,period:4,phase:"solid",density:5.727,melt:817,boil:614,eneg:2.18,ionE:947,radius:114,shells:[2,8,18,5],econfig:"[Ar] 3d¹⁰ 4s² 4p³",discovered:"고대",discoverer:"고대",funFact:"역사적으로 대표적인 독성 물질로 유명합니다."},
+  {z:34,sym:"Se",name:"셀레늄",nameEn:"Selenium",mass:78.971,cat:"nonmetal",group:16,period:4,phase:"solid",density:4.81,melt:221,boil:685,eneg:2.55,ionE:941,radius:103,shells:[2,8,18,6],econfig:"[Ar] 3d¹⁰ 4s² 4p⁴",discovered:1817,discoverer:"베르셀리우스",funFact:"빛을 받으면 전기가 통하는 감광성이 있습니다."},
+  {z:35,sym:"Br",name:"브로민",nameEn:"Bromine",mass:79.904,cat:"halogen",group:17,period:4,phase:"liquid",density:3.12,melt:-7.2,boil:58.8,eneg:2.96,ionE:1140,radius:94,shells:[2,8,18,7],econfig:"[Ar] 3d¹⁰ 4s² 4p⁵",discovered:1826,discoverer:"발라르",funFact:"상온에서 액체로 존재하는 유일한 비금속 원소입니다."},
+  {z:36,sym:"Kr",name:"크립톤",nameEn:"Krypton",mass:83.80,cat:"noble-gas",group:18,period:4,phase:"gas",density:0.0037,melt:-157.36,boil:-153.22,eneg:3.00,ionE:1351,radius:88,shells:[2,8,18,8],econfig:"[Ar] 3d¹⁰ 4s² 4p⁶",discovered:1898,discoverer:"램지",funFact:"고속 사진 플래시 및 형광등에 사용됩니다."},
+  {z:37,sym:"Rb",name:"루비듐",nameEn:"Rubidium",mass:85.468,cat:"alkali-metal",group:1,period:5,phase:"solid",density:1.532,melt:39.3,boil:688,eneg:0.82,ionE:403,radius:265,shells:[2,8,18,8,1],econfig:"[Kr] 5s¹",discovered:1861,discoverer:"분젠",funFact:"불꽃 반응 시 적보라색을 선사합니다."},
+  {z:38,sym:"Sr",name:"스트론튬",nameEn:"Strontium",mass:87.62,cat:"alkaline-earth",group:2,period:5,phase:"solid",density:2.64,melt:777,boil:1382,eneg:0.95,ionE:549,radius:215,shells:[2,8,18,8,2],econfig:"[Kr] 5s²",discovered:1790,discoverer:"크로퍼드",funFact:"불꽃놀이에서 진한 붉은색을 만드는 주역입니다."},
+  {z:39,sym:"Y",name:"이트륨",nameEn:"Yttrium",mass:88.906,cat:"transition",group:3,period:5,phase:"solid",density:4.47,melt:1526,boil:2930,eneg:1.22,ionE:600,radius:180,shells:[2,8,18,9,2],econfig:"[Kr] 4d¹ 5s²",discovered:1794,discoverer:"가돌린",funFact:"적색 형광체 및 초전도체 제조에 사용됩니다."},
+  {z:40,sym:"Zr",name:"지르코늄",nameEn:"Zirconium",mass:91.224,cat:"transition",group:4,period:5,phase:"solid",density:6.52,melt:1855,boil:4409,eneg:1.33,ionE:640,radius:160,shells:[2,8,18,10,2],econfig:"[Kr] 4d² 5s²",discovered:1789,discoverer:"클라프로트",funFact:"원자로 피복재 및 인공 다이아몬드로 유명합니다."},
+  {z:41,sym:"Nb",name:"나이오븀",nameEn:"Niobium",mass:92.906,cat:"transition",group:5,period:5,phase:"solid",density:8.57,melt:2477,boil:4744,eneg:1.6,ionE:652,radius:146,shells:[2,8,18,12,1],econfig:"[Kr] 4d⁴ 5s¹",discovered:1801,discoverer:"하쳇",funFact:"초전도 자석 및 고강도 합금재로 활용됩니다."},
+  {z:42,sym:"Mo",name:"몰리브덴",nameEn:"Molybdenum",mass:95.95,cat:"transition",group:6,period:5,phase:"solid",density:10.28,melt:2623,boil:4639,eneg:2.16,ionE:684,radius:139,shells:[2,8,18,13,1],econfig:"[Kr] 4d⁵ 5s¹",discovered:1778,discoverer:"셸레",funFact:"고온 강도 향상을 위한 합금 원소입니다."},
+  {z:43,sym:"Tc",name:"테크네튬",nameEn:"Technetium",mass:98,cat:"transition",group:7,period:5,phase:"solid",density:11.5,melt:2157,boil:4265,eneg:1.9,ionE:702,radius:136,shells:[2,8,18,14,2],econfig:"[Kr] 4d⁵ 5s²",discovered:1937,discoverer:"페레",funFact:"최초로 인공 방사성으로 합성된 원소입니다."},
+  {z:44,sym:"Ru",name:"루테늄",nameEn:"Ruthenium",mass:101.07,cat:"transition",group:8,period:5,phase:"solid",density:12.37,melt:2334,boil:4150,eneg:2.2,ionE:710,radius:134,shells:[2,8,18,15,1],econfig:"[Kr] 4d⁷ 5s¹",discovered:1844,discoverer:"클라우스",funFact:"백금족 금속으로 접점 촉매로 쓰입니다."},
+  {z:45,sym:"Rh",name:"로듐",nameEn:"Rhodium",mass:102.91,cat:"transition",group:9,period:5,phase:"solid",density:12.41,melt:1964,boil:3695,eneg:2.28,ionE:720,radius:134,shells:[2,8,18,16,1],econfig:"[Kr] 4d⁸ 5s¹",discovered:1803,discoverer:"울러스턴",funFact:"자동차 배기가스 촉매 변환기 핵심입니다."},
+  {z:46,sym:"Pd",name:"팔라듐",nameEn:"Palladium",mass:106.42,cat:"transition",group:10,period:5,phase:"solid",density:12.02,melt:1554.9,boil:2963,eneg:2.20,ionE:804,radius:137,shells:[2,8,18,18],econfig:"[Kr] 4d¹⁰",discovered:1803,discoverer:"울러스턴",funFact:"수소를 흡수하는 성질이 뛰어난 희귀 금속입니다."},
+  {z:47,sym:"Ag",name:"은",nameEn:"Silver",mass:107.87,cat:"transition",group:11,period:5,phase:"solid",density:10.49,melt:961.78,boil:2162,eneg:1.93,ionE:731,radius:144,shells:[2,8,18,18,1],econfig:"[Kr] 4d¹⁰ 5s¹",discovered:"고대",discoverer:"고대",funFact:"모든 금속 중 전기 및 열 전도율 1위입니다."},
+  {z:48,sym:"Cd",name:"카드뮴",nameEn:"Cadmium",mass:112.41,cat:"transition",group:12,period:5,phase:"solid",density:8.65,melt:321.07,boil:767,eneg:1.69,ionE:867,radius:149,shells:[2,8,18,18,2],econfig:"[Kr] 4d¹⁰ 5s²",discovered:1817,discoverer:"슈트로마이어",funFact:"이타이이타이병 원인이 되는 중금속입니다."},
+  {z:49,sym:"In",name:"인듐",nameEn:"Indium",mass:114.82,cat:"post-transition",group:13,period:5,phase:"solid",density:7.31,melt:156.6,boil:2072,eneg:1.78,ionE:558,radius:162,shells:[2,8,18,18,3],econfig:"[Kr] 4d¹⁰ 5s² 5p¹",discovered:1863,discoverer:"라이히",funFact:"터치스크린 패널(ITO)의 핵심 소재입니다."},
+  {z:50,sym:"Sn",name:"주석",nameEn:"Tin",mass:118.71,cat:"post-transition",group:14,period:5,phase:"solid",density:7.31,melt:231.93,boil:2602,eneg:1.96,ionE:709,radius:140,shells:[2,8,18,18,4],econfig:"[Kr] 4d¹⁰ 5s² 5p²",discovered:"고대",discoverer:"고대",funFact:"청동 합금의 주성분이며 부식에 강합니다."},
+  {z:51,sym:"Sb",name:"안티모니",nameEn:"Antimony",mass:121.76,cat:"metalloid",group:15,period:5,phase:"solid",density:6.697,melt:630.63,boil:1587,eneg:2.05,ionE:834,radius:141,shells:[2,8,18,18,5],econfig:"[Kr] 4d¹⁰ 5s² 5p³",discovered:"고대",discoverer:"고대",funFact:"난연제 및 활자 합금 소재로 쓰입니다."},
+  {z:52,sym:"Te",name:"텔루륨",nameEn:"Tellurium",mass:127.60,cat:"metalloid",group:16,period:5,phase:"solid",density:6.24,melt:449.51,boil:988,eneg:2.1,ionE:869,radius:137,shells:[2,8,18,18,6],econfig:"[Kr] 4d¹⁰ 5s² 5p⁴",discovered:1782,discoverer:"라이헨슈타인",funFact:"태양전지와 열전소자에 쓰입니다."},
+  {z:53,sym:"I",name:"아이오딘",nameEn:"Iodine",mass:126.90,cat:"halogen",group:17,period:5,phase:"solid",density:4.93,melt:113.7,boil:184.3,eneg:2.66,ionE:1008,radius:133,shells:[2,8,18,18,7],econfig:"[Kr] 4d¹⁰ 5s² 5p⁵",discovered:1811,discoverer:"쿠르투아",funFact:"보랏빛 증기를 발산하는 소독약 성분 원소입니다."},
+  {z:54,sym:"Xe",name:"제논",nameEn:"Xenon",mass:131.29,cat:"noble-gas",group:18,period:5,phase:"gas",density:0.0058,melt:-111.75,boil:-108.1,eneg:2.6,ionE:1170,radius:130,shells:[2,8,18,18,8],econfig:"[Kr] 4d¹⁰ 5s² 5p⁶",discovered:1898,discoverer:"램지",funFact:"우주선 이온 엔진 연료로 활용됩니다."},
+  {z:55,sym:"Cs",name:"세슘",nameEn:"Cesium",mass:132.91,cat:"alkali-metal",group:1,period:6,phase:"solid",density:1.879,melt:28.44,boil:671,eneg:0.79,ionE:376,radius:298,shells:[2,8,18,18,8,1],econfig:"[Xe] 6s¹",discovered:1860,discoverer:"분젠",funFact:"정밀 원자시계의 표준을 정의하는 원소입니다."},
+  {z:56,sym:"Ba",name:"바륨",nameEn:"Barium",mass:137.33,cat:"alkaline-earth",group:2,period:6,phase:"solid",density:3.51,melt:727,boil:1897,eneg:0.89,ionE:503,radius:253,shells:[2,8,18,18,8,2],econfig:"[Xe] 6s²",discovered:1774,discoverer:"셸레",funFact:"소화기 X선 조영제에 사용되는 원소입니다."},
+  {z:57,sym:"La",name:"란타넘",nameEn:"Lanthanum",mass:138.91,cat:"lanthanide",group:3,period:6,phase:"solid",density:6.16,melt:920,boil:3464,eneg:1.10,ionE:538,radius:195,shells:[2,8,18,18,9,2],econfig:"[Xe] 5d¹ 6s²",discovered:1839,discoverer:"모산데르",funFact:"고급 카메라 렌즈 유리에 첨가됩니다."},
+  {z:58,sym:"Ce",name:"세륨",nameEn:"Cerium",mass:140.12,cat:"lanthanide",group:3,period:6,phase:"solid",density:6.77,melt:795,boil:3443,eneg:1.12,ionE:534,radius:185,shells:[2,8,18,19,9,2],econfig:"[Xe] 4f¹ 5d¹ 6s²",discovered:1803,discoverer:"클라프로트",funFact:"라이터 부싯돌의 주요 합금 원소입니다."},
+  {z:59,sym:"Pr",name:"프라세오디뮴",nameEn:"Praseodymium",mass:140.91,cat:"lanthanide",group:3,period:6,phase:"solid",density:6.77,melt:935,boil:3520,eneg:1.13,ionE:527,radius:182,shells:[2,8,18,21,8,2],econfig:"[Xe] 4f³ 6s²",discovered:1885,discoverer:"벨스바흐",funFact:"특수 용접용 안경 고글 착색제입니다."},
+  {z:60,sym:"Nd",name:"네오디뮴",nameEn:"Neodymium",mass:144.24,cat:"lanthanide",group:3,period:6,phase:"solid",density:7.01,melt:1021,boil:3074,eneg:1.14,ionE:533,radius:181,shells:[2,8,18,22,8,2],econfig:"[Xe] 4f⁴ 6s²",discovered:1885,discoverer:"벨스바흐",funFact:"가장 강력한 네오디뮴 영구자석의 재료입니다."},
+  {z:61,sym:"Pm",name:"프로메튬",nameEn:"Promethium",mass:145,cat:"lanthanide",group:3,period:6,phase:"solid",density:7.26,melt:1042,boil:3000,eneg:1.13,ionE:540,radius:183,shells:[2,8,18,23,8,2],econfig:"[Xe] 4f⁵ 6s²",discovered:1945,discoverer:"마루니스",funFact:"인공 방사성 희토류 원소입니다."},
+  {z:62,sym:"Sm",name:"사마륨",nameEn:"Samarium",mass:150.36,cat:"lanthanide",group:3,period:6,phase:"solid",density:7.52,melt:1072,boil:1900,eneg:1.17,ionE:545,radius:180,shells:[2,8,18,24,8,2],econfig:"[Xe] 4f⁶ 6s²",discovered:1879,discoverer:"데마르세",funFact:"고온 내열 자석 제작에 필수입니다."},
+  {z:63,sym:"Eu",name:"유로퓸",nameEn:"Europium",mass:151.96,cat:"lanthanide",group:3,period:6,phase:"solid",density:5.24,melt:822,boil:1597,eneg:1.2,ionE:547,radius:199,shells:[2,8,18,25,8,2],econfig:"[Xe] 4f⁷ 6s²",discovered:1901,discoverer:"데마르세",funFact:"지폐 위조 방지 형광 잉크 소재입니다."},
+  {z:64,sym:"Gd",name:"가돌리늄",nameEn:"Gadolinium",mass:157.25,cat:"lanthanide",group:3,period:6,phase:"solid",density:7.90,melt:1313,boil:3273,eneg:1.20,ionE:593,radius:179,shells:[2,8,18,25,9,2],econfig:"[Xe] 4f⁷ 5d¹ 6s²",discovered:1880,discoverer:"리니가르도",funFact:"MRI 조영제의 핵심 성분입니다."},
+  {z:65,sym:"Tb",name:"터븀",nameEn:"Terbium",mass:158.93,cat:"lanthanide",group:3,period:6,phase:"solid",density:8.23,melt:1356,boil:3230,eneg:1.2,ionE:566,radius:177,shells:[2,8,18,27,8,2],econfig:"[Xe] 4f⁹ 6s²",discovered:1843,discoverer:"모산데르",funFact:"녹색 형광체 원료로 사용됩니다."},
+  {z:66,sym:"Dy",name:"디스프로슘",nameEn:"Dysprosium",mass:162.50,cat:"lanthanide",group:3,period:6,phase:"solid",density:8.55,melt:1412,boil:2562,eneg:1.22,ionE:573,radius:175,shells:[2,8,18,28,8,2],econfig:"[Xe] 4f¹⁰ 6s²",discovered:1886,discoverer:"부아보드란",funFact:"고온 영구자석 내열성 강화 첨가제입니다."},
+  {z:67,sym:"Ho",name:"홀뮴",nameEn:"Holmium",mass:164.93,cat:"lanthanide",group:3,period:6,phase:"solid",density:8.80,melt:1474,boil:2700,eneg:1.23,ionE:581,radius:174,shells:[2,8,18,29,8,2],econfig:"[Xe] 4f¹¹ 6s²",discovered:1878,discoverer:"소레",funFact:"자연계 최고 수준의 자기력을 만듭니다."},
+  {z:68,sym:"Er",name:"어븀",nameEn:"Erbium",mass:167.26,cat:"lanthanide",group:3,period:6,phase:"solid",density:9.06,melt:1529,boil:2868,eneg:1.24,ionE:589,radius:173,shells:[2,8,18,30,8,2],econfig:"[Xe] 4f¹² 6s²",discovered:1843,discoverer:"모산데르",funFact:"광섬유 통신의 신호 증폭용 희토류입니다."},
+  {z:69,sym:"Tm",name:"툴륨",nameEn:"Thulium",mass:168.93,cat:"lanthanide",group:3,period:6,phase:"solid",density:9.32,melt:1545,boil:1950,eneg:1.25,ionE:597,radius:172,shells:[2,8,18,31,8,2],econfig:"[Xe] 4f¹³ 6s²",discovered:1879,discoverer:"클레베",funFact:"휴대용 X선 기기 등에 사용됩니다."},
+  {z:70,sym:"Yb",name:"이터븀",nameEn:"Ytterbium",mass:173.05,cat:"lanthanide",group:3,period:6,phase:"solid",density:6.90,melt:824,boil:1196,eneg:1.1,ionE:603,radius:194,shells:[2,8,18,32,8,2],econfig:"[Xe] 4f¹⁴ 6s²",discovered:1878,discoverer:"소레",funFact:"초정밀 원자시계 레이저 시스템에 활용됩니다."},
+  {z:71,sym:"Lu",name:"루테튬",nameEn:"Lutetium",mass:174.97,cat:"lanthanide",group:3,period:6,phase:"solid",density:9.84,melt:1663,boil:3402,eneg:1.27,ionE:523,radius:172,shells:[2,8,18,32,9,2],econfig:"[Xe] 4f¹⁴ 5d¹ 6s²",discovered:1907,discoverer:"우르배인",funFact:"란타넘족 원소 중 가장 밀도가 무겁습니다."},
+  {z:72,sym:"Hf",name:"하프늄",nameEn:"Hafnium",mass:178.49,cat:"transition",group:4,period:6,phase:"solid",density:13.31,melt:2233,boil:4603,eneg:1.3,ionE:659,radius:159,shells:[2,8,18,32,10,2],econfig:"[Xe] 4f¹⁴ 5d² 6s²",discovered:1923,discoverer:"코스테르",funFact:"원자로 제어봉 및 반도체 절연막 소재입니다."},
+  {z:73,sym:"Ta",name:"탄탈럼",nameEn:"Tantalum",mass:180.95,cat:"transition",group:5,period:6,phase:"solid",density:16.69,melt:3017,boil:5458,eneg:1.5,ionE:761,radius:146,shells:[2,8,18,32,11,2],econfig:"[Xe] 4f¹⁴ 5d³ 6s²",discovered:1802,discoverer:"에케베리",funFact:"스마트폰 콘덴서(캐패시터) 핵심 소재입니다."},
+  {z:74,sym:"W",name:"텅스텐",nameEn:"Tungsten",mass:183.84,cat:"transition",group:6,period:6,phase:"solid",density:19.25,melt:3422,boil:5555,eneg:2.36,ionE:770,radius:139,shells:[2,8,18,32,12,2],econfig:"[Xe] 4f¹⁴ 5d⁴ 6s²",discovered:1783,discoverer:"엘루야르",funFact:"모든 금속 중 녹는점이 가장 높습니다 (3422°C)."},
+  {z:75,sym:"Re",name:"레늄",nameEn:"Rhenium",mass:186.21,cat:"transition",group:7,period:6,phase:"solid",density:21.02,melt:3186,boil:5596,eneg:1.9,ionE:760,radius:137,shells:[2,8,18,32,13,2],econfig:"[Xe] 4f¹⁴ 5d⁵ 6s²",discovered:1925,discoverer:"노다크",funFact:"제트 엔진 등 초고온 합금에 필수 원소입니다."},
+  {z:76,sym:"Os",name:"오스뮴",nameEn:"Osmium",mass:190.23,cat:"transition",group:8,period:6,phase:"solid",density:22.59,melt:3033,boil:5012,eneg:2.2,ionE:840,radius:135,shells:[2,8,18,32,14,2],econfig:"[Xe] 4f¹⁴ 5d⁶ 6s²",discovered:1803,discoverer:"테넌트",funFact:"자연계에서 가장 밀도가 높은 금속입니다."},
+  {z:77,sym:"Ir",name:"이리듐",nameEn:"Iridium",mass:192.22,cat:"transition",group:9,period:6,phase:"solid",density:22.56,melt:2446,boil:4428,eneg:2.20,ionE:880,radius:136,shells:[2,8,18,32,15,2],econfig:"[Xe] 4f¹⁴ 5d⁷ 6s²",discovered:1803,discoverer:"테넌트",funFact:"부식에 가장 강하며 공룡 멸종 운석의 증거 원소입니다."},
+  {z:78,sym:"Pt",name:"백금",nameEn:"Platinum",mass:195.08,cat:"transition",group:10,period:6,phase:"solid",density:21.45,melt:1768.4,boil:3825,eneg:2.28,ionE:870,radius:138,shells:[2,8,18,32,17,1],econfig:"[Xe] 4f¹⁴ 5d⁹ 6s¹",discovered:1735,discoverer:"우요아",funFact:"귀금속의 대표주자이자 강력한 촉매 금속입니다."},
+  {z:79,sym:"Au",name:"금",nameEn:"Gold",mass:196.97,cat:"transition",group:11,period:6,phase:"solid",density:19.32,melt:1064.18,boil:2856,eneg:2.54,ionE:890,radius:144,shells:[2,8,18,32,18,1],econfig:"[Xe] 4f¹⁴ 5d¹⁰ 6s¹",discovered:"고대",discoverer:"고대",funFact:"변하지 않는 신뢰의 상징이자 전연성이 최고인 금속입니다."},
+  {z:80,sym:"Hg",name:"수은",nameEn:"Mercury",mass:200.59,cat:"transition",group:12,period:6,phase:"liquid",density:13.53,melt:-38.83,boil:356.73,eneg:2.00,ionE:1007,radius:149,shells:[2,8,18,32,18,2],econfig:"[Xe] 4f¹⁴ 5d¹⁰ 6s²",discovered:"고대",discoverer:"고대",funFact:"상온에서 액체로 존재하는 유일한 금속입니다."},
+  {z:81,sym:"Tl",name:"탈륨",nameEn:"Thallium",mass:204.38,cat:"post-transition",group:13,period:6,phase:"solid",density:11.85,melt:304,boil:1473,eneg:1.62,ionE:589,radius:170,shells:[2,8,18,32,18,3],econfig:"[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p¹",discovered:1861,discoverer:"크룩스",funFact:"강한 독성을 지닌 무색무취의 금속 원소입니다."},
+  {z:82,sym:"Pb",name:"납",nameEn:"Lead",mass:207.2,cat:"post-transition",group:14,period:6,phase:"solid",density:11.34,melt:327.46,boil:1749,eneg:2.33,ionE:716,radius:146,shells:[2,8,18,32,18,4],econfig:"[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p²",discovered:"고대",discoverer:"고대",funFact:"방사선 차폐막 및 배터리에 널리 이용됩니다."},
+  {z:83,sym:"Bi",name:"비스무트",nameEn:"Bismuth",mass:208.98,cat:"post-transition",group:15,period:6,phase:"solid",density:9.78,melt:271.5,boil:1564,eneg:2.02,ionE:703,radius:150,shells:[2,8,18,32,18,5],econfig:"[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p³",discovered:"고대",discoverer:"고대",funFact:"아름다운 무지개색 영롱한 결정 모습을 자랑합니다."},
+  {z:84,sym:"Po",name:"폴로늄",nameEn:"Polonium",mass:209,cat:"metalloid",group:16,period:6,phase:"solid",density:9.32,melt:254,boil:962,eneg:2.0,ionE:812,radius:168,shells:[2,8,18,32,18,6],econfig:"[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁴",discovered:1898,discoverer:"마리 퀴리",funFact:"퀴리 부인이 고국 폴란드의 명칭을 따 지었습니다."},
+  {z:85,sym:"At",name:"아스타틴",nameEn:"Astatine",mass:210,cat:"halogen",group:17,period:6,phase:"solid",density:7,melt:302,boil:337,eneg:2.2,ionE:920,radius:null,shells:[2,8,18,32,18,7],econfig:"[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁵",discovered:1940,discoverer:"코르손",funFact:"자연계에서 극히 드문 희귀한 방사성 원소입니다."},
+  {z:86,sym:"Rn",name:"라돈",nameEn:"Radon",mass:222,cat:"noble-gas",group:18,period:6,phase:"gas",density:0.0097,melt:-71,boil:-61.7,eneg:2.2,ionE:1037,radius:120,shells:[2,8,18,32,18,8],econfig:"[Xe] 4f¹⁴ 5d¹⁰ 6s² 6p⁶",discovered:1899,discoverer:"도른",funFact:"자연 방사선 실내 유입으로 신경 쓰이는 비활성 기체입니다."},
+  {z:87,sym:"Fr",name:"프랑슘",nameEn:"Francium",mass:223,cat:"alkali-metal",group:1,period:7,phase:"solid",density:1.87,melt:27,boil:677,eneg:0.7,ionE:380,radius:null,shells:[2,8,18,32,18,8,1],econfig:"[Rn] 7s¹",discovered:1939,discoverer:"페레",funFact:"극도로 불안정하고 극히 적게 존재하는 알칼리 금속입니다."},
+  {z:88,sym:"Ra",name:"라듐",nameEn:"Radium",mass:226,cat:"alkaline-earth",group:2,period:7,phase:"solid",density:5.5,melt:700,boil:1737,eneg:0.9,ionE:509,radius:null,shells:[2,8,18,32,18,8,2],econfig:"[Rn] 7s²",discovered:1898,discoverer:"마리/피에르 퀴리",funFact:"어둠 속에서 푸른 빛을 발산하는 원소입니다."},
+  {z:89,sym:"Ac",name:"악티늄",nameEn:"Actinium",mass:227,cat:"actinide",group:3,period:7,phase:"solid",density:10.0,melt:1050,boil:3200,eneg:1.1,ionE:499,radius:null,shells:[2,8,18,32,18,9,2],econfig:"[Rn] 6d¹ 7s²",discovered:1899,discoverer:"지비엘",funFact:"악티늄족의 첫 번째 머리 원소입니다."},
+  {z:90,sym:"Th",name:"토륨",nameEn:"Thorium",mass:232.04,cat:"actinide",group:3,period:7,phase:"solid",density:11.72,melt:1750,boil:4788,eneg:1.3,ionE:587,radius:null,shells:[2,8,18,32,18,10,2],econfig:"[Rn] 6d² 7s²",discovered:1828,discoverer:"베르셀리우스",funFact:"차세대 차세대 청정 원자력 발전 연료 원소입니다."},
+  {z:91,sym:"Pa",name:"프로트아크티늄",nameEn:"Protactinium",mass:231.04,cat:"actinide",group:3,period:7,phase:"solid",density:15.37,melt:1568,boil:4027,eneg:1.5,ionE:568,radius:null,shells:[2,8,18,32,20,9,2],econfig:"[Rn] 5f² 6d¹ 7s²",discovered:1913,discoverer:"가니",funFact:"희귀하고 독성이 강한 자연 방사성 원소입니다."},
+  {z:92,sym:"U",name:"우라늄",nameEn:"Uranium",mass:238.03,cat:"actinide",group:3,period:7,phase:"solid",density:19.1,melt:1132.2,boil:4131,eneg:1.38,ionE:597,radius:null,shells:[2,8,18,32,21,9,2],econfig:"[Rn] 5f³ 6d¹ 7s²",discovered:1789,discoverer:"클라프로트",funFact:"원자력 발전 및 핵심 핵연료 원소입니다."},
+  {z:93,sym:"Np",name:"넵투늄",nameEn:"Neptunium",mass:237,cat:"actinide",group:3,period:7,phase:"solid",density:20.45,melt:644,boil:3902,eneg:1.36,ionE:604,radius:null,shells:[2,8,18,32,22,9,2],econfig:"[Rn] 5f⁴ 6d¹ 7s²",discovered:1940,discoverer:"맥밀런",funFact:"해왕성(Neptune) 이름에서 유래된 합성 원소입니다."},
+  {z:94,sym:"Pu",name:"플루토늄",nameEn:"Plutonium",mass:244,cat:"actinide",group:3,period:7,phase:"solid",density:19.86,melt:639.4,boil:3228,eneg:1.28,ionE:585,radius:null,shells:[2,8,18,32,24,8,2],econfig:"[Rn] 5f⁶ 7s²",discovered:1940,discoverer:"시보그",funFact:"우주 탐사선 원자력 전지(RTG) 에너지원입니다."},
+  {z:95,sym:"Am",name:"아메리슘",nameEn:"Americium",mass:243,cat:"actinide",group:3,period:7,phase:"solid",density:12.0,melt:1176,boil:2607,eneg:1.3,ionE:578,radius:null,shells:[2,8,18,32,25,8,2],econfig:"[Rn] 5f⁷ 7s²",discovered:1944,discoverer:"시보그",funFact:"가정용 화재 연기 감지 센서에 사용됩니다."},
+  {z:96,sym:"Cm",name:"퀴륨",nameEn:"Curium",mass:247,cat:"actinide",group:3,period:7,phase:"solid",density:13.51,melt:1340,boil:3110,eneg:1.28,ionE:581,radius:null,shells:[2,8,18,32,25,9,2],econfig:"[Rn] 5f⁷ 6d¹ 7s²",discovered:1944,discoverer:"시보그",funFact:"퀴리 부부의 업적을 기려 명명되었습니다."},
+  {z:97,sym:"Bk",name:"버클륨",nameEn:"Berkelium",mass:247,cat:"actinide",group:3,period:7,phase:"solid",density:14.78,melt:986,boil:2627,eneg:1.3,ionE:601,radius:null,shells:[2,8,18,32,27,8,2],econfig:"[Rn] 5f⁹ 7s²",discovered:1949,discoverer:"시보그",funFact:"버클리 연구소 명칭에서 비롯되었습니다."},
+  {z:98,sym:"Cf",name:"캘리포늄",nameEn:"Californium",mass:251,cat:"actinide",group:3,period:7,phase:"solid",density:15.1,melt:900,boil:1470,eneg:1.3,ionE:608,radius:null,shells:[2,8,18,32,28,8,2],econfig:"[Rn] 5f¹⁰ 7s²",discovered:1950,discoverer:"시보그",funFact:"중성자 방출체로 암 치료와 측정에 활용됩니다."},
+  {z:99,sym:"Es",name:"아인슈타이늄",nameEn:"Einsteinium",mass:252,cat:"actinide",group:3,period:7,phase:"solid",density:8.84,melt:860,boil:996,eneg:1.3,ionE:619,radius:null,shells:[2,8,18,32,29,8,2],econfig:"[Rn] 5f¹¹ 7s²",discovered:1952,discoverer:"기오르소",funFact:"아인슈타인을 기려 이름 지었습니다."},
+  {z:100,sym:"Fm",name:"페르뮴",nameEn:"Fermium",mass:257,cat:"actinide",group:3,period:7,phase:"solid",density:9.7,melt:1527,boil:null,eneg:1.3,ionE:627,radius:null,shells:[2,8,18,32,30,8,2],econfig:"[Rn] 5f¹² 7s²",discovered:1952,discoverer:"기오르소",funFact:"페르미 신화적 물리학자의 명칭입니다."},
+  {z:101,sym:"Md",name:"멘델레븀",nameEn:"Mendelevium",mass:258,cat:"actinide",group:3,period:7,phase:"solid",density:10.3,melt:827,boil:null,eneg:1.3,ionE:635,radius:null,shells:[2,8,18,32,31,8,2],econfig:"[Rn] 5f¹³ 7s²",discovered:1955,discoverer:"기오르소",funFact:"주기율표 창시자 멘델레예프를 기념합니다."},
+  {z:102,sym:"No",name:"노벨륨",nameEn:"Nobelium",mass:259,cat:"actinide",group:3,period:7,phase:"solid",density:9.9,melt:827,boil:null,eneg:1.3,ionE:642,radius:null,shells:[2,8,18,32,32,8,2],econfig:"[Rn] 5f¹⁴ 7s²",discovered:1958,discoverer:"기오르소",funFact:"알프레드 노벨을 기념한 명칭입니다."},
+  {z:103,sym:"Lr",name:"로렌슘",nameEn:"Lawrencium",mass:266,cat:"actinide",group:3,period:7,phase:"solid",density:15.6,melt:1627,boil:null,eneg:1.3,ionE:470,radius:null,shells:[2,8,18,32,32,8,3],econfig:"[Rn] 5f¹⁴ 7s² 7p¹",discovered:1961,discoverer:"기오르소",funFact:"사이클로트론 발명가 로렌스의 이름입니다."},
+  {z:104,sym:"Rf",name:"러더포듐",nameEn:"Rutherfordium",mass:267,cat:"transition",group:4,period:7,phase:"solid",density:23.2,melt:2100,boil:5500,eneg:null,ionE:580,radius:null,shells:[2,8,18,32,32,10,2],econfig:"[Rn] 5f¹⁴ 6d² 7s²",discovered:1969,discoverer:"러더퍼드 연구소",funFact:"어니스트 러더퍼드의 이름을 땄습니다."},
+  {z:105,sym:"Db",name:"더브륨",nameEn:"Dubnium",mass:268,cat:"transition",group:5,period:7,phase:"solid",density:29.3,melt:null,boil:null,eneg:null,ionE:null,radius:null,shells:[2,8,18,32,32,11,2],econfig:"[Rn] 5f¹⁴ 6d³ 7s²",discovered:1970,discoverer:"플로로프",funFact:"러시아 두브나 과학도시에서 왔습니다."},
+  {z:106,sym:"Sg",name:"시보륨",nameEn:"Seaborgium",mass:269,cat:"transition",group:6,period:7,phase:"solid",density:35.0,melt:null,boil:null,eneg:null,ionE:null,radius:null,shells:[2,8,18,32,32,12,2],econfig:"[Rn] 5f¹⁴ 6d⁴ 7s²",discovered:1974,discoverer:"기오르소",funFact:"글렌 시보그 박사의 이름에서 왔습니다."},
+  {z:107,sym:"Bh",name:"보륨",nameEn:"Bohrium",mass:270,cat:"transition",group:7,period:7,phase:"solid",density:37.1,melt:null,boil:null,eneg:null,ionE:null,radius:null,shells:[2,8,18,32,32,13,2],econfig:"[Rn] 5f¹⁴ 6d⁵ 7s²",discovered:1976,discoverer:"뮌첸베르크",funFact:"양자역학의 거장 닐스 보어의 이름입니다."},
+  {z:108,sym:"Hs",name:"하슘",nameEn:"Hassium",mass:277,cat:"transition",group:8,period:7,phase:"solid",density:40.7,melt:null,boil:null,eneg:null,ionE:null,radius:null,shells:[2,8,18,32,32,14,2],econfig:"[Rn] 5f¹⁴ 6d⁶ 7s²",discovered:1984,discoverer:"뮌첸베르크",funFact:"독일 헤센 주의 라틴 명칭 하시아입니다."},
+  {z:109,sym:"Mt",name:"마이트너륨",nameEn:"Meitnerium",mass:278,cat:"transition",group:9,period:7,phase:"solid",density:37.4,melt:null,boil:null,eneg:null,ionE:null,radius:null,shells:[2,8,18,32,32,15,2],econfig:"[Rn] 5f¹⁴ 6d⁷ 7s²",discovered:1982,discoverer:"뮌첸베르크",funFact:"핵분열 물리학자 리제 마이트너의 이름입니다."},
+  {z:110,sym:"Ds",name:"다름슈타튬",nameEn:"Darmstadtium",mass:281,cat:"transition",group:10,period:7,phase:"solid",density:34.8,melt:null,boil:null,eneg:null,ionE:null,radius:null,shells:[2,8,18,32,32,16,2],econfig:"[Rn] 5f¹⁴ 6d⁸ 7s²",discovered:1994,discoverer:"호프만",funFact:"발견 장소인 다름슈타트 도시명입니다."},
+  {z:111,sym:"Rg",name:"뢴트게늄",nameEn:"Roentgenium",mass:282,cat:"transition",group:11,period:7,phase:"solid",density:28.7,melt:null,boil:null,eneg:null,ionE:null,radius:null,shells:[2,8,18,32,32,17,2],econfig:"[Rn] 5f¹⁴ 6d⁹ 7s²",discovered:1994,discoverer:"호프만",funFact:"X선을 발견한 뢴트겐을 기념합니다."},
+  {z:112,sym:"Cn",name:"코페르니슘",nameEn:"Copernicium",mass:285,cat:"transition",group:12,period:7,phase:"solid",density:23.7,melt:null,boil:357,eneg:null,ionE:null,radius:null,shells:[2,8,18,32,32,18,2],econfig:"[Rn] 5f¹⁴ 6d¹⁰ 7s²",discovered:1996,discoverer:"호프만",funFact:"천문학자 코페르니쿠스 명칭입니다."},
+  {z:113,sym:"Nh",name:"니호늄",nameEn:"Nihonium",mass:286,cat:"post-transition",group:13,period:7,phase:"solid",density:16,melt:700,boil:1400,eneg:null,ionE:null,radius:null,shells:[2,8,18,32,32,18,3],econfig:"[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p¹",discovered:2004,discoverer:"모리타 외 (리켄)",funFact:"아시아에서 최초로 발견해 명명권을 얻은 원소(일본, Nihon)입니다."},
+  {z:114,sym:"Fl",name:"플레로븀",nameEn:"Flerovium",mass:289,cat:"post-transition",group:14,period:7,phase:"solid",density:14,melt:340,boil:420,eneg:null,ionE:null,radius:null,shells:[2,8,18,32,32,18,4],econfig:"[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p²",discovered:1998,discoverer:"두브나 연구소",funFact:"플레로프 핵반응 연구소 이름을 땄습니다."},
+  {z:115,sym:"Mc",name:"모스코븀",nameEn:"Moscovium",mass:290,cat:"post-transition",group:15,period:7,phase:"solid",density:13.5,melt:400,boil:1100,eneg:null,ionE:null,radius:null,shells:[2,8,18,32,32,18,5],econfig:"[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p³",discovered:2003,discoverer:"두브나/리버모어",funFact:"모스크바 지역의 명칭에서 왔습니다."},
+  {z:116,sym:"Lv",name:"리버모륨",nameEn:"Livermorium",mass:293,cat:"post-transition",group:16,period:7,phase:"solid",density:12.9,melt:435,boil:820,eneg:null,ionE:null,radius:null,shells:[2,8,18,32,32,18,6],econfig:"[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁴",discovered:2000,discoverer:"두브나/리버모어",funFact:"로렌스 리버모어 국립연구소 명칭입니다."},
+  {z:117,sym:"Ts",name:"테네신",nameEn:"Tennessine",mass:294,cat:"halogen",group:17,period:7,phase:"solid",density:7.2,melt:450,boil:610,eneg:null,ionE:null,radius:null,shells:[2,8,18,32,32,18,7],econfig:"[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁵",discovered:2010,discoverer:"두브나/테네시 팀",funFact:"미국 테네시 주 이름에서 명명되었습니다."},
+  {z:118,sym:"Og",name:"오가네손",nameEn:"Oganesson",mass:294,cat:"noble-gas",group:18,period:7,phase:"solid",density:5.0,melt:325,boil:350,eneg:null,ionE:null,radius:null,shells:[2,8,18,32,32,18,8],econfig:"[Rn] 5f¹⁴ 6d¹⁰ 7s² 7p⁶",discovered:2002,discoverer:"두브나/리버모어",funFact:"주기율표의 118번 원소이자 오가네시안 교수의 이름을 받았습니다."}
+];
+
+let currentFilter = 'all';
+let searchQuery = '';
+
+function renderPeriodicTable() {
+  const ptable = document.getElementById('ptable');
+  const laRow = document.getElementById('laRow');
+  const acRow = document.getElementById('acRow');
+
+  ptable.innerHTML = '';
+  laRow.innerHTML = '';
+  acRow.innerHTML = '';
+
+  // Standard 18x7 grid layout map
+  const gridMap = Array.from({length: 8}, () => Array(19).fill(null));
+
+  ELEMENTS.forEach(el => {
+    if (el.z >= 57 && el.z <= 71) {
+      // Lanthanides
+    } else if (el.z >= 89 && el.z <= 103) {
+      // Actinides
+    } else {
+      gridMap[el.period][el.group] = el;
+    }
+  });
+
+  // Render Main Grid (Periods 1-7, Groups 1-18)
+  for (let r = 1; r <= 7; r++) {
+    for (let c = 1; c <= 18; c++) {
+      if (r === 6 && c === 3) {
+        const ph = document.createElement('div');
+        ph.className = 'placeholder-cell';
+        ph.innerHTML = '57-71<br>La-Lu';
+        ptable.appendChild(ph);
+        continue;
+      }
+      if (r === 7 && c === 3) {
+        const ph = document.createElement('div');
+        ph.className = 'placeholder-cell';
+        ph.innerHTML = '89-103<br>Ac-Lr';
+        ptable.appendChild(ph);
+        continue;
+      }
+
+      const el = gridMap[r][c];
+      if (el) {
+        ptable.appendChild(createCell(el));
+      } else {
+        const empty = document.createElement('div');
+        ptable.appendChild(empty);
+      }
+    }
+  }
+
+  // Render Lanthanides (57-71)
+  ELEMENTS.filter(e => e.z >= 57 && e.z <= 71).forEach(el => {
+    laRow.appendChild(createCell(el));
+  });
+
+  // Render Actinides (89-103)
+  ELEMENTS.filter(e => e.z >= 89 && e.z <= 103).forEach(el => {
+    acRow.appendChild(createCell(el));
+  });
+
+  applyFilterAndSearch();
+}
+
+function createCell(el) {
+  const cell = document.createElement('div');
+  cell.className = `element-cell cat-${el.cat}`;
+  cell.id = `el-cell-${el.z}`;
+  cell.setAttribute('data-z', el.z);
+  cell.setAttribute('data-cat', el.cat);
+
+  cell.innerHTML = `
+    <span class="number">${el.z}</span>
+    <span class="symbol">${el.sym}</span>
+    <span class="name">${el.name}</span>
+    <span class="mass">${typeof el.mass === 'number' ? el.mass.toFixed(1) : el.mass}</span>
+  `;
+
+  cell.addEventListener('click', () => openModal(el));
+  return cell;
+}
+
+function applyFilterAndSearch() {
+  const query = searchQuery.trim().toLowerCase();
+
+  ELEMENTS.forEach(el => {
+    const cell = document.getElementById(`el-cell-${el.z}`);
+    if (!cell) return;
+
+    // Filter condition
+    const matchesCategory = (currentFilter === 'all') || (el.cat === currentFilter);
+
+    // Search condition
+    const matchesSearch = !query ||
+      el.name.toLowerCase().includes(query) ||
+      el.nameEn.toLowerCase().includes(query) ||
+      el.sym.toLowerCase().includes(query) ||
+      el.z.toString() === query;
+
+    if (matchesCategory && matchesSearch) {
+      cell.classList.remove('dimmed');
+      if (query && matchesSearch) {
+        cell.classList.add('highlight');
+      } else {
+        cell.classList.remove('highlight');
+      }
+    } else {
+      cell.classList.add('dimmed');
+      cell.classList.remove('highlight');
+    }
+  });
+}
+
+// Search input listener
+document.getElementById('searchInput').addEventListener('input', (e) => {
+  searchQuery = e.target.value;
+  applyFilterAndSearch();
+});
+
+// Category Filter buttons
+document.getElementById('filterGroup').addEventListener('click', (e) => {
+  const btn = e.target.closest('.filter-btn');
+  if (!btn) return;
+
+  document.querySelectorAll('#filterGroup .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  currentFilter = btn.getAttribute('data-cat');
+  applyFilterAndSearch();
+});
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const currentTheme = html.getAttribute('data-theme') || 'dark';
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+  html.setAttribute('data-theme', newTheme);
+  localStorage.setItem('theme', newTheme);
+
+  updateThemeUI(newTheme);
+}
+
+function updateThemeUI(theme) {
+  const icon = document.getElementById('themeIcon');
+  const text = document.getElementById('themeText');
+
+  if (theme === 'light') {
+    icon.textContent = '🌙';
+    text.textContent = '다크 모드';
+  } else {
+    icon.textContent = '☀️';
+    text.textContent = '라이트 모드';
+  }
+}
+
+// Load Theme on Init
+(function initTheme() {
+  const savedTheme = localStorage.getItem('theme') || 'dark';
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  updateThemeUI(savedTheme);
+})();
+
+function openModal(el) {
+  const modal = document.getElementById('modal');
+  const symbol = document.getElementById('modalSymbol');
+  const name = document.getElementById('modalName');
+  const sub = document.getElementById('modalSub');
+  const grid = document.getElementById('detailGrid');
+  const econfig = document.getElementById('electronConfig');
+  const shellVis = document.getElementById('shellVisual');
+  const funFact = document.getElementById('funFact');
+
+  symbol.className = `modal-symbol cat-${el.cat}`;
+  symbol.innerHTML = `<div>${el.sym}</div><div style="font-size:.7rem;font-weight:normal">${el.z}</div>`;
+  name.textContent = `${el.name} (${el.nameEn})`;
+  sub.textContent = `${getCatKorean(el.cat)} · ${el.period}주기 ${el.group ? el.group + '족' : ''}`;
+
+  grid.innerHTML = `
+    <div class="detail-card"><div class="label">원자 번호</div><div class="value">${el.z}</div></div>
+    <div class="detail-card"><div class="label">원자량</div><div class="value">${el.mass}</div></div>
+    <div class="detail-card"><div class="label">상태</div><div class="value">${getPhaseKorean(el.phase)}</div></div>
+    <div class="detail-card"><div class="label">밀도</div><div class="value">${el.density !== null ? el.density + ' g/cm³' : '-'}</div></div>
+    <div class="detail-card"><div class="label">녹는점</div><div class="value">${el.melt !== null ? el.melt + ' °C' : '-'}</div></div>
+    <div class="detail-card"><div class="label">끓는점</div><div class="value">${el.boil !== null ? el.boil + ' °C' : '-'}</div></div>
+    <div class="detail-card"><div class="label">전기음성도</div><div class="value">${el.eneg !== null ? el.eneg : '-'}</div></div>
+    <div class="detail-card"><div class="label">발견자 / 연도</div><div class="value" style="font-size:.85rem">${el.discoverer} (${el.discovered})</div></div>
+  `;
+
+  econfig.textContent = el.econfig || '-';
+
+  shellVis.innerHTML = '';
+  if (el.shells) {
+    el.shells.forEach((s, idx) => {
+      const ring = document.createElement('div');
+      ring.className = 'shell-ring';
+      ring.setAttribute('data-label', `K L M N O P Q`[idx*2] || '');
+      ring.textContent = s;
+      shellVis.appendChild(ring);
+    });
+  }
+
+  funFact.textContent = el.funFact || '상세 정보가 업데이트될 예정입니다.';
+
+  modal.classList.add('show');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('show');
+}
+
+function closeModalOnOverlay(e) {
+  if (e.target.id === 'modal') closeModal();
+}
+
+function getCatKorean(cat) {
+  const map = {
+    'alkali-metal':'알칼리 금속','alkaline-earth':'알칼리토 금속','transition':'전이 금속',
+    'post-transition':'전이후 금속','metalloid':'준금속','nonmetal':'비금속',
+    'halogen':'할로겐','noble-gas':'비활성 기체','lanthanide':'란타넘족','actinide':'악티늄족'
+  };
+  return map[cat] || '기타';
+}
+
+function getPhaseKorean(p) {
+  return p === 'gas' ? '기체 🎈' : p === 'liquid' ? '액체 💧' : '고체 🧊';
+}
+
+let quizState = {
+  type: 'symbol',
+  correct: 0,
+  wrong: 0,
+  streak: 0,
+  currentEl: null,
+  answered: false
+};
+
+function initQuizTypeSelector() {
+  document.getElementById('quizTypeSelector').addEventListener('click', (e) => {
+    const btn = e.target.closest('.quiz-type-btn');
+    if (!btn) return;
+
+    document.querySelectorAll('#quizTypeSelector .quiz-type-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    quizState.type = btn.getAttribute('data-type');
+    nextQuiz();
+  });
+}
+
+function nextQuiz() {
+  quizState.answered = false;
+  const target = ELEMENTS[Math.floor(Math.random() * ELEMENTS.length)];
+  quizState.currentEl = target;
+
+  const qText = document.getElementById('qText');
+  const qHint = document.getElementById('qHint');
+  const qOpts = document.getElementById('quizOpts');
+  const btnNext = document.getElementById('quizNext');
+
+  btnNext.textContent = '다음 문제 ➔';
+
+  let questionPrompt = '';
+  let hintPrompt = `원자번호: ${target.z}번 · 분류: ${getCatKorean(target.cat)}`;
+  let correctAnswer = '';
+
+  if (quizState.type === 'symbol') {
+    questionPrompt = `원소 <strong style="color:var(--accent)">'${target.name}'</strong>의 화학 기호는?`;
+    correctAnswer = target.sym;
+  } else if (quizState.type === 'name') {
+    questionPrompt = `기호 <strong style="color:var(--accent)">'${target.sym}'</strong> (${target.z}번) 원소의 이름은?`;
+    correctAnswer = target.name;
+  } else if (quizState.type === 'number') {
+    questionPrompt = `원소 <strong style="color:var(--accent)">'${target.name} (${target.sym})'</strong>의 원자 번호는?`;
+    correctAnswer = target.z.toString();
+  } else if (quizState.type === 'category') {
+    questionPrompt = `원소 <strong style="color:var(--accent)">'${target.name} (${target.sym})'</strong>의 분류는?`;
+    correctAnswer = getCatKorean(target.cat);
+  }
+
+  qText.innerHTML = questionPrompt;
+  qHint.textContent = hintPrompt;
+
+  // Distractors
+  let options = [correctAnswer];
+  while (options.length < 4) {
+    let randEl = ELEMENTS[Math.floor(Math.random() * ELEMENTS.length)];
+    let val = '';
+    if (quizState.type === 'symbol') val = randEl.sym;
+    else if (quizState.type === 'name') val = randEl.name;
+    else if (quizState.type === 'number') val = randEl.z.toString();
+    else if (quizState.type === 'category') val = getCatKorean(randEl.cat);
+
+    if (!options.includes(val)) options.push(val);
+  }
+
+  // Shuffle options
+  options.sort(() => Math.random() - 0.5);
+
+  qOpts.innerHTML = '';
+  options.forEach(opt => {
+    const optBtn = document.createElement('button');
+    optBtn.className = 'quiz-opt';
+    optBtn.textContent = opt;
+    optBtn.onclick = () => checkQuiz(optBtn, opt, correctAnswer);
+    qOpts.appendChild(optBtn);
+  });
+}
+
+function checkQuiz(btn, selected, correct) {
+  if (quizState.answered) return;
+  quizState.answered = true;
+
+  const allBtns = document.querySelectorAll('#quizOpts .quiz-opt');
+
+  if (selected === correct) {
+    btn.classList.add('correct');
+    quizState.correct++;
+    quizState.streak++;
+  } else {
+    btn.classList.add('wrong');
+    quizState.wrong++;
+    quizState.streak = 0;
+
+    allBtns.forEach(b => {
+      if (b.textContent === correct) b.classList.add('correct');
+    });
+  }
+
+  document.getElementById('qCorrect').textContent = quizState.correct;
+  document.getElementById('qWrong').textContent = quizState.wrong;
+  document.getElementById('qStreak').textContent = quizState.streak;
+
+  const total = quizState.correct + quizState.wrong;
+  const pct = Math.round((quizState.correct / total) * 100) || 0;
+  document.getElementById('qProgress').style.width = `${pct}%`;
+}
+
+function switchTab(viewName) {
+  document.querySelectorAll('.nav-tab').forEach(t => {
+    t.classList.toggle('active', t.getAttribute('data-view') === viewName);
+  });
+  document.querySelectorAll('.view').forEach(v => {
+    v.classList.toggle('active', v.id === `view-${viewName}`);
+  });
+
+  if (viewName === 'quiz' && !quizState.currentEl) {
+    nextQuiz();
+  }
+}
+
+// Window load init
+window.addEventListener('DOMContentLoaded', () => {
+  renderPeriodicTable();
+  initQuizTypeSelector();
+});
+</script>
+</body>
+</html>

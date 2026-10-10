@@ -84,6 +84,18 @@ function injectAppMeta(html, { app, site } = {}) {
   const tags = [];
   if (!/rel=["']canonical["']/i.test(out)) tags.push(`<link rel="canonical" href="${escAttr(canonical)}" />`);
   if (!/name=["']description["']/i.test(out)) tags.push(`<meta name="description" content="${escAttr(desc)}" />`);
+
+  // 페이지 경험: 앱이 CDN 에서 불러오는 외부 리소스를 미리 연결해 첫 화면이 빨리 뜨게 합니다.
+  if (!/rel=["']preconnect["']/i.test(out)) {
+    const hosts = new Set();
+    for (const m of out.matchAll(/(?:src|href)=["'](https?:\/\/[^"'\s]+)/gi)) {
+      try { hosts.add(new URL(m[1]).origin); } catch { /* 무시 */ }
+    }
+    for (const origin of [...hosts].slice(0, 4)) {
+      tags.push(`<link rel="preconnect" href="${escAttr(origin)}" crossorigin />`);
+      tags.push(`<link rel="dns-prefetch" href="${escAttr(origin)}" />`);
+    }
+  }
   if (!tags.length) return out;
   if (/<\/head>/i.test(out)) return out.replace(/<\/head>/i, `${tags.join('\n')}\n</head>`);
   if (/<head[^>]*>/i.test(out)) return out.replace(/<head[^>]*>/i, (m) => `${m}\n${tags.join('\n')}`);

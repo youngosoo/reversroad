@@ -302,6 +302,9 @@ async function renameApp(id, newId) {
   const from = assertInside(APPS_DIR, path.join(APPS_DIR, id));
   const to = assertInside(APPS_DIR, path.join(APPS_DIR, next));
   if (fs.existsSync(from)) await moveDir(from, to);
+  // 옛 주소로 들어오는 요청이 끊기지 않게 이전 id 를 남겨 둡니다 (301 로 연결)
+  const former = Array.isArray(app.formerIds) ? app.formerIds.filter((x) => x && x !== next) : [];
+  app.formerIds = [...new Set([...former, id])].slice(-10);
   app.id = next;
   app.path = `apps/${next}/`;
   app.updatedAt = new Date().toISOString();
@@ -311,6 +314,7 @@ async function renameApp(id, newId) {
 
 /** Re-runs the analyzer over an app that is already stored on disk. */
 async function analyzeApp(id) {
+  // 아래에서 분석 결과로 online 플래그를 갱신합니다
   const app = await getApp(id);
   if (!app) throw new HttpError(404, 'app not found');
   const entry = assertInside(APPS_DIR, path.join(APPS_DIR, id, app.entry || 'index.html'));
@@ -321,7 +325,18 @@ async function analyzeApp(id) {
     throw new HttpError(404, 'index.html not found for this app');
   }
   const { analyzeBuffer } = require('./analyze');
-  return { app, analysis: analyzeBuffer(html, `${id}/index.html`) };
+  const analysis = analyzeBuffer(html, `${id}/index.html`);
+  // 인터넷이 필요한 앱인지(외부 리소스 사용) 다시 판정해 저장합니다 — 상세 페이지에 안내가 나갑니다
+  const apps = await readApps();
+  const target = apps.find((a) => a.id === id);
+  if (target) {
+    const online = Boolean(analysis && (analysis.details?.externalResources || []).length);
+    if (online) target.online = true;
+    else delete target.online;
+    target.updatedAt = new Date().toISOString();
+    await writeApps(apps);
+  }
+  return { app: target || app, analysis };
 }
 
 /** 업로드된 HTML 에서 API 키·토큰을 제거합니다 (저장 전) */

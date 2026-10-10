@@ -154,6 +154,9 @@ async function renameApp(env, id, nextIdRaw) {
   if (files.length) await store.putFiles(env, next, files);
   await store.deleteAppFiles(env, id);
 
+  // 옛 주소로 들어오는 요청과 이미 색인된 링크가 끊기지 않게 이전 id 를 남겨 둡니다 (301 로 연결)
+  const former = Array.isArray(app.formerIds) ? app.formerIds.filter((x) => x && x !== next) : [];
+  app.formerIds = [...new Set([...former, id])].slice(-10);
   app.id = next;
   app.path = `apps/${next}/`;
   app.updatedAt = new Date().toISOString();
@@ -195,7 +198,19 @@ async function analyzeApp(env, id) {
   if (!app) throw new HttpError(404, '앱을 찾을 수 없습니다');
   const body = await store.getFile(env, id, app.entry || 'index.html');
   if (!body) throw new HttpError(404, '앱의 index.html 을 찾을 수 없습니다');
-  return { app: { id: app.id, name: app.name }, analysis: analyze.analyzeBuffer(Buffer.from(body), `${id}/index.html`) };
+  const analysis = analyze.analyzeBuffer(Buffer.from(body), `${id}/index.html`);
+  // 인터넷이 필요한 앱인지(외부 리소스 사용) 다시 판정해 저장합니다 — 상세 페이지에 안내가 나갑니다
+  const apps = await store.readApps(env);
+  const target = apps.find((a) => a.id === id);
+  if (target) {
+    const online = Boolean(analysis && (analysis.details?.externalResources || []).length);
+    if (online) target.online = true;
+    else delete target.online;
+    target.updatedAt = new Date().toISOString();
+    const saved = await store.writeApps(env, apps);
+    await store.rebuild(env, { apps: saved });
+  }
+  return { app: { id: app.id, name: app.name }, analysis };
 }
 
 async function downloadApp(env, id) {

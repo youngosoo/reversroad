@@ -556,6 +556,33 @@ app.get('/admin.html', auth.requireAuth, (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, 'admin.html'));
 });
 
+// 이름을 바꾼 앱의 옛 주소(앱 화면·상세 페이지)는 새 주소로 301
+let formerIdCache = { at: 0, map: new Map() };
+async function formerIds() {
+  if (Date.now() - formerIdCache.at < 5000 && formerIdCache.map.size) return formerIdCache.map;
+  const apps = await manifest.readApps();
+  const map = new Map();
+  for (const app of apps) {
+    for (const old of Array.isArray(app.formerIds) ? app.formerIds : []) map.set(old, app.id);
+  }
+  formerIdCache = { at: Date.now(), map };
+  return map;
+}
+
+app.use(async (req, res, next) => {
+  const match = req.path.match(/^\/(app|apps)\/([^/]+)(?:\/)?(index\.html)?$/);
+  if (!match) return next();
+  try {
+    const target = (await formerIds()).get(decodeURIComponent(match[2]));
+    if (!target) return next();
+    const query = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+    const path = match[1] === 'app' ? `/app/${target}` : `/apps/${target}/${match[3] || ''}`;
+    return res.redirect(301, path + query);
+  } catch {
+    return next();
+  }
+});
+
 app.use(express.static(PUBLIC_DIR, { extensions: ['html'] }));
 // 업로드된 앱 화면에 광고 코드를 끼워 넣어 내보냅니다 (파일은 그대로 두고 응답만 가공)
 app.get([/^\/apps\/([a-z0-9-]+)\/$/i, /^\/apps\/([a-z0-9-]+)\/([^/]+\.html?)$/i], async (req, res, next) => {

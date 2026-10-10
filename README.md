@@ -32,8 +32,10 @@ myhome/
 ├─ tools/audit.js        # 애드센스 관점 자동 점검
 ├─ tools/test-classify.js# 분야 자동 분류 정확도 확인
 ├─ tools/init-kv.js      # 로컬 데이터 → Cloudflare KV (최초 이전)
-├─ tools/pull-kv.js      # Cloudflare KV → 로컬 백업
+├─ tools/pull-kv.js      # Cloudflare KV → 로컬 백업 (관리자가 올린 로고 포함)
 ├─ tools/render-logo.js  # logo.svg → logo.png 렌더링
+├─ tools/make-favicons.js# 로고 → favicon 48·96·192·180 + .ico (npm run favicons)
+├─ tools/seo-audit.js    # Google SEO 기본 가이드 기준 자동 점검 (npm run seo)
 ├─ data/apps.json        # 앱 매니페스트 (이 목록의 원본)
 ├─ data/site.json        # 사이트 설정 (관리자 화면에서 수정)
 ├─ data/admin.json       # 관리자 비밀번호 해시 (git 제외)
@@ -290,13 +292,39 @@ cp ~/Downloads/my-app.html apps/my-app/index.html
 
 | 파일 | 설명 |
 | --- | --- |
-| `public/assets/logo.png` | **우선 사용되는 파일.** 원본 로고 이미지를 이 이름으로 넣으면 즉시 그 로고로 바뀝니다(가로세로 같은 정사각형 권장, 512×512 이상). |
+| `public/assets/logo.png` | **우선 사용되는 파일.** 관리자 화면 → 브랜드 로고에서 올린 이미지가 KV(`asset:logo`)에 저장되고, 이 파일은 `node tools/pull-kv.js` 로 내려받은 사본입니다(정사각형 권장, 512×512 이상). |
 | `public/assets/logo.svg` | 로고가 없을 때 쓰는 기본 시안(주황 원 + 흰 R). 벡터라 어느 크기에서도 선명합니다. |
 | `public/assets/logo.jpg` · `logo.webp` | PNG 대신 이 형식을 써도 인식합니다. |
 
 - 헤더에서는 `border-radius: 50%` 로 원형으로 잘라 쓰기 때문에, 배경이 흰색인 이미지도 다크 모드에서 사각형으로 보이지 않습니다.
 - SVG 를 수정했다면 PNG 를 다시 만들어 두세요: `node tools/render-logo.js public/assets/logo.svg public/assets/logo.png 512`
+- 로고를 바꾼 뒤에는 파비콘도 다시 만들어 주세요: `npm run favicons` (Google 검색 파비콘 규격 — 48px 의 배수). 헤더·파비콘·관리자 화면은 관리자 업로드 즉시 반영되고, 파비콘 파일과 공유 카드(OG) 이미지는 다음 배포에서 갱신됩니다.
 - 파일을 넣고 5초 안에 자동 반영됩니다(파일 존재 여부를 잠깐 캐시합니다).
+
+## 8-1. 검색엔진 최적화 점검 (Google SEO 기본 가이드)
+
+Google 의 「검색엔진 최적화(SEO) 기본 가이드」 항목을 자동 점검합니다.
+
+```bash
+npm run seo                                  # 배포 사이트 점검
+node tools/seo-audit.js --base http://localhost:3000   # 로컬 서버 점검
+node tools/seo-audit.js --base dist          # 정적 빌드 결과 점검
+```
+
+점검 내용: robots.txt·사이트맵·canonical, 제목·메타 설명(길이·중복), H1/H2 구조, 본문 분량,
+이미지 alt, 무의미한 링크 텍스트, JSON-LD 오류, 탐색경로(breadcrumb).
+
+적용돼 있는 항목:
+- **표준 주소**: http→https, 루트→www, `/index.html`→`/` 301 + 페이지마다 `rel="canonical"`
+- **설명 URL**: 앱 주소는 읽을 수 있는 영문 슬러그(`/app/news-shorts-script`). 이름을 바꾼 앱의 옛 주소는 301 로 연결(`formerIds`).
+- **중복 콘텐츠**: 앱 실행 화면(`/apps/<id>/`)은 상세 페이지(`/app/<id>`)로 canonical 지정.
+- **파비콘**: 48·96·192·180px 정사각형(48의 배수) + `.ico`.
+- **구조화 데이터**: WebSite·Organization(로고)·FAQPage·ItemList(홈), BreadcrumbList·WebApplication(앱 상세).
+- **페이지 경험**: 앱 화면이 불러오는 외부 CDN 을 `preconnect`/`dns-prefetch` 로 미리 연결.
+
+사용자가 직접 해야 하는 일(콘솔에서만 가능):
+1. [Search Console](https://search.google.com/search-console) 에 `reversroad.com` 도메인 속성 등록 → `https://www.reversroad.com/sitemap.xml` 제출 → 주요 페이지 URL 검사 후 색인 요청
+2. 관리자 → 사이트 설정 → Google 애널리틱스(G-XXXX) 입력 (선택)
 
 ## 9. 배포 (Cloudflare Workers)
 

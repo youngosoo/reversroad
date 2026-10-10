@@ -209,8 +209,11 @@ ${site.domain ? `<link rel="alternate" type="application/rss+xml" title="${attr(
 <meta property="og:description" content="${attr(desc)}" />
 ${canonical ? `<meta property="og:url" content="${attr(canonical)}" />` : ''}
 <meta name="twitter:card" content="summary_large_image" />
-<link rel="icon" href="${attr(logoUrl(site))}" />
-<link rel="apple-touch-icon" href="${attr(logoUrl(site))}" />
+<link rel="icon" href="/favicon.ico" sizes="any" />
+<link rel="icon" href="${attr(assetUrl('favicon-48.png'))}" sizes="48x48" type="image/png" />
+<link rel="icon" href="${attr(assetUrl('favicon-96.png'))}" sizes="96x96" type="image/png" />
+<link rel="icon" href="${attr(assetUrl('favicon-192.png'))}" sizes="192x192" type="image/png" />
+<link rel="apple-touch-icon" href="${attr(assetUrl('favicon-180.png'))}" sizes="180x180" />
 ${site.domain ? `<meta property="og:image" content="${attr(site.domain + (ogImage || assetUrl('og-home.png')))}" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />

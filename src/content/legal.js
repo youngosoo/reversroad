@@ -22,7 +22,7 @@ function privacyPolicy(site) {
   return {
     slug: 'privacy',
     title: '개인정보처리방침',
-    summary: '이 사이트가 어떤 정보를 수집하고, 쿠키를 어떻게 사용하며, 이용자가 무엇을 선택할 수 있는지 안내합니다.',
+    summary: '이 사이트가 어떤 정보를 수집하는지, 쿠키와 브라우저 저장소를 어디에 쓰는지, 광고·분석 도구는 무엇을 하는지, 이용자가 어떤 선택을 할 수 있는지 항목별로 안내합니다.',
     updated: UPDATED,
     sections: [
       {

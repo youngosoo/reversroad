@@ -157,18 +157,15 @@ async function isGenerated(env) {
   return (await kv(env).get(KEY.generatedAt)) !== null;
 }
 
-/** 관리자 변경 후 사이트 전체 페이지를 다시 만듭니다 */
-async function rebuild(env, { host = '', apps: appsInput = null, site: siteInput = null } = {}) {
-  // KV 는 쓰기 직후 다른 위치에서 옛 값을 읽을 수 있습니다(최대 60초).
-  // 방금 저장한 값을 넘겨받아 그 값으로 페이지를 만들면 항상 최신이 반영됩니다.
-  const raw = siteInput || (await readSite(env));
-  const site = publicSite(raw, host);
-  // 배포 사이트에서는 관리자 화면이 같은 주소에 있으므로 상대 경로로 둡니다
-  site.adminUrl = '/admin.html';
-  const apps = appsInput || (await readApps(env));
-  const rendered = renderSite({ site, apps });
-  const result = await writePages(env, rendered);
-  return { ...result, apps: apps.length };
+/**
+ * 관리자 변경 후 호출되는 자리 — 이제 아무것도 저장하지 않습니다.
+ *
+ * 페이지는 요청이 들어올 때 즉시 렌더링해 Cloudflare 캐시에 담아 둡니다(무료·무제한).
+ * 예전에는 변경마다 40여 개 페이지를 KV 에 썼는데, 그 때문에 무료 플랜의
+ * 일일 쓰기 한도(1,000건)를 넘겨 앱 등록·설정 저장이 실패했습니다.
+ */
+async function rebuild() {
+  return { written: 0, removed: 0, mode: 'on-demand' };
 }
 
 /* ------------------------------------------------ 로고 (관리자 업로드) */

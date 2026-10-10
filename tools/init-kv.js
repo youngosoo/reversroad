@@ -122,7 +122,7 @@ async function main() {
   site.adminUrl = '/admin.html';
   const rendered = build.renderSite({ site, apps });
   for (const [rel, html] of Object.entries(rendered)) {
-    entries.push({ key: `page:${rel}`, value: html, label: `페이지 ${rel}` });
+    // 페이지는 서버가 요청 시 렌더링합니다 — KV 에 쓰지 않습니다(쓰기 한도 절약)
   }
   entries.push({ key: 'meta:generatedAt', value: new Date().toISOString(), label: '생성 시각' });
 

@@ -2,13 +2,14 @@
 'use strict';
 
 /**
- * 배포 한 번에: 정적 빌드 → KV 페이지 재생성 → Cloudflare 배포
+ * 배포 한 번에: 정적 빌드(dist/) → Cloudflare 배포
  *
  *   npm run deploy
  *
- * KV 재생성이 실패해도(토큰 만료 등) 배포는 계속 진행하고 경고만 남깁니다.
- * → 사이트가 옛 화면으로 남는 일을 줄이려면 KV 재생성이 성공해야 하므로, 경고가 보이면
- *    npx wrangler login 후 `npm run rebuild:remote` 를 다시 실행하세요.
+ * 공개 페이지는 배포본이 아니라 요청이 들어올 때 서버(Worker)가 데이터로 직접 그려서
+ * Cloudflare 캐시에 담아 둡니다. 그래서 KV 페이지 재생성 단계가 필요 없습니다
+ * (예전에는 배포·저장마다 40여 개 페이지를 KV 에 썼고, 무료 플랜의 일일 쓰기 한도를
+ *  넘겨 관리자 저장이 실패했습니다 — 2026-10-11 수정).
  */
 
 const { spawnSync } = require('child_process');
@@ -35,10 +36,7 @@ function run(script, args = [], { optional = false } = {}) {
 console.log('① 정적 빌드 (dist/)');
 run('export-static.js');
 
-console.log('\n② KV 페이지 재생성 (배포 사이트가 쓰는 최신 화면)');
-const kvOk = run('rebuild-kv-pages.js', [], { optional: true });
-
-console.log('\n③ Cloudflare 배포');
+console.log('\n② Cloudflare 배포');
 const deployed = spawnSync('npx', ['wrangler', 'deploy'], { cwd: ROOT, stdio: 'inherit' });
 if (deployed.status !== 0) {
   console.error('\n✗ 배포 실패');
@@ -46,6 +44,4 @@ if (deployed.status !== 0) {
 }
 
 console.log('\n✓ 완료');
-if (!kvOk) {
-  console.log('⚠ KV 페이지 재생성은 실패했습니다. `npx wrangler login` 후 `npm run rebuild:remote` 를 실행하세요.');
-}
+console.log('ℹ 공개 페이지는 요청 시 서버가 그려서 캐시합니다 — KV 페이지 재생성은 필요 없습니다.');

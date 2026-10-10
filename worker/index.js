@@ -156,22 +156,18 @@ export default {
         return asset;
       }
 
-      // 4) 페이지 — 관리자가 만든 페이지(KV) 우선, 없으면 배포된 정적 파일로 폴백
+      // 4) 페이지 — 요청이 들어올 때 즉시 렌더링하고 Cloudflare 캐시에 담아 둡니다.
+      //    (KV 에 페이지를 써 두지 않으므로 관리자 저장이 KV 쓰기 한도를 쓰지 않습니다)
       if (!path.startsWith('/assets/')) {
         const key = build.pageKeyForPath(path);
         if (build.isDynamicPageKey(key)) {
-          if (await store.isGenerated(env)) {
-            const html = await store.getPage(env, key);
-            if (html !== null) return htmlResponse(html, key);
-            const appPage = key.match(/^app\/([^/]+)\/index\.html$/);
-            if (appPage) {
-              const moved = await formerAppRedirect(request, env, url, decodeURIComponent(appPage[1]));
-              if (moved) return moved;
-            }
-            return notFound(request, env); // 관리자가 지운 페이지
+          const html = await renderPageCached(request, env, url, key);
+          if (html !== null) return htmlResponse(html, key);
+          const appPage = key.match(/^app\/([^/]+)\/index\.html$/);
+          if (appPage) {
+            const moved = await formerAppRedirect(request, env, url, decodeURIComponent(appPage[1]));
+            if (moved) return moved;
           }
-          const asset = await fetchAsset(request, env, `/${key}`);
-          if (asset && asset.status !== 404) return asset;
           return notFound(request, env);
         }
       }
@@ -179,6 +175,13 @@ export default {
       // 5) 나머지는 정적 파일
       return serveAsset(request, env, path);
     } catch (err) {
+      // 무료 플랜은 KV 쓰기 1,000건/일 제한이 있습니다 — 관리자 저장이 막히면 이 메시지로 안내합니다
+      if (/KV (put|delete|list)\(\) limit exceeded/i.test(String(err && err.message))) {
+        const quota = new HttpError(429, 'Cloudflare KV 오늘 쓰기 한도(무료 1,000건/일)를 모두 사용했습니다. UTC 00:00(한국 시간 09:00)에 초기화되니 그 뒤에 다시 시도해 주세요. 급하면 관리자 화면 설정은 그대로 두고 잠시 후 이용하세요.');
+        const body = json({ error: quota.message, status: 429 });
+        if (path.startsWith('/api/') || path.startsWith('/auth/')) return body;
+        return new Response(quota.message, { status: 429, headers: { 'content-type': 'text/plain; charset=utf-8' } });
+      }
       const status = err.status || 500;
       if (status >= 500) console.error('[myhome]', err && err.stack ? err.stack : String(err));
       const message = err.message || 'internal error';
@@ -251,14 +254,74 @@ async function serveAsset(request, env, path, extraHeaders = {}) {
   return new Response(response.body, { status: response.status, headers });
 }
 
-/** 관리자가 만든 404 페이지를 내려보냅니다 */
+/** 404 페이지 (요청 시 렌더링, 실패하면 배포된 정적 파일) */
 async function notFound(request, env) {
-  const custom = await store.getPage(env, '404.html');
-  if (custom) {
-    return new Response(custom, {
+  const url = new URL(request.url);
+  const html = await renderPageCached(request, env, url, '404.html');
+  if (html) {
+    return new Response(html, {
       status: 404,
       headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' },
     });
   }
   return serveAsset(request, env, '/404.html');
+}
+
+/**
+ * 페이지 한 장을 렌더링합니다.
+ *
+ * - 데이터(KV 2건 읽기)로 즉시 그리고, 결과는 Cloudflare 캐시에 담아 다음 요청은 캐시로 답합니다.
+ * - 캐시 키에 데이터 버전을 붙여서, 관리자가 내용을 바꾸면 곧바로 새로 그려집니다.
+ * - KV 쓰기가 없으므로 무료 플랜의 일일 쓰기 한도를 쓰지 않습니다.
+ */
+async function renderPageCached(request, env, url, key) {
+  const data = await pageData(env, url);
+  const version = `${pageVersion(data, url.host)}`;
+  const cache = typeof caches !== 'undefined' && caches.default ? caches.default : null;
+  const cacheKey = new Request(`https://page-cache.local/${key}?v=${encodeURIComponent(version)}`, { method: 'GET' });
+  if (cache) {
+    const hit = await cache.match(cacheKey);
+    if (hit) return hit.text();
+  }
+  let html = null;
+  try {
+    html = build.renderPage(key, data);
+  } catch (err) {
+    console.error('[myhome] render failed', key, err && err.stack ? err.stack : String(err));
+    html = null;
+  }
+  if (html === null) return null;
+  if (cache) {
+    try {
+      await cache.put(cacheKey, new Response(html, {
+        headers: { 'content-type': build.contentTypeFor(key), 'cache-control': 'public, max-age=86400' },
+      }));
+    } catch { /* 캐시 저장 실패는 무시 (다음 요청에 다시 그림) */ }
+  }
+  return html;
+}
+
+// 데이터 스냅샷은 짧게(5초) 메모리에 둬서 KV 읽기를 아낍니다
+let dataSnapshot = { at: 0, key: '', value: null };
+
+async function pageData(env, url) {
+  const host = url && url.host ? url.host : '';
+  if (dataSnapshot.value && Date.now() - dataSnapshot.at < 5000 && dataSnapshot.key === host) return dataSnapshot.value;
+  const raw = await store.readSite(env);
+  const site = store.publicSite(raw, host);
+  site.adminUrl = '/admin.html'; // 관리자 화면은 같은 주소에 있으므로 상대 경로
+  const apps = await store.readApps(env);
+  const value = { site, apps };
+  dataSnapshot = { at: Date.now(), key: host, value };
+  return value;
+}
+
+/** 데이터가 바뀌면 값이 달라지는 버전 문자열 (캐시 키에 씁니다) */
+function pageVersion({ site, apps }, host = '') {
+  let newest = '';
+  for (const app of apps) {
+    const stamp = app.updatedAt || app.createdAt || '';
+    if (stamp > newest) newest = stamp;
+  }
+  return `${host}|${site.updatedAt || ''}|${apps.length}|${newest}|${site.logoVersion || ''}`;
 }

@@ -53,6 +53,47 @@ function renderSite({ site, apps }) {
   return out;
 }
 
+/**
+ * 페이지 한 장만 렌더링합니다 (요청이 들어올 때 즉시 렌더링 + 캐시).
+ * 없는 키면 null 을 돌려줍니다(이름이 바뀐 앱 → 호출부에서 301 처리).
+ */
+function renderPage(key, { site, apps = [] }) {
+  const listed = filterVisible(apps);
+  switch (key) {
+    case 'index.html': return pages.homePage({ site, apps: listed, guides: GUIDES });
+    case 'apps/index.html': return pages.appsPage({ site, apps: listed });
+    case 'categories/index.html': return pages.categoriesPage({ site, apps: listed });
+    case 'guide/index.html': return pages.guideIndexPage({ site, apps: listed, guides: GUIDES });
+    case 'about/index.html': return pages.aboutPage({ site, apps: listed, guides: GUIDES });
+    case 'contact/index.html': return pages.contactPage({ site });
+    case 'privacy/index.html': return pages.policyPage({ site, doc: pages.privacyPolicy(site) });
+    case 'terms/index.html': return pages.policyPage({ site, doc: pages.termsOfService(site) });
+    case 'disclaimer/index.html': return pages.policyPage({ site, doc: pages.disclaimer(site) });
+    case '404.html': return pages.notFoundPage({ site });
+    case 'robots.txt': return seo.robots({ site });
+    case 'rss.xml': return seo.rss({ site, apps: listed, guides: GUIDES });
+    case 'sitemap.xml': return seo.sitemap({ site, apps: listed });
+    case 'ads.txt': return seo.adsTxt({ site });
+    default: break;
+  }
+  const appMatch = key.match(/^app\/([^/]+)\/index\.html$/);
+  if (appMatch) {
+    const app = apps.find((a) => a.id === decodeURIComponent(appMatch[1]));
+    return app ? pages.appDetailPage({ site, app, apps }) : null;
+  }
+  const categoryMatch = key.match(/^category\/([^/]+)\/index\.html$/);
+  if (categoryMatch) {
+    const category = CATEGORIES.find((c) => c.slug === categoryMatch[1]);
+    return category ? pages.categoryPage({ site, apps: listed, category }) : null;
+  }
+  const guideMatch = key.match(/^guide\/([^/]+)\/index\.html$/);
+  if (guideMatch) {
+    const guide = GUIDES.find((g) => g.slug === guideMatch[1]);
+    return guide ? pages.guideDetailPage({ site, guide, apps: listed }) : null;
+  }
+  return null;
+}
+
 /** 요청 경로 → 렌더링된 페이지 키 ('/apps' → 'apps/index.html') */
 function pageKeyForPath(pathname) {
   let p = String(pathname || '/').split('?')[0].split('#')[0];
@@ -126,4 +167,4 @@ const HEADERS = `# 보안 헤더
   Cache-Control: no-store
 `;
 
-module.exports = { renderSite, pageKeyForPath, isDynamicPageKey, contentTypeFor, HEADERS };
+module.exports = { renderSite, renderPage, pageKeyForPath, isDynamicPageKey, contentTypeFor, HEADERS };

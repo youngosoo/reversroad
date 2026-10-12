@@ -146,14 +146,32 @@ const FILTER_SCRIPT = `<script>
 })();
 </script>`;
 
-function heroStats(apps, guides) {
+/**
+ * 히어로 인포그래픽 — 숫자와 분야 분포를 한 장의 카드로 보여 줍니다.
+ * (텍스트만 나열하지 않고 "앱이 몇 개, 어디에 몰려 있는지"를 눈으로 읽게 합니다)
+ */
+function heroVisual(apps, guides) {
+  const cats = categoryCounts(apps).sort((a, b) => b.count - a.count);
+  const color = (i) => `var(--cat-${(i % 8) + 1})`;
+  const segments = cats.map((c, i) => `<i style="flex:${c.count};--c:${color(i)}"></i>`).join('');
+  const legend = cats.map((c, i) => `<li><a href="/category/${attr(c.slug)}"><i class="swatch" style="--c:${color(i)}"></i><span aria-hidden="true">${esc(c.icon)}</span> ${esc(c.label)} <b>${c.count}</b></a></li>`).join('');
+  const spoken = cats.map((c) => `${c.label} ${c.count}개`).join(', ');
   return `
-    <ul class="stats">
-      <li><strong>${apps.length}</strong><span>등록된 웹앱</span></li>
-      <li><strong>${guides.length}</strong><span>안내 글</span></li>
-      <li><strong>0원</strong><span>이용 요금</span></li>
-      <li><strong>오프라인</strong><span>설치 없이 실행</span></li>
-    </ul>`;
+    <aside class="hero-viz" aria-label="사이트 현황">
+      <p class="viz-kicker">한눈에 보기</p>
+      <ul class="stats">
+        <li><strong>${apps.length}</strong><span>등록된 웹앱</span></li>
+        <li><strong>${guides.length}</strong><span>사용 안내 글</span></li>
+        <li><strong>${cats.length}</strong><span>분야</span></li>
+        <li><strong>0원</strong><span>이용 요금</span></li>
+      </ul>
+      <div class="viz-block">
+        <p class="viz-label"><span>분야별 분포</span><span class="muted">앱 ${apps.length}개</span></p>
+        <div class="viz-bar" role="img" aria-label="분야별 앱 수: ${attr(spoken)}">${segments}</div>
+        <ul class="viz-legend">${legend}</ul>
+      </div>
+      <p class="viz-note"><span aria-hidden="true">🔒</span><span>입력한 내용은 서버로 전송되지 않고 내 브라우저에만 저장됩니다. 설치 없이 바로 실행하고, 이용 요금도 없습니다.</span></p>
+    </aside>`;
 }
 
 function homePage({ site, apps, guides = GUIDES }) {
@@ -161,11 +179,19 @@ function homePage({ site, apps, guides = GUIDES }) {
   const body = `
   <section class="hero">
     <div class="shell hero-inner">
-      <p class="eyebrow">${esc(site.name)}</p>
-      <h1>${esc(site.homeHeading || site.name)}</h1>
-      <p class="lead">${esc(site.tagline)}</p>
-      <p class="hero-desc">${esc(site.description)}</p>
-      ${heroStats(apps, guides)}
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">${esc(site.name)}</p>
+          <h1>${esc(site.homeHeading || site.name)}</h1>
+          <p class="lead">${esc(site.tagline)}</p>
+          <p class="hero-desc">${esc(site.description)}</p>
+          <p class="hero-actions">
+            <a class="btn primary" href="#apps">앱 둘러보기</a>
+            <a class="btn" href="/categories">분야별로 찾기</a>
+          </p>
+        </div>
+        ${heroVisual(apps, guides)}
+      </div>
     </div>
   </section>
 

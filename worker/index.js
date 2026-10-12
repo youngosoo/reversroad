@@ -276,7 +276,7 @@ async function notFound(request, env) {
  */
 async function renderPageCached(request, env, url, key) {
   const data = await pageData(env, url);
-  const version = `${pageVersion(data, url.host)}`;
+  const version = `${pageVersion(data, url.host, env)}`;
   const cache = typeof caches !== 'undefined' && caches.default ? caches.default : null;
   const cacheKey = new Request(`https://page-cache.local/${key}?v=${encodeURIComponent(version)}`, { method: 'GET' });
   if (cache) {
@@ -294,7 +294,9 @@ async function renderPageCached(request, env, url, key) {
   if (cache) {
     try {
       await cache.put(cacheKey, new Response(html, {
-        headers: { 'content-type': build.contentTypeFor(key), 'cache-control': 'public, max-age=86400' },
+        // 배포로 화면 코드가 바뀌면 version_metadata 가 달라져 새로 그립니다.
+        // (바인딩이 없을 때를 대비해 1시간 뒤에는 다시 그리도록 둡니다)
+        headers: { 'content-type': build.contentTypeFor(key), 'cache-control': 'public, max-age=3600' },
       }));
     } catch { /* 캐시 저장 실패는 무시 (다음 요청에 다시 그림) */ }
   }
@@ -316,12 +318,13 @@ async function pageData(env, url) {
   return value;
 }
 
-/** 데이터가 바뀌면 값이 달라지는 버전 문자열 (캐시 키에 씁니다) */
-function pageVersion({ site, apps }, host = '') {
+/** 캐시 키에 쓰는 버전 문자열 — 데이터가 바뀌거나 새로 배포하면 값이 달라집니다 */
+function pageVersion({ site, apps }, host = '', env = {}) {
   let newest = '';
   for (const app of apps) {
     const stamp = app.updatedAt || app.createdAt || '';
     if (stamp > newest) newest = stamp;
   }
-  return `${host}|${site.updatedAt || ''}|${apps.length}|${newest}|${site.logoVersion || ''}`;
+  const deploy = (env.CF_VERSION_METADATA && env.CF_VERSION_METADATA.id) || '';
+  return `${host}|${site.updatedAt || ''}|${apps.length}|${newest}|${site.logoVersion || ''}|${deploy}`;
 }

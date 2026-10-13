@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="ko" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>반응형 텔레프롬프터 (Responsive Teleprompter)</title>
+    <!-- Tailwind CSS (Local / CDN standalone stylesheet) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#0f172a',
+                        cardbg: '#1e293b',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            user-select: none;
+        }
+        /* Mirror Mode Effect */
+        .mirror-mode {
+            transform: scaleX(-1);
+        }
+        /* Custom scrollbar hiding for clean prompt feel */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-darkbg text-slate-100 h-screen w-screen overflow-hidden flex flex-col">
+
+    <div id="toast" class="fixed top-6 left-1/2 -translate-x-1/2 bg-slate-800 text-slate-200 px-4 py-2 rounded-xl shadow-xl border border-slate-700 text-sm z-50 transition-all duration-300 opacity-0 pointer-events-none transform -translate-y-4">
+        알림 메시지
+    </div>
+
+    <!-- 1. SCRIPT INPUT VIEW -->
+    <div id="input-view" class="flex flex-col h-full w-full p-4 sm:p-8 max-w-4xl mx-auto z-10 transition-opacity duration-300">
+        <header class="flex items-center justify-between mb-6">
+            <div class="flex items-center space-x-3">
+                <svg class="w-8 h-8 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 100-6 3 3 0 000 6z"></path>
+                </svg>
+                <h1 class="text-2xl font-bold tracking-tight">스마트 텔레프롬프터</h1>
+            </div>
+            <div class="text-sm text-slate-400 hidden sm:block">단축키 지원 • 100% 로컬 독립 실행 (API 없음)</div>
+        </header>
+
+        <div class="flex-1 flex flex-col bg-cardbg rounded-2xl border border-slate-700 p-4 sm:p-6 shadow-xl mb-4">
+            <div class="flex justify-between items-center mb-3">
+                <label for="script-input" class="text-sm font-semibold text-slate-300">대본을 입력하거나 붙여넣으세요:</label>
+                <div class="flex items-center space-x-4">
+                    <span id="stats-info" class="text-xs text-indigo-400 font-mono">글자수: 0자 | 예상 소요시간: 약 0분 0초</span>
+                    <button id="clear-btn" class="text-xs text-rose-400 hover:text-rose-300 transition px-2 py-1 bg-rose-950/40 rounded border border-rose-900/50">전체 지우기</button>
+                </div>
+            </div>
+            <textarea id="script-input" class="flex-1 w-full bg-slate-900 text-slate-100 p-4 rounded-xl border border-slate-700 focus:outline-none focus:border-indigo-500 resize-none text-base sm:text-lg leading-relaxed" placeholder="여기에 대본을 입력하거나 붙여넣으세요. (예: 안녕하세요. 오늘 발표를 시작합니다...)
+
+- 속도 기본값: 0.5
+- 크기 기본값: 50px
+- 스페이스바로 재생 및 일시정지를 제어할 수 있습니다."></textarea>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-4 items-center justify-between">
+            <div class="flex items-center space-x-4 text-sm text-slate-400 w-full sm:w-auto justify-center sm:justify-start">
+                <span class="flex items-center"><kbd class="px-2 py-1 bg-slate-800 rounded border border-slate-700 text-xs mr-1 text-slate-200">Space</kbd> 재생/일시정지</span>
+                <span class="flex items-center"><kbd class="px-2 py-1 bg-slate-800 rounded border border-slate-700 text-xs mr-1 text-slate-200">↑↓</kbd> 속도조절</span>
+            </div>
+            <button id="start-btn" class="w-full sm:w-auto px-8 py-4 bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition transform hover:-translate-y-0.5 flex items-center justify-center space-x-2 text-lg cursor-pointer">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span>프롬프터 시작</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- 2. PROMPTER PLAYBACK VIEW -->
+    <div id="prompter-view" class="hidden absolute inset-0 w-full h-full bg-black overflow-hidden flex flex-col transition-colors duration-300">
+        
+        <!-- Center Guidance Line -->
+        <div id="guidance-bar" class="absolute top-1/2 left-0 right-0 h-16 -translate-y-1/2 bg-indigo-500/10 border-y border-indigo-500/30 pointer-events-none z-10 flex items-center justify-between px-4 transition-colors duration-300">
+            <div class="w-3 h-3 rounded-full bg-indigo-500 animate-pulse"></div>
+            <!-- Progress Infographic Badge inside Guidance Line -->
+            <div id="progress-badge" class="bg-indigo-950/80 border border-indigo-500/50 text-indigo-300 text-xs font-mono px-3 py-1 rounded-full shadow-lg backdrop-blur-sm">
+                진행: 0% (남은 거리: 100%)
+            </div>
+            <div class="w-3 h-3 rounded-full bg-indigo-500 animate-pulse"></div>
+        </div>
+
+        <!-- Scrollable Content Area -->
+        <div id="prompter-container" class="flex-1 overflow-y-auto no-scrollbar relative cursor-pointer">
+            <div id="prompter-content-wrapper" class="w-full max-w-5xl mx-auto px-6 sm:px-12 transition-transform duration-100">
+                <!-- Top padding buffer so text starts from bottom and scrolls into view -->
+                <div id="top-buffer" style="height: 45vh;"></div>
+                <div id="prompter-text" class="font-bold text-center whitespace-pre-wrap break-words leading-relaxed select-none transition-colors duration-300"></div>
+                <!-- Bottom padding buffer so text can scroll fully past the center line -->
+                <div id="bottom-buffer" style="height: 55vh;"></div>
+            </div>
+        </div>
+
+        <!-- Floating Control Bar -->
+        <div id="control-bar" class="absolute bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-2xl p-3 shadow-2xl transition-opacity duration-300 z-20 flex flex-wrap items-center justify-center gap-3 max-w-[95vw] sm:max-w-4xl text-slate-100">
+            
+            <!-- Edit Button -->
+            <button id="edit-btn" title="편집 화면으로" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition flex items-center space-x-1 text-sm font-medium cursor-pointer">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                <span class="hidden md:inline">대본 편집</span>
+            </button>
+
+            <div class="h-6 w-px bg-slate-700 hidden sm:block"></div>
+
+            <!-- Play / Pause Toggle -->
+            <button id="play-pause-btn" title="재생/일시정지 (Space)" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition flex items-center space-x-2 font-bold shadow-md shadow-indigo-600/30 cursor-pointer">
+                <svg id="play-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <svg id="pause-icon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span id="play-text">재생</span>
+            </button>
+
+            <!-- Reset Button -->
+            <button id="reset-btn" title="처음으로 (R)" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition flex items-center space-x-1 text-sm font-medium cursor-pointer">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                <span class="hidden md:inline">처음으로</span>
+            </button>
+
+            <div class="h-6 w-px bg-slate-700 hidden sm:block"></div>
+
+            <!-- Speed Control -->
+            <div class="flex items-center space-x-2 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700">
+                <span class="text-xs text-slate-400 font-semibold">속도</span>
+                <input id="speed-range" type="range" min="0.1" max="5" step="0.1" value="0.5" class="w-20 sm:w-28 accent-indigo-500 cursor-pointer">
+                <span id="speed-value" class="text-xs font-mono text-indigo-400 w-8 text-right">0.5x</span>
+            </div>
+
+            <!-- Font Size Control -->
+            <div class="flex items-center space-x-2 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700">
+                <span class="text-xs text-slate-400 font-semibold">크기</span>
+                <input id="fontsize-range" type="range" min="24" max="96" step="2" value="50" class="w-20 sm:w-28 accent-indigo-500 cursor-pointer">
+                <span id="fontsize-value" class="text-xs font-mono text-indigo-400 w-8 text-right">50px</span>
+            </div>
+
+            <!-- Background Color Selector -->
+            <div class="flex items-center space-x-1 bg-slate-800/80 px-2.5 py-1.5 rounded-xl border border-slate-700">
+                <span class="text-xs text-slate-400 font-semibold mr-1">배경</span>
+                <button type="button" data-bg="black" class="bg-color-btn w-5 h-5 rounded-full bg-black border-2 border-indigo-500 focus:outline-none cursor-pointer" title="검정색"></button>
+                <button type="button" data-bg="white" class="bg-color-btn w-5 h-5 rounded-full bg-white border-2 border-transparent hover:border-slate-400 focus:outline-none cursor-pointer" title="흰색"></button>
+                <button type="button" data-bg="green" class="bg-color-btn w-5 h-5 rounded-full bg-emerald-600 border-2 border-transparent hover:border-slate-400 focus:outline-none cursor-pointer" title="초록색"></button>
+            </div>
+
+            <!-- Mirror Mode Toggle -->
+            <button id="mirror-btn" title="좌우 반전 모드" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition flex items-center space-x-1 text-sm font-medium cursor-pointer">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path></svg>
+                <span class="hidden md:inline">미러</span>
+            </button>
+
+            <!-- Fullscreen Toggle -->
+            <button id="fullscreen-btn" title="전체화면 (F)" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition flex items-center space-x-1 text-sm font-medium cursor-pointer">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                <span class="hidden md:inline">전체화면</span>
+            </button>
+        </div>
+
+        <!-- Shortcut Hint Footer on Prompter Screen -->
+        <div class="absolute top-4 left-1/2 -translate-x-1/2 bg-slate-900/60 backdrop-blur-sm px-4 py-1.5 rounded-full border border-slate-800 text-xs text-slate-400 pointer-events-none hidden sm:flex space-x-3 z-20">
+            <span>Space: 재생/정지</span>
+            <span>•</span>
+            <span>↑↓: 속도</span>
+            <span>•</span>
+            <span>R: 처음으로</span>
+            <span>•</span>
+            <span>F: 전체화면</span>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const inputView = document.getElementById('input-view');
+            const prompterView = document.getElementById('prompter-view');
+            const scriptInput = document.getElementById('script-input');
+            const startBtn = document.getElementById('start-btn');
+            const clearBtn = document.getElementById('clear-btn');
+            const editBtn = document.getElementById('edit-btn');
+            const playPauseBtn = document.getElementById('play-pause-btn');
+            const playIcon = document.getElementById('play-icon');
+            const pauseIcon = document.getElementById('pause-icon');
+            const playText = document.getElementById('play-text');
+            const resetBtn = document.getElementById('reset-btn');
+            const speedRange = document.getElementById('speed-range');
+            const speedValue = document.getElementById('speed-value');
+            const fontsizeRange = document.getElementById('fontsize-range');
+            const fontsizeValue = document.getElementById('fontsize-value');
+            const bgColorBtns = document.querySelectorAll('.bg-color-btn');
+            const mirrorBtn = document.getElementById('mirror-btn');
+            const fullscreenBtn = document.getElementById('fullscreen-btn');
+            const prompterContainer = document.getElementById('prompter-container');
+            const prompterText = document.getElementById('prompter-text');
+            const contentWrapper = document.getElementById('prompter-content-wrapper');
+            const controlBar = document.getElementById('control-bar');
+            const guidanceBar = document.getElementById('guidance-bar');
+            const toast = document.getElementById('toast');
+            const statsInfo = document.getElementById('stats-info');
+            const progressBadge = document.getElementById('progress-badge');
+
+            let isPlaying = false;
+            let scrollSpeed = 0.5;
+            let fontSize = 50;
+            let bgTheme = 'black'; // 'black', 'white', 'green'
+            let isMirror = false;
+            let animationFrameId = null;
+            let inactivityTimeout = null;
+            let toastTimeout = null;
+
+            function showToast(message) {
+                toast.textContent = message;
+                toast.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-4');
+                toast.classList.add('opacity-100', 'translate-y-0');
+                
+                clearTimeout(toastTimeout);
+                toastTimeout = setTimeout(() => {
+                    toast.classList.remove('opacity-100', 'translate-y-0');
+                    toast.classList.add('opacity-0', 'pointer-events-none', '-translate-y-4');
+                }, 3000);
+            }
+
+            function updateScriptStats() {
+                const text = scriptInput.value;
+                const charCount = text.length;
+                const wordsPerMinute = 320 * scrollSpeed;
+                const totalSeconds = wordsPerMinute > 0 ? Math.round((charCount / wordsPerMinute) * 60) : 0;
+                const mins = Math.floor(totalSeconds / 60);
+                const secs = totalSeconds % 60;
+
+                statsInfo.textContent = `글자수: ${charCount}자 | 예상 소요시간: 약 ${mins}분 ${secs}초`;
+            }
+
+            function updateProgressDisplay() {
+                const maxScroll = prompterContainer.scrollHeight - prompterContainer.clientHeight;
+                if (maxScroll <= 0) {
+                    progressBadge.textContent = '진행: 0% (남은 거리: 100%)';
+                    return;
+                }
+                const currentScroll = prompterContainer.scrollTop;
+                let percent = Math.round((currentScroll / maxScroll) * 100);
+                percent = Math.min(100, Math.max(0, percent));
+                const remaining = 100 - percent;
+                progressBadge.textContent = `진행: ${percent}% (남은 거리: ${remaining}%)`;
+            }
+
+            function applyBackgroundTheme(theme) {
+                bgTheme = theme;
+                prompterView.classList.remove('bg-black', 'bg-white', 'bg-emerald-900');
+                
+                bgColorBtns.forEach(btn => {
+                    btn.classList.remove('border-indigo-500');
+                    btn.classList.add('border-transparent');
+                    if (btn.getAttribute('data-bg') === theme) {
+                        btn.classList.remove('border-transparent');
+                        btn.classList.add('border-indigo-500');
+                    }
+                });
+
+                if (theme === 'black') {
+                    prompterView.classList.add('bg-black');
+                    prompterText.style.color = '#ffffff';
+                    guidanceBar.className = "absolute top-1/2 left-0 right-0 h-16 -translate-y-1/2 bg-indigo-500/10 border-y border-indigo-500/30 pointer-events-none z-10 flex items-center justify-between px-4 transition-colors duration-300";
+                    progressBadge.className = "bg-indigo-950/80 border border-indigo-500/50 text-indigo-300 text-xs font-mono px-3 py-1 rounded-full shadow-lg backdrop-blur-sm";
+                } else if (theme === 'white') {
+                    prompterView.classList.add('bg-white');
+                    prompterText.style.color = '#111827';
+                    guidanceBar.className = "absolute top-1/2 left-0 right-0 h-16 -translate-y-1/2 bg-amber-500/10 border-y border-amber-500/30 pointer-events-none z-10 flex items-center justify-between px-4 transition-colors duration-300";
+                    progressBadge.className = "bg-amber-100/90 border border-amber-500/50 text-amber-900 text-xs font-mono px-3 py-1 rounded-full shadow-lg backdrop-blur-sm";
+                } else if (theme === 'green') {
+                    prompterView.classList.add('bg-emerald-900');
+                    prompterText.style.color = '#ecfdf5';
+                    guidanceBar.className = "absolute top-1/2 left-0 right-0 h-16 -translate-y-1/2 bg-emerald-500/20 border-y border-emerald-400/40 pointer-events-none z-10 flex items-center justify-between px-4 transition-colors duration-300";
+                    progressBadge.className = "bg-emerald-950/90 border border-emerald-400/50 text-emerald-200 text-xs font-mono px-3 py-1 rounded-full shadow-lg backdrop-blur-sm";
+                }
+                localStorage.setItem('teleprompter_bg', theme);
+            }
+
+            // Load saved settings
+            const savedScript = localStorage.getItem('teleprompter_script');
+            const savedSpeed = localStorage.getItem('teleprompter_speed');
+            const savedFontSize = localStorage.getItem('teleprompter_fontsize');
+            const savedBg = localStorage.getItem('teleprompter_bg');
+            const savedMirror = localStorage.getItem('teleprompter_mirror');
+
+            if (savedScript !== null) {
+                scriptInput.value = savedScript;
+            }
+
+            if (savedSpeed !== null) {
+                scrollSpeed = parseFloat(savedSpeed);
+            } else {
+                scrollSpeed = 0.5;
+            }
+            speedRange.value = scrollSpeed;
+            speedValue.textContent = scrollSpeed.toFixed(1) + 'x';
+
+            if (savedFontSize !== null) {
+                fontSize = parseInt(savedFontSize);
+            } else {
+                fontSize = 50;
+            }
+            fontsizeRange.value = fontSize;
+            fontsizeValue.textContent = fontSize + 'px';
+            prompterText.style.fontSize = fontSize + 'px';
+
+            if (savedBg !== null) {
+                applyBackgroundTheme(savedBg);
+            } else {
+                applyBackgroundTheme('black');
+            }
+
+            if (savedMirror === 'true') {
+                isMirror = true;
+                contentWrapper.classList.add('mirror-mode');
+                mirrorBtn.classList.add('bg-indigo-600', 'text-white');
+                mirrorBtn.classList.remove('bg-slate-800', 'text-slate-300');
+            }
+
+            updateScriptStats();
+
+            // Save script on input
+            scriptInput.addEventListener('input', () => {
+                localStorage.setItem('teleprompter_script', scriptInput.value);
+                updateScriptStats();
+            });
+
+            // Clear button
+            clearBtn.addEventListener('click', () => {
+                scriptInput.value = '';
+                localStorage.removeItem('teleprompter_script');
+                updateScriptStats();
+                showToast('대본이 초기화되었습니다.');
+            });
+
+            // Background color button click events
+            bgColorBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const theme = btn.getAttribute('data-bg');
+                    applyBackgroundTheme(theme);
+                });
+            });
+
+            // Start Prompter Button Click Handler
+            startBtn.addEventListener('click', () => {
+                const text = scriptInput.value.trim() || scriptInput.placeholder.trim();
+                prompterText.textContent = text;
+                inputView.classList.add('hidden');
+                prompterView.classList.remove('hidden');
+
+                prompterContainer.scrollTop = 0;
+                updateProgressDisplay();
+                setPlaying(true);
+            });
+
+            // Edit Button Click Handler
+            editBtn.addEventListener('click', () => {
+                setPlaying(false);
+                prompterView.classList.add('hidden');
+                inputView.classList.remove('hidden');
+            });
+
+            function togglePlay() {
+                setPlaying(!isPlaying);
+            }
+
+            function setPlaying(status) {
+                isPlaying = status;
+                if (isPlaying) {
+                    playIcon.classList.add('hidden');
+                    pauseIcon.classList.remove('hidden');
+                    playText.textContent = '일시정지';
+                    lastTimestamp = null;
+                    animationFrameId = requestAnimationFrame(scrollStep);
+                } else {
+                    playIcon.classList.remove('hidden');
+                    pauseIcon.classList.add('hidden');
+                    playText.textContent = '재생';
+                    if (animationFrameId) cancelAnimationFrame(animationFrameId);
+                }
+            }
+
+            playPauseBtn.addEventListener('click', togglePlay);
+
+            let lastTimestamp = null;
+            function scrollStep(timestamp) {
+                if (!isPlaying) return;
+
+                if (!lastTimestamp) lastTimestamp = timestamp;
+                const deltaTime = timestamp - lastTimestamp;
+                lastTimestamp = timestamp;
+
+                const scrollAmount = (scrollSpeed * 1.5) * (deltaTime / 16.66);
+                prompterContainer.scrollTop += scrollAmount;
+
+                updateProgressDisplay();
+
+                if (prompterContainer.scrollTop + prompterContainer.clientHeight >= prompterContainer.scrollHeight - 2) {
+                    setPlaying(false);
+                    return;
+                }
+
+                animationFrameId = requestAnimationFrame(scrollStep);
+            }
+
+            prompterContainer.addEventListener('scroll', () => {
+                if (!isPlaying) {
+                    updateProgressDisplay();
+                }
+            });
+
+            resetBtn.addEventListener('click', () => {
+                setPlaying(false);
+                prompterContainer.scrollTop = 0;
+                updateProgressDisplay();
+            });
+
+            speedRange.addEventListener('input', (e) => {
+                scrollSpeed = parseFloat(e.target.value);
+                speedValue.textContent = scrollSpeed.toFixed(1) + 'x';
+                localStorage.setItem('teleprompter_speed', scrollSpeed);
+                updateScriptStats();
+            });
+
+            fontsizeRange.addEventListener('input', (e) => {
+                fontSize = parseInt(e.target.value);
+                fontsizeValue.textContent = fontSize + 'px';
+                prompterText.style.fontSize = fontSize + 'px';
+                localStorage.setItem('teleprompter_fontsize', fontSize);
+            });
+
+            mirrorBtn.addEventListener('click', () => {
+                isMirror = !isMirror;
+                contentWrapper.classList.toggle('mirror-mode', isMirror);
+                if (isMirror) {
+                    mirrorBtn.classList.add('bg-indigo-600', 'text-white');
+                    mirrorBtn.classList.remove('bg-slate-800', 'text-slate-300');
+                } else {
+                    mirrorBtn.classList.remove('bg-indigo-600', 'text-white');
+                    mirrorBtn.classList.add('bg-slate-800', 'text-slate-300');
+                }
+                localStorage.setItem('teleprompter_mirror', isMirror);
+            });
+
+            fullscreenBtn.addEventListener('click', () => {
+                try {
+                    if (!document.fullscreenElement) {
+                        const element = document.documentElement;
+                        const requestFn = element.requestFullscreen || element.webkitRequestFullscreen || element.msRequestFullscreen;
+                        if (requestFn) {
+                            requestFn.call(element).catch(err => {
+                                console.warn('Fullscreen restricted:', err);
+                                showToast('전체화면 권한이 제한된 환경입니다.');
+                            });
+                        } else {
+                            showToast('이 브라우저는 전체화면을 지원하지 않습니다.');
+                        }
+                    } else {
+                        const exitFn = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+                        if (exitFn) {
+                            exitFn.call(document).catch(err => {
+                                console.warn('Exit fullscreen error:', err);
+                            });
+                        }
+                    }
+                } catch (err) {
+                    showToast('전체화면 전환 중 오류가 발생했습니다.');
+                }
+            });
+
+            prompterContainer.addEventListener('click', (e) => {
+                if (controlBar.contains(e.target)) return;
+                togglePlay();
+            });
+
+            function handleUserActivity() {
+                if (prompterView.classList.contains('hidden')) return;
+                controlBar.classList.remove('opacity-0', 'pointer-events-none');
+                clearTimeout(inactivityTimeout);
+                inactivityTimeout = setTimeout(() => {
+                    if (isPlaying) {
+                        controlBar.classList.add('opacity-0', 'pointer-events-none');
+                    }
+                }, 2500);
+            }
+
+            prompterContainer.addEventListener('mousemove', handleUserActivity);
+            prompterContainer.addEventListener('touchstart', handleUserActivity);
+            controlBar.addEventListener('mouseenter', () => {
+                clearTimeout(inactivityTimeout);
+                controlBar.classList.remove('opacity-0', 'pointer-events-none');
+            });
+
+            window.addEventListener('keydown', (e) => {
+                if (!inputView.classList.contains('hidden')) {
+                    return;
+                }
+
+                if (e.code === 'Space') {
+                    e.preventDefault();
+                    togglePlay();
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    scrollSpeed = Math.min(5.0, Number((scrollSpeed + 0.1).toFixed(1)));
+                    speedRange.value = scrollSpeed;
+                    speedValue.textContent = scrollSpeed.toFixed(1) + 'x';
+                    localStorage.setItem('teleprompter_speed', scrollSpeed);
+                    updateScriptStats();
+                } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    scrollSpeed = Math.max(0.1, Number((scrollSpeed - 0.1).toFixed(1)));
+                    speedRange.value = scrollSpeed;
+                    speedValue.textContent = scrollSpeed.toFixed(1) + 'x';
+                    localStorage.setItem('teleprompter_speed', scrollSpeed);
+                    updateScriptStats();
+                } else if (e.key === 'r' || e.key === 'R') {
+                    e.preventDefault();
+                    setPlaying(false);
+                    prompterContainer.scrollTop = 0;
+                    updateProgressDisplay();
+                } else if (e.key === 'f' || e.key === 'F') {
+                    e.preventDefault();
+                    fullscreenBtn.click();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

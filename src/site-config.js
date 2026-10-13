@@ -30,6 +30,14 @@ const DEFAULTS = {
     slotDisplay: '', // 콘텐츠 페이지용 광고 단위 ID (숫자)
     inApps: true, // 업로드된 앱 화면에도 광고를 넣을지
   },
+  // 후원 안내 (관리자 → 후원 안내). 계좌는 최대 3개까지 보여 줍니다.
+  support: {
+    enabled: false,
+    title: '후원 안내',
+    message: '',
+    note: '',
+    accounts: [], // [{ bank, account, holder }]
+  },
   analytics: { ga4: '' }, // 예: G-XXXXXXX
   social: { github: '', youtube: '', threads: '' },
   updatedAt: null,
@@ -49,6 +57,27 @@ function normalizeAdsClient(value) {
   if (/^pub-\d{10,}$/i.test(raw)) return `ca-pub-${raw.slice(4)}`;
   if (/^ca-pub-\d{10,}$/i.test(raw)) return `ca-pub-${raw.slice(7)}`;
   return raw;
+}
+
+/** 후원 안내 값을 안전한 형태로 다듬습니다 (계좌 3개까지, 길이 제한) */
+function normalizeSupport(input) {
+  const raw = input && typeof input === 'object' ? input : {};
+  const clip = (v, n) => String(v ?? '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, n);
+  const accounts = (Array.isArray(raw.accounts) ? raw.accounts : [])
+    .map((a) => ({
+      bank: clip(a && a.bank, 30),
+      account: clip(a && a.account, 40),
+      holder: clip(a && a.holder, 30),
+    }))
+    .filter((a) => a.bank || a.account || a.holder)
+    .slice(0, 3);
+  return {
+    enabled: raw.enabled === true,
+    title: clip(raw.title, 40) || '후원 안내',
+    message: String(raw.message ?? '').replace(/\r\n/g, '\n').trim().slice(0, 600),
+    note: clip(raw.note, 200),
+    accounts,
+  };
 }
 
 function merge(base, patch) {
@@ -92,6 +121,7 @@ function publicSite(site, reqDomain = '') {
     domain,
     email,
     adsense: { ...site.adsense, client },
+    support: normalizeSupport(site.support),
     emailReady: Boolean(email) && !isPlaceholderEmail(email),
     domainReady: Boolean(domain) && !/localhost|127\.0\.0\.1/.test(domain) && domain.startsWith('https://'),
     adsenseReady: /^ca-pub-\d{10,}$/.test(client),
@@ -103,6 +133,7 @@ function publicSite(site, reqDomain = '') {
 module.exports = {
   DEFAULTS,
   merge,
+  normalizeSupport,
   isPlaceholderEmail,
   normalizeAdsClient,
   publicSite,

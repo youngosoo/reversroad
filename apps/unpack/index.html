@@ -1,0 +1,1840 @@
+<!DOCTYPE html>
+<html lang="ko" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>언팩 (Unpack) – 여행 다이어리 & 복귀 오거나이저</title>
+
+  <!-- PWA Dynamic Web App Manifest -->
+  <link rel="manifest" href='data:application/manifest+json,{"name":"언팩 Unpack - 여행 다이어리","short_name":"언팩","description":"여행 후 완벽한 복귀 시스템과 감성 다이어리","start_url":".","display":"standalone","background_color":"#FBF9F5","theme_color":"#E06D53","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/201/201623.png","sizes":"512x512","type":"image/png"}]}'>
+  <meta name="theme-color" content="#E06D53" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="언팩 Unpack" />
+
+  <!-- CDN Dependencies: Tailwind, Lucide Icons, Canvas Confetti -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Gowun+Batang:wght@400;700&family=Pretendard:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Pretendard', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+            serif: ['"Gowun Batang"', 'Georgia', 'serif'],
+            hand: ['Caveat', 'cursive'],
+          },
+          colors: {
+            journal: {
+              bg: '#FBF9F5',
+              card: '#FFFFFF',
+              darkBg: '#181715',
+              darkCard: '#242220',
+              border: '#E8E2D5',
+              darkBorder: '#36332F',
+            },
+            terracotta: {
+              DEFAULT: '#E06D53',
+              light: '#FDF0EC',
+              dark: '#C85339',
+            },
+            sage: {
+              DEFAULT: '#5C8272',
+              light: '#EDF3F0',
+              dark: '#456457',
+            },
+            indigoNavy: {
+              DEFAULT: '#1E2B42',
+              light: '#EBF0F7',
+            },
+            stampAmber: '#D97706',
+          },
+          boxShadow: {
+            'diary': '0 4px 20px -2px rgba(92, 70, 50, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.04)',
+            'paper': '2px 4px 12px rgba(0, 0, 0, 0.06)',
+          },
+          animation: {
+            'pop': 'pop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+            'stamp': 'stamp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+          },
+          keyframes: {
+            pop: {
+              '0%': { transform: 'scale(0.96)', opacity: '0.7' },
+              '100%': { transform: 'scale(1)', opacity: '1' },
+            },
+            stamp: {
+              '0%': { transform: 'scale(1.4) rotate(-10deg)', opacity: '0' },
+              '100%': { transform: 'scale(1) rotate(-3deg)', opacity: '0.9' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Pretendard', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      background-color: #FBF9F5;
+    }
+    .dark body {
+      background-color: #181715;
+    }
+    
+    .diary-grid-pattern {
+      background-image: radial-gradient(#E8E2D5 0.75px, transparent 0.75px);
+      background-size: 16px 16px;
+    }
+    .dark .diary-grid-pattern {
+      background-image: radial-gradient(#36332F 0.75px, transparent 0.75px);
+    }
+    
+    .tape-effect {
+      background: rgba(243, 232, 214, 0.75);
+      backdrop-filter: blur(2px);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .dark .tape-effect {
+      background: rgba(70, 65, 60, 0.75);
+    }
+
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    .swipe-card {
+      touch-action: pan-y;
+      will-change: transform, opacity;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+    .swipe-card.swiping {
+      transition: none !important;
+    }
+  </style>
+</head>
+
+<body class="bg-journal-bg dark:bg-journal-darkBg text-stone-800 dark:text-stone-100 min-h-screen flex flex-col antialiased selection:bg-terracotta selection:text-white">
+
+  <!-- App Outer Shell -->
+  <div id="app" class="w-full max-w-7xl mx-auto min-h-screen flex flex-col md:flex-row bg-journal-bg dark:bg-journal-darkBg shadow-2xl relative border-x border-journal-border dark:border-journal-darkBorder">
+
+    <!-- DESKTOP SIDEBAR NAVIGATION -->
+    <aside class="hidden md:flex flex-col w-64 bg-indigoNavy text-white p-5 justify-between border-r border-indigoNavy/20 shrink-0 relative overflow-hidden">
+      <div class="absolute -right-12 -top-12 w-36 h-36 bg-terracotta/20 rounded-full blur-2xl pointer-events-none"></div>
+
+      <div class="space-y-6 relative z-10">
+        <!-- Logo Branding -->
+        <div class="flex items-center gap-3 px-1">
+          <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-terracotta to-amber-400 text-white flex items-center justify-center font-bold shadow-md shadow-terracotta/30 border border-white/20">
+            <i data-lucide="book-open-check" class="w-5 h-5 text-white"></i>
+          </div>
+          <div>
+            <h1 class="font-serif font-bold text-xl tracking-tight text-white flex items-center gap-1.5">
+              언팩 <span class="font-hand text-terracotta-light text-base font-normal">Unpack</span>
+            </h1>
+            <p class="text-[11px] text-stone-300 font-sans">여행 다이어리 & 복귀 오거나이저</p>
+          </div>
+        </div>
+
+        <!-- Trip Status Summary Stamp Badge -->
+        <div id="sidebar-trip-badge" class="bg-white/10 backdrop-blur-md border border-white/15 p-3.5 rounded-2xl text-xs space-y-2 relative">
+          <!-- Dynamic Content -->
+        </div>
+
+        <!-- Desktop Navigation Items -->
+        <nav class="space-y-1 pt-1">
+          <button onclick="switchTab('dashboard')" id="d-nav-dashboard" class="d-nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-white bg-white/15 shadow-sm">
+            <i data-lucide="compass" class="w-4 h-4 text-terracotta-light"></i>
+            <span>복귀 대시보드</span>
+          </button>
+          <button onclick="switchTab('organizer')" id="d-nav-organizer" class="d-nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-stone-300 hover:text-white hover:bg-white/10">
+            <i data-lucide="calendar-heart" class="w-4 h-4"></i>
+            <span>타임라인 체크</span>
+          </button>
+          <button onclick="switchTab('laundry')" id="d-nav-laundry" class="d-nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-stone-300 hover:text-white hover:bg-white/10">
+            <i data-lucide="luggage" class="w-4 h-4"></i>
+            <span>캐리어 & 세탁 스와이프</span>
+          </button>
+          <button onclick="switchTab('packing')" id="d-nav-packing" class="d-nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-stone-300 hover:text-white hover:bg-white/10">
+            <i data-lucide="package-check" class="w-4 h-4"></i>
+            <span>다음 여행 패킹 미리보기</span>
+          </button>
+          <button onclick="switchTab('customs')" id="d-nav-customs" class="d-nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-stone-300 hover:text-white hover:bg-white/10">
+            <i data-lucide="receipt" class="w-4 h-4"></i>
+            <span>구매품 & 면세 계산기</span>
+          </button>
+          <button onclick="switchTab('settlement')" id="d-nav-settlement" class="d-nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-stone-300 hover:text-white hover:bg-white/10">
+            <i data-lucide="calculator" class="w-4 h-4"></i>
+            <span>정산 & 여행 회고</span>
+          </button>
+          <button onclick="switchTab('services')" id="d-nav-services" class="d-nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition text-stone-300 hover:text-white hover:bg-white/10">
+            <i data-lucide="sparkles" class="w-4 h-4"></i>
+            <span>복귀 케어 서비스</span>
+          </button>
+        </nav>
+      </div>
+
+      <!-- Desktop Sidebar Footer Tools -->
+      <div class="pt-4 border-t border-white/10 flex items-center justify-between text-xs text-stone-300 relative z-10">
+        <button onclick="openTripModal()" class="flex items-center gap-1.5 hover:text-white transition">
+          <i data-lucide="settings-2" class="w-4 h-4"></i>
+          <span>설정 & 백업</span>
+        </button>
+        <button onclick="toggleDarkMode()" class="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition" title="다크모드 토글">
+          <i id="theme-icon-desktop" data-lucide="moon" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <div class="flex-1 flex flex-col min-h-screen bg-journal-bg dark:bg-journal-darkBg overflow-hidden diary-grid-pattern">
+
+      <!-- Top Navigation Header -->
+      <header class="sticky top-0 z-30 bg-journal-bg/90 dark:bg-journal-darkBg/90 backdrop-blur-md px-4 sm:px-6 py-3 border-b border-journal-border dark:border-journal-darkBorder flex items-center justify-between">
+        <div class="flex items-center gap-3 md:hidden">
+          <div class="w-9 h-9 rounded-xl bg-indigoNavy text-white flex items-center justify-center font-bold shadow-sm border border-white/20">
+            <i data-lucide="book-open-check" class="w-5 h-5 text-terracotta-light"></i>
+          </div>
+          <div>
+            <h1 class="font-serif font-bold text-base text-indigoNavy dark:text-stone-100 leading-tight">
+              언팩 <span class="font-hand text-terracotta text-sm">Diary</span>
+            </h1>
+            <p id="header-subtitle-mobile" class="text-[11px] text-stone-500 dark:text-stone-400 leading-none mt-0.5">도쿄, 일본 (D+0)</p>
+          </div>
+        </div>
+
+        <!-- Desktop Header Title Display -->
+        <div class="hidden md:block">
+          <h2 id="desktop-header-title" class="font-serif text-lg font-bold text-stone-800 dark:text-stone-100">복귀 다이어리 대시보드</h2>
+          <p id="desktop-header-sub" class="text-xs text-stone-500 dark:text-stone-400">여행의 마무리와 완벽한 일상 복귀를 기록합니다.</p>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button id="pwa-install-btn" onclick="triggerPWAInstall()" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl bg-terracotta/10 text-terracotta hover:bg-terracotta hover:text-white font-semibold text-xs transition border border-terracotta/20">
+            <i data-lucide="download text-xs" class="w-3.5 h-3.5"></i>
+            <span class="hidden sm:inline">앱 설치</span>
+          </button>
+          
+          <button onclick="openTripModal()" class="p-2 rounded-xl bg-stone-200/60 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-300 dark:hover:bg-stone-700 transition" title="여행 설정 및 JSON 내보내기">
+            <i data-lucide="settings" class="w-4 h-4"></i>
+          </button>
+          <button onclick="toggleDarkMode()" class="md:hidden p-2 rounded-xl bg-stone-200/60 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-300 dark:hover:bg-stone-700 transition" title="다크모드 토글">
+            <i id="theme-icon-mobile" data-lucide="moon" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </header>
+
+      <!-- Main Content Dynamic View Area -->
+      <main id="main-content" class="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto pb-28 md:pb-8">
+        <!-- Content Rendered via JS -->
+      </main>
+
+    </div>
+
+    <!-- MOBILE BOTTOM NAVIGATION BAR -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-journal-bg/95 dark:bg-journal-darkBg/95 backdrop-blur-md border-t border-journal-border dark:border-journal-darkBorder z-40 px-1 py-2 flex justify-around items-center">
+      <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="tab-btn flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[11px] font-medium transition text-indigoNavy dark:text-terracotta">
+        <i data-lucide="compass" class="w-5 h-5 mb-0.5"></i>
+        <span>현황</span>
+      </button>
+      <button onclick="switchTab('organizer')" id="tab-btn-organizer" class="tab-btn flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[11px] font-medium text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition">
+        <i data-lucide="calendar-heart" class="w-5 h-5 mb-0.5"></i>
+        <span>타임라인</span>
+      </button>
+      <button onclick="switchTab('laundry')" id="tab-btn-laundry" class="tab-btn flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[11px] font-medium text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition relative">
+        <i data-lucide="luggage" class="w-5 h-5 mb-0.5"></i>
+        <span>캐리어</span>
+        <span id="laundry-badge" class="hidden absolute top-1 right-2 w-2 h-2 rounded-full bg-terracotta"></span>
+      </button>
+      <button onclick="switchTab('packing')" id="tab-btn-packing" class="tab-btn flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[11px] font-medium text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition">
+        <i data-lucide="package-check" class="w-5 h-5 mb-0.5"></i>
+        <span>패킹예상</span>
+      </button>
+      <button onclick="switchTab('settlement')" id="tab-btn-settlement" class="tab-btn flex flex-col items-center justify-center py-1 px-2 rounded-xl text-[11px] font-medium text-stone-400 hover:text-stone-600 dark:hover:text-stone-200 transition">
+        <i data-lucide="calculator" class="w-5 h-5 mb-0.5"></i>
+        <span>정산/회고</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- Toast Notification Bar -->
+  <div id="toast" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900 px-5 py-3 rounded-2xl shadow-2xl text-xs font-semibold flex items-center gap-2.5 transition-all duration-300 opacity-0 pointer-events-none translate-y-[-12px]">
+    <i data-lucide="sparkles" class="w-4.5 h-4.5 text-terracotta"></i>
+    <span id="toast-msg">알림 메시지</span>
+  </div>
+
+  <!-- Trip Settings & JSON Import/Export Modal -->
+  <div id="modal-container" class="fixed inset-0 bg-stone-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-200">
+    <div class="bg-journal-card dark:bg-journal-darkCard rounded-3xl p-6 w-full max-w-md shadow-2xl border border-journal-border dark:border-journal-darkBorder max-h-[90vh] overflow-y-auto">
+      <div class="flex justify-between items-center mb-5 border-b border-journal-border dark:border-journal-darkBorder pb-3">
+        <div class="flex items-center gap-2">
+          <i data-lucide="book-marked" class="w-5 h-5 text-terracotta"></i>
+          <h2 class="font-serif text-base font-bold text-stone-800 dark:text-stone-100" id="modal-title">여행 정보 및 백업 설정</h2>
+        </div>
+        <button onclick="closeTripModal()" class="text-stone-400 hover:text-stone-600 dark:hover:text-stone-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="trip-form" onsubmit="saveTripSettings(event)" class="space-y-3.5">
+        <div>
+          <label class="block text-xs font-semibold text-stone-600 dark:text-stone-300 mb-1">여행지</label>
+          <input type="text" id="input-destination" required placeholder="예: 도쿄, 일본 또는 다낭 골프클럽" class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 focus:outline-none focus:border-terracotta dark:text-stone-100" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-stone-600 dark:text-stone-300 mb-1">여행 시작일</label>
+            <input type="date" id="input-start-date" required class="w-full px-3 py-2 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 focus:outline-none focus:border-terracotta dark:text-stone-100" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-stone-600 dark:text-stone-300 mb-1">귀국(도착)일</label>
+            <input type="date" id="input-end-date" required class="w-full px-3 py-2 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 focus:outline-none focus:border-terracotta dark:text-stone-100" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-stone-600 dark:text-stone-300 mb-1">첫 출근(복귀)일</label>
+            <input type="date" id="input-work-date" required class="w-full px-3 py-2 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 focus:outline-none focus:border-terracotta dark:text-stone-100" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-stone-600 dark:text-stone-300 mb-1">동행 인원</label>
+            <input type="number" id="input-people" min="1" max="20" value="2" class="w-full px-3 py-2 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 focus:outline-none focus:border-terracotta dark:text-stone-100" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-stone-600 dark:text-stone-300 mb-1">여행 테마</label>
+          <select id="input-trip-type" class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-900 focus:outline-none focus:border-terracotta dark:text-stone-100">
+            <option value="관광">🏙️ 도시 관광 & 쇼핑</option>
+            <option value="휴양">🏝️ 휴양 & 리조트</option>
+            <option value="골프">⛳ 골프 & 투어</option>
+            <option value="출장">💼 비즈니스 & 출장</option>
+            <option value="캠핑">⛺ 캠핑 & 트레킹</option>
+          </select>
+        </div>
+
+        <button type="submit" class="w-full bg-indigoNavy hover:bg-indigoNavy/90 text-white font-semibold py-2.5 rounded-xl text-xs transition shadow-md">
+          기본 설정 저장하기
+        </button>
+      </form>
+
+      <!-- JSON Import / Export & PWA Section -->
+      <div class="mt-5 pt-4 border-t border-journal-border dark:border-journal-darkBorder space-y-3">
+        <h3 class="font-serif text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1.5">
+          <i data-lucide="database" class="w-4 h-4 text-terracotta"></i>
+          전체 데이터 JSON 내보내기 / 가져오기
+        </h3>
+
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="exportJSONData()" class="py-2 px-3 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 text-xs font-semibold flex items-center justify-center gap-1.5 border border-stone-200 dark:border-stone-700 transition">
+            <i data-lucide="download" class="w-3.5 h-3.5 text-terracotta"></i>
+            JSON 내보내기
+          </button>
+          
+          <label class="py-2 px-3 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 text-xs font-semibold flex items-center justify-center gap-1.5 border border-stone-200 dark:border-stone-700 cursor-pointer transition">
+            <i data-lucide="upload" class="w-3.5 h-3.5 text-sage"></i>
+            JSON 가져오기
+            <input type="file" id="json-import-file" accept=".json" class="hidden" onchange="importJSONData(event)" />
+          </label>
+        </div>
+
+        <button onclick="showPWAHelpModal()" class="w-full py-2 px-3 rounded-xl bg-terracotta/10 text-terracotta hover:bg-terracotta/20 text-xs font-semibold flex items-center justify-center gap-1.5 border border-terracotta/20 transition">
+          <i data-lucide="smartphone" class="w-3.5 h-3.5"></i>
+          홈 화면에 설치 및 앱으로 쓰기 안내
+        </button>
+
+        <div class="pt-2 flex gap-2">
+          <button onclick="resetSampleData()" class="flex-1 py-1.5 px-2 rounded-xl bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 text-stone-500 text-[11px] font-medium flex items-center justify-center gap-1">
+            <i data-lucide="rotate-ccw" class="w-3 h-3"></i> 샘플 리셋
+          </button>
+          <button onclick="clearAllData()" class="flex-1 py-1.5 px-2 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-600 text-[11px] font-medium flex items-center justify-center gap-1">
+            <i data-lucide="trash-2" class="w-3 h-3"></i> 초기화
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Customs Declaration QR Summary Modal -->
+  <div id="customs-modal" class="fixed inset-0 bg-stone-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-200">
+    <div class="bg-journal-card dark:bg-journal-darkCard rounded-3xl p-6 w-full max-w-sm shadow-2xl border border-journal-border dark:border-journal-darkBorder text-center">
+      <div class="w-12 h-12 rounded-2xl bg-terracotta/10 text-terracotta mx-auto flex items-center justify-center mb-3">
+        <i data-lucide="qr-code" class="w-6 h-6"></i>
+      </div>
+      <h3 class="font-serif text-base font-bold text-stone-800 dark:text-stone-100 mb-1">모바일 세관 신고용 QR 요약</h3>
+      <p class="text-xs text-stone-500 dark:text-stone-400 mb-4">관세청 '여행자 세관신고' 제출용 입력 요약입니다.</p>
+      
+      <div id="customs-qr-summary" class="bg-stone-50 dark:bg-stone-900 p-4 rounded-2xl text-left text-xs space-y-2 border border-stone-200 dark:border-stone-700 mb-4">
+        <!-- Rendered via JS -->
+      </div>
+
+      <button onclick="closeCustomsModal()" class="w-full bg-indigoNavy text-white font-semibold py-2.5 rounded-xl text-xs">
+        확인 및 닫기
+      </button>
+    </div>
+  </div>
+
+  <!-- PWA Guidance Modal -->
+  <div id="pwa-modal" class="fixed inset-0 bg-stone-950/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-opacity duration-200">
+    <div class="bg-journal-card dark:bg-journal-darkCard rounded-3xl p-6 w-full max-w-sm shadow-2xl border border-journal-border dark:border-journal-darkBorder text-left space-y-4">
+      <div class="flex justify-between items-center border-b border-journal-border dark:border-journal-darkBorder pb-2">
+        <div class="flex items-center gap-2">
+          <i data-lucide="smartphone" class="w-5 h-5 text-terracotta"></i>
+          <h3 class="font-serif text-base font-bold text-stone-800 dark:text-stone-100">홈 화면에 추가하기</h3>
+        </div>
+        <button onclick="closePWAModal()" class="text-stone-400 hover:text-stone-600">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
+        <div class="p-3 bg-stone-100 dark:bg-stone-800 rounded-2xl">
+          <p class="font-bold text-indigoNavy dark:text-terracotta mb-1">📱 iPhone / Safari 이용 시</p>
+          <ol class="list-decimal list-inside space-y-1 text-[11px]">
+            <li>하단 중앙의 <strong>공유(Share)</strong> 버튼 클릭</li>
+            <li>메뉴에서 <strong>'홈 화면에 추가'</strong> 선택</li>
+            <li>오른쪽 상단 '추가' 클릭하여 앱처럼 바로 실행</li>
+          </ol>
+        </div>
+
+        <div class="p-3 bg-stone-100 dark:bg-stone-800 rounded-2xl">
+          <p class="font-bold text-indigoNavy dark:text-terracotta mb-1">🤖 Android / Chrome 이용 시</p>
+          <ol class="list-decimal list-inside space-y-1 text-[11px]">
+            <li>우측 상단 <strong>메뉴(⋮)</strong> 버튼 클릭</li>
+            <li><strong>'앱 설치'</strong> 또는 <strong>'홈 화면에 추가'</strong> 선택</li>
+          </ol>
+        </div>
+      </div>
+
+      <button onclick="closePWAModal()" class="w-full bg-indigoNavy text-white font-semibold py-2.5 rounded-xl text-xs">
+        확인했습니다
+      </button>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'UNPACK_JOURNAL_APP_STATE_V3';
+
+    const USD_TO_KRW = 1380;
+    const EXEMPTION_LIMIT_USD = 800;
+
+    const SAMPLE_STATE = {
+      trip: {
+        destination: '도쿄, 일본',
+        startDate: '2026-10-08',
+        endDate: '2026-10-12',
+        workDate: '2026-10-14',
+        people: 2,
+        tripType: '관광',
+        timeDiff: 0,
+      },
+      currentTab: 'dashboard',
+      timelineFilter: 'all',
+      items: [
+        { id: 't1', type: 'task', title: '캐리어 현관에서 거실로 가져오기', timeline: 'D+0', done: true, deadline: false },
+        { id: 't2', type: 'task', title: '디저트/기념품 냉장고 정리', timeline: 'D+0', done: true, deadline: true, urgentText: '변질 주의!' },
+        { id: 't3', type: 'task', title: 'eSIM 해제 및 포켓와이파이 반납', timeline: 'D+0', done: false, deadline: true, urgentText: '오늘 반납' },
+        { id: 't4', type: 'task', title: '보조배터리 및 카메라 충전하기', timeline: 'D+0', done: true, deadline: false },
+        { id: 't5', type: 'task', title: '세탁물 1차 분류 및 빨래 돌리기', timeline: 'D+1', done: false, deadline: false },
+        { id: 't6', type: 'task', title: '밀린 메일 및 업무 우편물 확인', timeline: 'D+1', done: false, deadline: false },
+        { id: 't7', type: 'task', title: '여행 사진 클라우드 자동 백업', timeline: 'D+3', done: false, deadline: false },
+        { id: 't8', type: 'task', title: '해외 카드 결제 영수증 매칭', timeline: 'D+3', done: false, deadline: false },
+        { id: 't9', type: 'task', title: '남은 엔화 정리 & 1/N 정산하기', timeline: 'D+7', done: false, deadline: false },
+        { id: 't10', type: 'task', title: '여행 일기 작성 및 다음 리스트 메모', timeline: 'D+7', done: false, deadline: false },
+      ],
+      laundryItems: [
+        { id: 'l1', name: '면 티셔츠 3장', category: '의류', status: 'wash', colorGroup: 'white', material: 'general', location: '' },
+        { id: 'l2', name: '청바지 & 슬랙스', category: '의류', status: 'wash', colorGroup: 'dark', material: 'general', location: '' },
+        { id: 'l3', name: '트렌치 코트', category: '의류', status: 'dry', colorGroup: 'dark', material: 'special', location: '드라이클리닝' },
+        { id: 'l4', name: '울 니트 세트', category: '의류', status: 'dry', colorGroup: 'light', material: 'special', location: '드라이클리닝' },
+        { id: 'l5', name: '수영복 & 래쉬가드', category: '의류', status: 'wash', colorGroup: 'light', material: 'swimwear', location: '' },
+        { id: 'l6', name: '멀티 어댑터 & 보조배터리', category: '전자기기', status: 'keep', colorGroup: '', material: '', location: '상시 파우치' },
+        { id: 'l7', name: '여권 & 서류 파우치', category: '여행용품', status: 'keep', colorGroup: '', material: '', location: '서랍장' },
+        { id: 'l8', name: '돈키호테 의약품/기념품', category: '기념품', status: 'keep', colorGroup: '', material: '', location: '선반' },
+        { id: 'l9', name: '소분 트래블용 샴푸/클렌징', category: '세면도구', status: 'restock', colorGroup: '', material: '', location: '' },
+        { id: 'l10', name: '휴대용 상비약 (밴드, 소화제)', category: '세면도구', status: 'restock', colorGroup: '', material: '', location: '' }
+      ],
+      purchases: [
+        { id: 'p1', name: '도쿄 산토리 위스키 700ml', category: 'liquor', usd: 45, qty: 1, volumeMl: 700, note: '주류 1병' },
+        { id: 'p2', name: '돈키호테 화장품 & 퍼퓸', category: 'general', usd: 120, qty: 1, volumeMl: 0, note: '화장품' },
+        { id: 'p3', name: '명품 스카프 & 의류', category: 'general', usd: 680, qty: 1, volumeMl: 0, note: '면세 범위' },
+      ],
+      currencies: [
+        { currency: 'JPY (엔화)', amount: 12500, action: 'keep' }
+      ],
+      expenses: {
+        total: 1420000,
+        details: [
+          { item: '숙소 (도쿄 호텔 4박)', cost: 820000 },
+          { item: '스카이라이너 & 수이카 충전', cost: 180000 },
+          { item: '디즈니랜드 티켓', cost: 220000 },
+          { item: '식비 & 카페 공동경비', cost: 200000 }
+        ]
+      },
+      retro: {
+        rating: 5,
+        review: '도쿄 야경과 도요스 라멘이 환상적이었음. 발 편한 운동화는 필수!',
+        leaveBehind: '두꺼운 가이드북, 착장 과다 2벌, 무거운 백팩',
+        bringNext: '휴대용 풋패치, 변환 젠더 1개 더, 우산'
+      },
+      nextTripPackingList: [
+        { id: 'np1', name: '여권 & 서류 파우치', category: '필수', checked: false },
+        { id: 'np2', name: '멀티 어댑터 & 보조배터리', category: '전자기기', checked: false },
+        { id: 'np3', name: '휴대용 풋패치 (지난 회고 반영)', category: '추천', checked: false },
+        { id: 'np4', name: '돼지코 변환젠더 추가분 (지난 회고)', category: '추천', checked: false },
+        { id: 'np5', name: '소분 트래블 샴푸/세면도구 (보충)', category: '세면도구', checked: false }
+      ]
+    };
+
+    let appState = loadState();
+
+    function loadState() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try { 
+          const parsed = JSON.parse(saved);
+          if (!parsed.nextTripPackingList) parsed.nextTripPackingList = SAMPLE_STATE.nextTripPackingList;
+          return parsed;
+        } catch (e) { console.error(e); }
+      }
+      return JSON.parse(JSON.stringify(SAMPLE_STATE));
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      checkOverallCompletion();
+      updateSidebarAndHeaders();
+      renderCurrentTab();
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-msg');
+      toastMsg.innerText = msg;
+      toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-[-12px]');
+      toast.classList.add('opacity-100', 'translate-y-0');
+      
+      setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-[-12px]');
+      }, 2300);
+    }
+
+    let celebrationTriggered = false;
+    function checkOverallCompletion() {
+      const totalTasks = appState.items.length;
+      const doneTasks = appState.items.filter(i => i.done).length;
+      if (totalTasks > 0 && doneTasks === totalTasks && !celebrationTriggered) {
+        celebrationTriggered = true;
+        confetti({
+          particleCount: 120,
+          spread: 80,
+          origin: { y: 0.6 },
+          colors: ['#E06D53', '#1E2B42', '#5C8272', '#D97706']
+        });
+        showToast('🎉 완벽 복귀! 모든 복귀 미션을 작성 및 완료했습니다!');
+      }
+    }
+
+    function toggleDarkMode() {
+      const isDark = document.documentElement.classList.toggle('dark');
+      const iconM = document.getElementById('theme-icon-mobile');
+      const iconD = document.getElementById('theme-icon-desktop');
+      if (iconM) iconM.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
+      if (iconD) iconD.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
+      lucide.createIcons();
+    }
+
+    function getDaysSinceReturn() {
+      const returnDate = new Date(appState.trip.endDate);
+      const today = new Date();
+      returnDate.setHours(0,0,0,0);
+      today.setHours(0,0,0,0);
+      const diffTime = today - returnDate;
+      return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    }
+
+    function getHoursUntilWork() {
+      const workDate = new Date(appState.trip.workDate + 'T09:00:00');
+      const now = new Date();
+      const diffMs = workDate - now;
+      if (diffMs <= 0) return '출근 완료 / 오늘 복귀';
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      return `${hours}시간 ${mins}분 남음`;
+    }
+
+    function calculateDutyFreeTotals() {
+      let generalUsd = 0;
+      let liquorCount = 0;
+      let liquorTotalUsd = 0;
+      let liquorVolumeMl = 0;
+
+      appState.purchases.forEach(item => {
+        const itemUsd = item.usd * item.qty;
+        if (item.category === 'liquor') {
+          liquorCount += item.qty;
+          liquorTotalUsd += itemUsd;
+          liquorVolumeMl += (item.volumeMl || 0) * item.qty;
+        } else {
+          generalUsd += itemUsd;
+        }
+      });
+
+      const totalUsd = generalUsd + liquorTotalUsd;
+      const isGeneralExceeded = generalUsd > EXEMPTION_LIMIT_USD;
+      const generalExceededUsd = Math.max(0, generalUsd - EXEMPTION_LIMIT_USD);
+      const estimatedTaxKrw = Math.round((generalExceededUsd * USD_TO_KRW) * 0.2);
+
+      return {
+        generalUsd,
+        liquorCount,
+        liquorTotalUsd,
+        liquorVolumeMl,
+        totalUsd,
+        isGeneralExceeded,
+        generalExceededUsd,
+        estimatedTaxKrw
+      };
+    }
+
+    function exportJSONData() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appState, null, 2));
+      const downloadAnchor = document.createElement('a');
+      const dateStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `unpack_diary_backup_${dateStr}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast('📥 백업 JSON 파일 다운로드가 시작되었습니다.');
+    }
+
+    function importJSONData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const importedData = JSON.parse(e.target.result);
+          if (importedData.trip && importedData.items && importedData.laundryItems) {
+            appState = importedData;
+            saveState();
+            closeTripModal();
+            showToast('📤 백업 데이터 복원이 완료되었습니다!');
+          } else {
+            showToast('⚠️ 올바른 언팩 데이터 JSON 형식이 아닙니다.');
+          }
+        } catch (err) {
+          showToast('❌ JSON 파싱 실패: 파일 형식을 확인하세요.');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    let deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const installBtn = document.getElementById('pwa-install-btn');
+      if (installBtn) installBtn.classList.remove('hidden');
+    });
+
+    function triggerPWAInstall() {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choice) => {
+          if (choice.outcome === 'accepted') {
+            showToast('🎉 언팩 앱이 설치되었습니다!');
+          }
+          deferredPrompt = null;
+        });
+      } else {
+        showPWAHelpModal();
+      }
+    }
+
+    function showPWAHelpModal() {
+      closeTripModal();
+      const modal = document.getElementById('pwa-modal');
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+    }
+
+    function closePWAModal() {
+      const modal = document.getElementById('pwa-modal');
+      modal.classList.add('opacity-0', 'pointer-events-none');
+    }
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let activeCardId = null;
+
+    function handleCardTouchStart(e, itemId) {
+      const touch = e.touches[0];
+      touchStartX = touch.clientX;
+      touchStartY = touch.clientY;
+      activeCardId = itemId;
+
+      const card = document.getElementById(`laundry-card-${itemId}`);
+      if (card) {
+        card.classList.add('swiping');
+      }
+    }
+
+    function handleCardTouchMove(e, itemId) {
+      if (activeCardId !== itemId) return;
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - touchStartX;
+      const deltaY = touch.clientY - touchStartY;
+
+      if (Math.abs(deltaY) > Math.abs(deltaX)) return;
+
+      const card = document.getElementById(`laundry-card-${itemId}`);
+      if (!card) return;
+
+      const rotation = deltaX * 0.05;
+      card.style.transform = `translateX(${deltaX}px) rotate(${rotation}deg)`;
+
+      const leftBadge = document.getElementById(`swipe-hint-left-${itemId}`);
+      const rightBadge = document.getElementById(`swipe-hint-right-${itemId}`);
+
+      if (deltaX < -30) {
+        if (leftBadge) leftBadge.style.opacity = Math.min(1, Math.abs(deltaX)/80);
+        if (rightBadge) rightBadge.style.opacity = 0;
+      } else if (deltaX > 30) {
+        if (rightBadge) rightBadge.style.opacity = Math.min(1, Math.abs(deltaX)/80);
+        if (leftBadge) leftBadge.style.opacity = 0;
+      } else {
+        if (leftBadge) leftBadge.style.opacity = 0;
+        if (rightBadge) rightBadge.style.opacity = 0;
+      }
+    }
+
+    function handleCardTouchEnd(e, itemId) {
+      if (activeCardId !== itemId) return;
+      activeCardId = null;
+
+      const card = document.getElementById(`laundry-card-${itemId}`);
+      if (!card) return;
+
+      card.classList.remove('swiping');
+
+      const touch = e.changedTouches[0];
+      const deltaX = touch.clientX - touchStartX;
+
+      if (deltaX < -80) {
+        updateLaundryStatus(itemId, 'wash');
+        showToast('🧺 세탁/드라이 항목으로 분류되었습니다.');
+      } else if (deltaX > 80) {
+        updateLaundryStatus(itemId, 'keep');
+        showToast('📥 제자리 보관 완료 항목으로 분류되었습니다.');
+      } else {
+        card.style.transform = 'translateX(0px) rotate(0deg)';
+        const leftBadge = document.getElementById(`swipe-hint-left-${itemId}`);
+        const rightBadge = document.getElementById(`swipe-hint-right-${itemId}`);
+        if (leftBadge) leftBadge.style.opacity = 0;
+        if (rightBadge) rightBadge.style.opacity = 0;
+      }
+    }
+
+    function switchTab(tabName) {
+      appState.currentTab = tabName;
+
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('text-indigoNavy', 'dark:text-terracotta', 'font-bold');
+        btn.classList.add('text-stone-400');
+      });
+      const activeMobileBtn = document.getElementById(`tab-btn-${tabName}`);
+      if (activeMobileBtn) {
+        activeMobileBtn.classList.remove('text-stone-400');
+        activeMobileBtn.classList.add('text-indigoNavy', 'dark:text-terracotta', 'font-bold');
+      }
+
+      document.querySelectorAll('.d-nav-btn').forEach(btn => {
+        btn.classList.remove('bg-white/15', 'text-white', 'shadow-sm');
+        btn.classList.add('text-stone-300', 'hover:text-white', 'hover:bg-white/10');
+      });
+      const activeDesktopBtn = document.getElementById(`d-nav-${tabName}`);
+      if (activeDesktopBtn) {
+        activeDesktopBtn.classList.remove('text-stone-300', 'hover:bg-white/10');
+        activeDesktopBtn.classList.add('bg-white/15', 'text-white', 'shadow-sm');
+      }
+
+      renderCurrentTab();
+    }
+
+    function updateSidebarAndHeaders() {
+      const days = getDaysSinceReturn();
+      const dayLabel = days >= 0 ? `D+${days}` : `D${days}`;
+      const tripInfo = `${appState.trip.destination} (${dayLabel})`;
+
+      const mobileSub = document.getElementById('header-subtitle-mobile');
+      if (mobileSub) mobileSub.innerText = `${tripInfo} • 귀국일 ${appState.trip.endDate}`;
+
+      const sidebarBadge = document.getElementById('sidebar-trip-badge');
+      if (sidebarBadge) {
+        const completed = appState.items.filter(i => i.done).length;
+        const total = appState.items.length;
+        const pct = total ? Math.round((completed/total)*100) : 0;
+        
+        sidebarBadge.innerHTML = `
+          <div class="flex justify-between items-center text-stone-200">
+            <span class="font-serif font-bold text-white truncate max-w-[120px]">${appState.trip.destination}</span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-terracotta/30 text-terracotta-light border border-terracotta/40">${dayLabel}</span>
+          </div>
+          <div class="text-[11px] text-stone-300 flex justify-between pt-1">
+            <span>복귀 달성률</span>
+            <span class="font-bold text-amber-300">${pct}%</span>
+          </div>
+          <div class="w-full bg-white/20 h-1.5 rounded-full overflow-hidden mt-1">
+            <div class="bg-terracotta h-full transition-all duration-500" style="width: ${pct}%"></div>
+          </div>
+        `;
+      }
+
+      const titles = {
+        dashboard: ['복귀 다이어리 대시보드', '체크리스트와 귀국 현황을 한눈에 기록하고 관리합니다.'],
+        organizer: ['타임라인 체크리스트', 'D+0부터 D+7까지 감성적인 시간 순서로 과제를 해결합니다.'],
+        laundry: ['캐리어 스와이프 & 보관함', '아이템 카드를 좌우 스와이프하여 세탁 및 보관을 정리합니다.'],
+        packing: ['다음 여행 패킹 미리보기', '이번 여행의 회고 노트를 바탕으로 미리 챙길 짐을 설계합니다.'],
+        customs: ['구매품 & 세관면세 계산기', '현지 쇼핑 품목과 $800 면세 한도를 계산하고 관세를 조회합니다.'],
+        settlement: ['정산 & 여행 회고 일기', '동행 경비 정산 및 기억하고 싶은 수기 회고 노트를 작성합니다.'],
+        services: ['복귀 케어 파트너 서비스', '피로 회복과 일상 복귀를 돕는 맞춤형 케어를 이용합니다.']
+      };
+
+      const titleElem = document.getElementById('desktop-header-title');
+      const subElem = document.getElementById('desktop-header-sub');
+      if (titleElem && subElem && titles[appState.currentTab]) {
+        titleElem.innerText = titles[appState.currentTab][0];
+        subElem.innerText = titles[appState.currentTab][1];
+      }
+    }
+
+    function renderCurrentTab() {
+      updateSidebarAndHeaders();
+      const container = document.getElementById('main-content');
+      
+      switch (appState.currentTab) {
+        case 'dashboard':
+          container.innerHTML = renderDashboardView();
+          break;
+        case 'organizer':
+          container.innerHTML = renderOrganizerView();
+          break;
+        case 'laundry':
+          container.innerHTML = renderLaundryView();
+          break;
+        case 'packing':
+          container.innerHTML = renderPackingPreviewView();
+          break;
+        case 'customs':
+          container.innerHTML = renderCustomsView();
+          break;
+        case 'settlement':
+          container.innerHTML = renderSettlementView();
+          break;
+        case 'services':
+          container.innerHTML = renderServicesView();
+          break;
+        default:
+          container.innerHTML = renderDashboardView();
+      }
+      lucide.createIcons();
+    }
+
+    function renderDashboardView() {
+      const days = getDaysSinceReturn();
+      const dayLabel = days >= 0 ? `복귀 D+${days}` : `귀국 D${days}`;
+      const workCountdown = getHoursUntilWork();
+
+      const tasks = appState.items;
+      const completedTasks = tasks.filter(t => t.done).length;
+      const taskProgress = tasks.length ? Math.round((completedTasks / tasks.length) * 100) : 0;
+
+      const laundryDone = appState.laundryItems.filter(i => i.status === 'keep').length;
+      const totalLaundry = appState.laundryItems.length;
+      const laundryProgress = totalLaundry ? Math.round((laundryDone / totalLaundry) * 100) : 0;
+
+      const dutyTotals = calculateDutyFreeTotals();
+      const top3 = tasks.filter(t => !t.done).slice(0, 3);
+
+      const isGolfTrip = appState.trip.tripType === '골프';
+
+      return `
+        <div class="space-y-6 animate-pop">
+          <!-- Emotional Diary Hero Banner -->
+          <div class="bg-gradient-to-br from-indigoNavy via-stone-900 to-indigoNavy text-white rounded-3xl p-6 sm:p-7 shadow-diary relative overflow-hidden border border-white/10">
+            <div class="absolute right-4 top-4 hidden sm:flex items-center gap-2 rotate-3 opacity-90 pointer-events-none">
+              <div class="border-2 border-dashed border-amber-300/60 p-2.5 rounded-xl bg-amber-900/40 text-amber-200 text-center font-serif">
+                <span class="text-[10px] block uppercase tracking-widest">PASSPORT STAMP</span>
+                <span class="text-xs font-bold">${appState.trip.destination}</span>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center relative z-10">
+              <div class="md:col-span-2 space-y-3">
+                <div class="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-xs font-medium text-terracotta-light border border-white/15">
+                  <i data-lucide="${isGolfTrip ? 'flag' : 'plane-landing'}" class="w-3.5 h-3.5 text-terracotta"></i>
+                  <span>${appState.trip.destination} (${isGolfTrip ? '⛳ 골프 & 투어' : appState.trip.tripType})</span>
+                </div>
+                <h2 class="font-serif text-2xl sm:text-3xl font-extrabold tracking-tight">
+                  ${dayLabel} <span class="font-hand font-normal text-amber-200 text-3xl sm:text-4xl">Return Diary</span>
+                </h2>
+                <p class="text-xs sm:text-sm text-stone-300 font-sans">
+                  귀국일: ${appState.trip.endDate} | 동행: ${appState.trip.people}명
+                </p>
+                
+                <div class="pt-1 flex flex-wrap gap-2 text-xs">
+                  <div class="bg-black/30 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-white/10 flex items-center gap-2">
+                    <i data-lucide="briefcase" class="w-4 h-4 text-terracotta"></i>
+                    <span>첫 출근까지: <strong class="text-amber-200 font-bold">${workCountdown}</strong></span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Main Progress Ring -->
+              <div class="flex flex-col items-center justify-center p-4 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10">
+                <div class="relative w-20 h-20 sm:w-24 sm:h-24 flex items-center justify-center">
+                  <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                    <path class="text-white/10 stroke-current" stroke-width="3.5" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                    <path class="text-terracotta stroke-current transition-all duration-700 ease-out" stroke-dasharray="${taskProgress}, 100" stroke-width="3.5" stroke-linecap="round" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                  </svg>
+                  <span class="absolute text-base sm:text-lg font-extrabold text-white">${taskProgress}%</span>
+                </div>
+                <span class="text-xs font-semibold text-stone-300 mt-2">전체 달성률</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Progress Cards Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="bg-journal-card dark:bg-journal-darkCard p-4 rounded-2xl border border-journal-border dark:border-journal-darkBorder shadow-diary">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-semibold text-stone-500 dark:text-stone-400">타임라인 체크</span>
+                <span class="text-xs font-bold text-indigoNavy dark:text-terracotta">${completedTasks}/${tasks.length}</span>
+              </div>
+              <div class="w-full bg-stone-100 dark:bg-stone-800 h-2 rounded-full overflow-hidden">
+                <div class="bg-indigoNavy dark:bg-terracotta h-full rounded-full transition-all duration-500" style="width: ${taskProgress}%"></div>
+              </div>
+            </div>
+
+            <div class="bg-journal-card dark:bg-journal-darkCard p-4 rounded-2xl border border-journal-border dark:border-journal-darkBorder shadow-diary">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-semibold text-stone-500 dark:text-stone-400">캐리어 정리 & 보관</span>
+                <span class="text-xs font-bold text-indigoNavy dark:text-terracotta">${laundryDone}/${totalLaundry}</span>
+              </div>
+              <div class="w-full bg-stone-100 dark:bg-stone-800 h-2 rounded-full overflow-hidden">
+                <div class="bg-terracotta h-full rounded-full transition-all duration-500" style="width: ${laundryProgress}%"></div>
+              </div>
+            </div>
+
+            <div class="bg-journal-card dark:bg-journal-darkCard p-4 rounded-2xl border border-journal-border dark:border-journal-darkBorder shadow-diary">
+              <div class="flex justify-between items-center mb-2">
+                <span class="text-xs font-semibold text-stone-500 dark:text-stone-400">면세한도 현황</span>
+                <span class="text-xs font-bold ${dutyTotals.isGeneralExceeded ? 'text-red-500' : 'text-emerald-600'}">$${dutyTotals.generalUsd} / $800</span>
+              </div>
+              <div class="w-full bg-stone-100 dark:bg-stone-800 h-2 rounded-full overflow-hidden">
+                <div class="${dutyTotals.isGeneralExceeded ? 'bg-red-500' : 'bg-emerald-500'} h-full rounded-full transition-all duration-500" style="width: ${Math.min(100, Math.round((dutyTotals.generalUsd/800)*100))}%"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Two Column Content Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Priority Tasks -->
+            <div class="bg-journal-card dark:bg-journal-darkCard p-5 rounded-2xl border border-journal-border dark:border-journal-darkBorder shadow-diary space-y-4">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <div class="w-2.5 h-2.5 rounded-full bg-terracotta animate-pulse"></div>
+                  <h3 class="font-serif text-sm font-bold text-stone-800 dark:text-stone-100">우선 해결 과제 Top 3</h3>
+                </div>
+                <button onclick="switchTab('organizer')" class="text-xs text-terracotta font-semibold flex items-center hover:underline">
+                  전체보기 <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+
+              ${top3.length === 0 ? `
+                <div class="text-center py-8 bg-stone-50 dark:bg-stone-900/40 rounded-xl border border-dashed border-stone-200 dark:border-stone-800">
+                  <p class="text-xs font-semibold text-stone-500 dark:text-stone-400">🎉 모든 할 일을 성공적으로 완료했습니다!</p>
+                  <p class="text-[11px] text-stone-400 mt-1">충분한 휴식과 함께 수면을 취해보세요.</p>
+                </div>
+              ` : `
+                <div class="space-y-2.5">
+                  ${top3.map(task => `
+                    <div onclick="toggleTask('${task.id}')" class="flex items-center gap-3 p-3 rounded-xl bg-stone-50 dark:bg-stone-900/60 hover:bg-stone-100 dark:hover:bg-stone-900 cursor-pointer transition border border-stone-200/60 dark:border-stone-800">
+                      <div class="w-5 h-5 rounded-md border-2 border-stone-300 dark:border-stone-600 flex items-center justify-center text-white shrink-0">
+                        ${task.done ? '<i data-lucide="check" class="w-3.5 h-3.5 text-terracotta stroke-[3]"></i>' : ''}
+                      </div>
+                      <span class="text-xs font-medium text-stone-700 dark:text-stone-200 flex-1 truncate">${task.title}</span>
+                      <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-400">${task.timeline}</span>
+                    </div>
+                  `).join('')}
+                </div>
+              `}
+            </div>
+
+            <!-- Recovery Guide Card (Golf Customization if applicable) -->
+            <div class="bg-amber-50/80 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 p-5 rounded-2xl flex flex-col justify-between space-y-3 shadow-paper relative">
+              <div class="flex items-start gap-3">
+                <div class="p-2.5 rounded-2xl bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 shrink-0">
+                  <i data-lucide="${isGolfTrip ? 'trophy' : 'coffee'}" class="w-6 h-6"></i>
+                </div>
+                <div>
+                  <h4 class="font-serif text-xs sm:text-sm font-bold text-amber-900 dark:text-amber-200 mb-1">
+                    ${isGolfTrip ? '⛳ 골프 라운딩 피로 회복 다이어리 팁' : '복귀 피로 회복 다이어리 팁'}
+                  </h4>
+                  <p class="text-xs text-amber-800/90 dark:text-amber-300/80 leading-relaxed font-serif">
+                    ${isGolfTrip 
+                      ? '골프 라운딩으로 인한 어깨·허리 근육통 완화를 위해 하체 스트레칭 및 골프백 클럽 습기 제거/건조를 잊지 마세요!'
+                      : '따뜻한 차 한 잔과 함께 복귀 여독을 풀어주세요. 오늘 저녁에는 스마트폰 사용을 줄이고 따뜻한 미온수 욕조에서 피로를 해소하는 것이 권장됩니다.'}
+                  </p>
+                </div>
+              </div>
+
+              <div class="pt-3 border-t border-amber-200/60 dark:border-amber-900/40 flex items-center justify-between text-xs text-amber-900 dark:text-amber-200">
+                <span class="font-medium">권장 수면시각: 오늘 밤 10:30 PM 이전</span>
+                <button onclick="switchTab('services')" class="text-terracotta font-bold hover:underline">케어 파트너 보기 →</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderOrganizerView() {
+      const filters = ['all', 'D+0', 'D+1', 'D+3', 'D+7'];
+      const filteredTasks = appState.timelineFilter === 'all' 
+        ? appState.items 
+        : appState.items.filter(t => t.timeline === appState.timelineFilter);
+
+      return `
+        <div class="space-y-5 animate-pop">
+          <!-- Filter Control Bar -->
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-journal-card dark:bg-journal-darkCard p-3.5 rounded-2xl border border-journal-border dark:border-journal-darkBorder shadow-diary">
+            <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 sm:pb-0">
+              ${filters.map(f => `
+                <button onclick="setOrganizerFilter('${f}')" class="px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition ${
+                  appState.timelineFilter === f
+                    ? 'bg-indigoNavy text-white dark:bg-terracotta dark:text-white shadow-sm'
+                    : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400 hover:bg-stone-200'
+                }">
+                  ${f === 'all' ? '전체 타임라인' : f}
+                </button>
+              `).join('')}
+            </div>
+
+            <span class="text-xs text-stone-400 text-right font-medium shrink-0">
+              총 ${filteredTasks.length}개 할 일
+            </span>
+          </div>
+
+          <!-- Add Task Input -->
+          <div class="flex flex-col sm:flex-row gap-2 bg-journal-card dark:bg-journal-darkCard p-2.5 rounded-2xl border border-journal-border dark:border-journal-darkBorder shadow-diary">
+            <input type="text" id="new-task-title" placeholder="새 복귀 과제 작성... (예: 골프채 그립 세척, 현지 잔액 정산)" class="flex-1 px-3.5 py-2 text-xs bg-stone-50 dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700 focus:outline-none focus:border-terracotta dark:text-white" onkeydown="if(event.key==='Enter') addTask()" />
+            <div class="flex gap-2 shrink-0">
+              <select id="new-task-timeline" class="text-xs bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl px-2.5 py-2 dark:text-stone-200">
+                <option value="D+0">D+0 (당일)</option>
+                <option value="D+1">D+1 (익일)</option>
+                <option value="D+3">D+3 (3일내)</option>
+                <option value="D+7">D+7 (일주일)</option>
+              </select>
+              <button onclick="addTask()" class="bg-terracotta hover:bg-terracotta-dark text-white px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1 shadow-sm">
+                <i data-lucide="plus" class="w-4 h-4"></i> 추가
+              </button>
+            </div>
+          </div>
+
+          <!-- Task Items List -->
+          <div class="space-y-3">
+            ${filteredTasks.map(task => `
+              <div class="bg-journal-card dark:bg-journal-darkCard p-4 rounded-2xl border ${task.done ? 'border-stone-200/80 dark:border-stone-800 opacity-60' : 'border-journal-border dark:border-journal-darkBorder'} shadow-diary flex items-center justify-between gap-3 transition">
+                <div class="flex items-center gap-3 flex-1 min-w-0" onclick="toggleTask('${task.id}')">
+                  <button class="w-5 h-5 rounded-md border-2 ${task.done ? 'bg-terracotta border-terracotta text-white' : 'border-stone-300 dark:border-stone-600'} flex items-center justify-center shrink-0">
+                    ${task.done ? '<i data-lucide="check" class="w-3.5 h-3.5 stroke-[3]"></i>' : ''}
+                  </button>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-xs font-medium ${task.done ? 'line-through text-stone-400 dark:text-stone-500' : 'text-stone-800 dark:text-stone-100'} truncate">
+                      ${task.title}
+                    </p>
+                    ${task.urgentText ? `<span class="text-[10px] font-bold text-red-500 mt-0.5 inline-block">⚠️ ${task.urgentText}</span>` : ''}
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-2 shrink-0">
+                  <span class="text-[10px] font-bold px-2.5 py-1 rounded-full ${task.timeline === 'D+0' ? 'bg-terracotta/15 text-terracotta' : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-400'}">
+                    ${task.timeline}
+                  </span>
+                  <button onclick="deleteTask('${task.id}')" class="text-stone-400 hover:text-red-500 p-1">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                  </button>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function setOrganizerFilter(filter) {
+      appState.timelineFilter = filter;
+      renderCurrentTab();
+    }
+
+    function toggleTask(id) {
+      const task = appState.items.find(i => i.id === id);
+      if (task) {
+        task.done = !task.done;
+        saveState();
+      }
+    }
+
+    function addTask() {
+      const input = document.getElementById('new-task-title');
+      const select = document.getElementById('new-task-timeline');
+      if (!input || !input.value.trim()) return;
+
+      appState.items.push({
+        id: 't_' + Date.now(),
+        type: 'task',
+        title: input.value.trim(),
+        timeline: select.value,
+        done: false,
+        deadline: false
+      });
+
+      saveState();
+      showToast('✨ 새 복귀 과제가 등록되었습니다.');
+    }
+
+    function deleteTask(id) {
+      appState.items = appState.items.filter(i => i.id !== id);
+      saveState();
+      showToast('삭제되었습니다.');
+    }
+
+    function renderLaundryView() {
+      const laundryList = appState.laundryItems;
+
+      return `
+        <div class="space-y-6 animate-pop">
+          <!-- Touch Swipe Banner Instructions -->
+          <div class="bg-gradient-to-r from-terracotta/10 via-amber-50 to-sage/10 dark:from-terracotta/20 dark:via-stone-900 dark:to-sage/20 border border-terracotta/20 p-4 rounded-2xl flex items-center justify-between gap-3 shadow-paper">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-2xl bg-terracotta text-white flex items-center justify-center shrink-0 shadow-sm">
+                <i data-lucide="touch-swipe" class="w-5 h-5"></i>
+              </div>
+              <div>
+                <h3 class="font-serif text-xs sm:text-sm font-bold text-stone-800 dark:text-stone-100">
+                  📱 터치 스와이프로 빠른 분류하기
+                </h3>
+                <p class="text-[11px] text-stone-600 dark:text-stone-300">
+                  아이템 카드를 <strong>👈 왼쪽으로 밀면 [세탁하기]</strong>, <strong>오른쪽으로 밀면 👉 [보관하기]</strong>로 자동 분류됩니다.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Add Laundry Item Form -->
+          <div class="bg-journal-card dark:bg-journal-darkCard p-3 rounded-2xl border border-journal-border dark:border-journal-darkBorder shadow-diary flex flex-col sm:flex-row gap-2">
+            <input type="text" id="new-laundry-name" placeholder="캐리어/골프백 물품 추가... (예: 골프웨어, 골프화, 렌즈)" class="flex-1 px-3.5 py-2 text-xs bg-stone-50 dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700 focus:outline-none focus:border-terracotta dark:text-white" onkeydown="if(event.key==='Enter') addLaundryItem()" />
+            <select id="new-laundry-cat" class="text-xs bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded-xl px-2.5 py-2 dark:text-stone-200">
+              <option value="의류">의류/골프웨어</option>
+              <option value="장비">골프/스포츠장비</option>
+              <option value="전자기기">전자기기/거리측정기</option>
+              <option value="기념품">기념품</option>
+              <option value="세면도구">세면도구/화장품</option>
+              <option value="여행용품">여행용품</option>
+            </select>
+            <button onclick="addLaundryItem()" class="bg-indigoNavy hover:bg-indigoNavy/90 text-white px-4 py-2 rounded-xl text-xs font-semibold transition shrink-0">
+              추가
+            </button>
+          </div>
+
+          <!-- Interactive Swipe Cards List -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            ${laundryList.map(item => `
+              <div class="relative overflow-hidden rounded-2xl">
+                <div class="absolute inset-0 bg-gradient-to-r from-terracotta to-emerald-600 rounded-2xl flex justify-between items-center px-5 text-white font-bold text-xs pointer-events-none">
+                  <span id="swipe-hint-left-${item.id}" class="opacity-0 transition-opacity flex items-center gap-1">
+                    <i data-lucide="shirt" class="w-4 h-4"></i> 세탁 분류
+                  </span>
+                  <span id="swipe-hint-right-${item.id}" class="opacity-0 transition-opacity flex items-center gap-1">
+                    보관 완료 <i data-lucide="check-circle" class="w-4 h-4"></i>
+                  </span>
+                </div>
+
+                <div id="laundry-card-${item.id}"
+                     class="swipe-card relative rounded-2xl p-4 bg-journal-card dark:bg-journal-darkCard border border-journal-border dark:border-journal-darkBorder shadow-diary space-y-3"
+                     ontouchstart="handleCardTouchStart(event, '${item.id}')"
+                     ontouchmove="handleCardTouchMove(event, '${item.id}')"
+                     ontouchend="handleCardTouchEnd(event, '${item.id}')">
+                  
+                  <div class="flex items-start justify-between">
+                    <div>
+                      <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-stone-100 dark:bg-stone-800 text-stone-500">
+                        ${item.category}
+                      </span>
+                      <h4 class="text-xs sm:text-sm font-bold text-stone-800 dark:text-stone-100 mt-1">
+                        ${item.name}
+                      </h4>
+                    </div>
+
+                    <span class="text-xs font-bold px-2.5 py-1 rounded-xl ${
+                      item.status === 'keep' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300' :
+                      item.status === 'dry' ? 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300' :
+                      item.status === 'restock' ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300' :
+                      'bg-terracotta/15 text-terracotta'
+                    }">
+                      ${item.status === 'keep' ? '📥 보관 완료' : item.status === 'dry' ? '👔 드라이클리닝' : item.status === 'restock' ? '🛒 소진/보충필요' : '🧺 세탁대기'}
+                    </span>
+                  </div>
+
+                  <div class="pt-2 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between text-xs">
+                    <div class="flex gap-1.5">
+                      <button onclick="updateLaundryStatus('${item.id}', 'wash')" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold ${item.status === 'wash' ? 'bg-terracotta text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-600'}">
+                        세탁
+                      </button>
+                      <button onclick="updateLaundryStatus('${item.id}', 'dry')" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold ${item.status === 'dry' ? 'bg-amber-600 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-600'}">
+                        드라이
+                      </button>
+                      <button onclick="updateLaundryStatus('${item.id}', 'keep')" class="px-2.5 py-1 rounded-lg text-[11px] font-semibold ${item.status === 'keep' ? 'bg-emerald-600 text-white' : 'bg-stone-100 dark:bg-stone-800 text-stone-600'}">
+                        보관
+                      </button>
+                    </div>
+
+                    <button onclick="deleteLaundryItem('${item.id}')" class="text-stone-400 hover:text-red-500">
+                      <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function updateLaundryStatus(id, newStatus) {
+      const item = appState.laundryItems.find(i => i.id === id);
+      if (item) {
+        item.status = newStatus;
+        saveState();
+      }
+    }
+
+    function addLaundryItem() {
+      const nameInput = document.getElementById('new-laundry-name');
+      const catSelect = document.getElementById('new-laundry-cat');
+      if (!nameInput || !nameInput.value.trim()) return;
+
+      appState.laundryItems.push({
+        id: 'l_' + Date.now(),
+        name: nameInput.value.trim(),
+        category: catSelect.value,
+        status: 'wash',
+        colorGroup: 'dark',
+        material: 'general',
+        location: ''
+      });
+
+      saveState();
+      showToast('✨ 물품이 추가되었습니다.');
+    }
+
+    function deleteLaundryItem(id) {
+      appState.laundryItems = appState.laundryItems.filter(i => i.id !== id);
+      saveState();
+      showToast('삭제되었습니다.');
+    }
+
+    function renderPackingPreviewView() {
+      const retro = appState.retro;
+      const list = appState.nextTripPackingList || [];
+
+      return `
+        <div class="space-y-6 animate-pop">
+          <!-- Next Trip Header Banner -->
+          <div class="bg-gradient-to-r from-sage/20 via-journal-card to-terracotta/10 dark:from-sage/30 dark:to-stone-900 border border-sage/30 p-6 rounded-3xl shadow-paper relative">
+            <div class="flex items-start gap-4">
+              <div class="w-12 h-12 rounded-2xl bg-sage text-white flex items-center justify-center shrink-0 shadow-md">
+                <i data-lucide="package-check" class="w-6 h-6"></i>
+              </div>
+              <div class="space-y-1">
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-sage/20 text-sage-dark dark:text-sage-light">
+                  회고 데이터 기반 스마트 패킹
+                </span>
+                <h2 class="font-serif text-xl sm:text-2xl font-bold text-stone-800 dark:text-stone-100">
+                  다음 여행 준비물 리스트 미리보기
+                </h2>
+                <p class="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
+                  이번 여행의 회고 메모(챙길 것/뺼 것)와 보관 물품을 바탕으로 자동 생성된 맞춤형 패킹 리스트입니다.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Summary Insights based on Retro -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="bg-emerald-50/80 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 p-4 rounded-2xl space-y-1.5">
+              <h4 class="font-serif text-xs font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                <i data-lucide="plus-circle" class="w-4 h-4 text-emerald-600"></i>
+                다음 여행에 꼭 챙길 것 (이번 회고)
+              </h4>
+              <p class="text-xs text-emerald-800 dark:text-emerald-300">
+                ${retro.bringNext || '회고 탭에서 메모를 추가해보세요.'}
+              </p>
+            </div>
+
+            <div class="bg-red-50/80 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 p-4 rounded-2xl space-y-1.5">
+              <h4 class="font-serif text-xs font-bold text-red-900 dark:text-red-200 flex items-center gap-1.5">
+                <i data-lucide="minus-circle" class="w-4 h-4 text-red-600"></i>
+                다음 여행엔 빼도 될 것 (짐 경량화)
+              </h4>
+              <p class="text-xs text-red-800 dark:text-red-300">
+                ${retro.leaveBehind || '불필요했던 짐을 회고에 입력해보세요.'}
+              </p>
+            </div>
+          </div>
+
+          <!-- Add Item to Next Packing List -->
+          <div class="bg-journal-card dark:bg-journal-darkCard p-3 rounded-2xl border border-journal-border dark:border-journal-darkBorder shadow-diary flex gap-2">
+            <input type="text" id="new-packing-item" placeholder="다음 여행 추가 준비물 입력..." class="flex-1 px-3.5 py-2 text-xs bg-stone-50 dark:bg-stone-900 rounded-xl border border-stone-200 dark:border-stone-700 focus:outline-none focus:border-terracotta dark:text-white" onkeydown="if(event.key==='Enter') addPackingItem()" />
+            <button onclick="addPackingItem()" class="bg-terracotta hover:bg-terracotta-dark text-white px-4 py-2 rounded-xl text-xs font-semibold transition shrink-0">
+              리스트에 추가
+            </button>
+          </div>
+
+          <!-- Packing Checklist Items -->
+          <div class="bg-journal-card dark:bg-journal-darkCard p-5 rounded-2xl border border-journal-border dark:border-journal-darkBorder shadow-diary space-y-3">
+            <div class="flex justify-between items-center border-b border-journal-border dark:border-journal-darkBorder pb-3">
+              <h3 class="font-serif text-sm font-bold text-stone-800 dark:text-stone-100 flex items-center gap-2">
+                <i data-lucide="check-square" class="w-4 h-4 text-terracotta"></i>
+                미리 구성된 다음 패킹 체크리스트 (${list.length}개)
+              </h3>
+              <button onclick="copyPackingListText()" class="text-xs text-indigoNavy dark:text-terracotta font-semibold flex items-center gap-1 hover:underline">
+                <i data-lucide="copy" class="w-3.5 h-3.5"></i> 텍스트 복사
+              </button>
+            </div>
+
+            <div class="space-y-2">
+              ${list.map(item => `
+                <div class="flex items-center justify-between p-3 rounded-xl bg-stone-50 dark:bg-stone-900/60 border border-stone-200/60 dark:border-stone-800">
+                  <div class="flex items-center gap-3 cursor-pointer" onclick="togglePackingItem('${item.id}')">
+                    <div class="w-5 h-5 rounded-md border-2 ${item.checked ? 'bg-sage border-sage text-white' : 'border-stone-300 dark:border-stone-600'} flex items-center justify-center">
+                      ${item.checked ? '<i data-lucide="check" class="w-3.5 h-3.5 stroke-[3]"></i>' : ''}
+                    </div>
+                    <span class="text-xs font-medium ${item.checked ? 'line-through text-stone-400' : 'text-stone-800 dark:text-stone-100'}">
+                      ${item.name}
+                    </span>
+                  </div>
+
+                  <div class="flex items-center gap-2">
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-stone-200 dark:bg-stone-800 text-stone-600 dark:text-stone-400">
+                      ${item.category}
+                    </span>
+                    <button onclick="deletePackingItem('${item.id}')" class="text-stone-400 hover:text-red-500">
+                      <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    </button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function togglePackingItem(id) {
+      const item = appState.nextTripPackingList.find(i => i.id === id);
+      if (item) {
+        item.checked = !item.checked;
+        saveState();
+      }
+    }
+
+    function addPackingItem() {
+      const input = document.getElementById('new-packing-item');
+      if (!input || !input.value.trim()) return;
+
+      appState.nextTripPackingList.push({
+        id: 'np_' + Date.now(),
+        name: input.value.trim(),
+        category: '추가',
+        checked: false
+      });
+
+      saveState();
+      showToast('✨ 다음 여행 패킹 목록에 추가되었습니다.');
+    }
+
+    function deletePackingItem(id) {
+      appState.nextTripPackingList = appState.nextTripPackingList.filter(i => i.id !== id);
+      saveState();
+      showToast('삭제되었습니다.');
+    }
+
+    function copyPackingListText() {
+      const list = appState.nextTripPackingList;
+      if (!list.length) return;
+
+      let text = `✈️ [언팩] 다음 여행 패킹 리스트\n`;
+      list.forEach(i => {
+        text += `${i.checked ? '[v]' : '[ ]'} ${i.name} (${i.category})\n`;
+      });
+
+      const temp = document.createElement('textarea');
+      temp.value = text;
+      document.body.appendChild(temp);
+      temp.select();
+      document.execCommand('copy');
+      document.body.removeChild(temp);
+
+      showToast('📋 패킹 리스트가 클립보드에 복사되었습니다.');
+    }
+
+    function renderCustomsView() {
+      const totals = calculateDutyFreeTotals();
+
+      return `
+        <div class="space-y-6 animate-pop">
+          <!-- Duty-Free Summary Card -->
+          <div class="bg-journal-card dark:bg-journal-darkCard p-6 rounded-3xl border border-journal-border dark:border-journal-darkBorder shadow-diary space-y-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-journal-border dark:border-journal-darkBorder pb-4">
+              <div>
+                <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-terracotta/15 text-terracotta">
+                  대한민국 관세청 면세 한도 기준 ($800)
+                </span>
+                <h3 class="font-serif text-lg font-bold text-stone-800 dark:text-stone-100 mt-1">
+                  해외 구매품 면세 한도 계산기
+                </h3>
+              </div>
+
+              <button onclick="openCustomsModal()" class="bg-indigoNavy hover:bg-indigoNavy/90 text-white px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-sm">
+                <i data-lucide="qr-code" class="w-4 h-4 text-terracotta-light"></i>
+                세관 신고용 QR 요약
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+              <div class="p-4 rounded-2xl bg-stone-50 dark:bg-stone-900 border border-stone-200/60 dark:border-stone-800">
+                <span class="text-xs text-stone-500">일반 구매 합계</span>
+                <p class="text-xl font-bold text-stone-800 dark:text-stone-100 mt-1">$${totals.generalUsd} USD</p>
+                <span class="text-[11px] text-stone-400">약 ${(totals.generalUsd * USD_TO_KRW).toLocaleString()}원</span>
+              </div>
+
+              <div class="p-4 rounded-2xl bg-stone-50 dark:bg-stone-900 border border-stone-200/60 dark:border-stone-800">
+                <span class="text-xs text-stone-500">주류 면세별도 (최대 2병)</span>
+                <p class="text-xl font-bold text-stone-800 dark:text-stone-100 mt-1">${totals.liquorCount}병 ($${totals.liquorTotalUsd})</p>
+                <span class="text-[11px] text-stone-400">총 용량: ${totals.liquorVolumeMl}ml</span>
+              </div>
+
+              <div class="p-4 rounded-2xl ${totals.isGeneralExceeded ? 'bg-red-50 dark:bg-red-950/30 border-red-200' : 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200'} border">
+                <span class="text-xs font-semibold ${totals.isGeneralExceeded ? 'text-red-700 dark:text-red-300' : 'text-emerald-700 dark:text-emerald-300'}">예상 과세 여부</span>
+                <p class="text-xl font-bold ${totals.isGeneralExceeded ? 'text-red-600' : 'text-emerald-600'} mt-1">
+                  ${totals.isGeneralExceeded ? `과세 대상 (+$${totals.generalExceededUsd})` : '면세범위 이내'}
+                </p>
+                <span class="text-[11px] text-stone-500">
+                  ${totals.isGeneralExceeded ? `자진신고 시 예상 세액: 약 ${totals.estimatedTaxKrw.toLocaleString()}원` : '자진신고 혜택 대상'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Purchase Items Table -->
+          <div class="bg-journal-card dark:bg-journal-darkCard p-5 rounded-2xl border border-journal-border dark:border-journal-darkBorder shadow-diary space-y-4">
+            <div class="flex justify-between items-center">
+              <h4 class="font-serif text-sm font-bold text-stone-800 dark:text-stone-100">구매 물품 리스트</h4>
+              <button onclick="addPurchasePrompt()" class="text-xs text-terracotta font-semibold flex items-center gap-1 hover:underline">
+                <i data-lucide="plus" class="w-3.5 h-3.5"></i> 물품 추가
+              </button>
+            </div>
+
+            <div class="space-y-2">
+              ${appState.purchases.map(p => `
+                <div class="flex items-center justify-between p-3 rounded-xl bg-stone-50 dark:bg-stone-900 border border-stone-200/60 dark:border-stone-800 text-xs">
+                  <div>
+                    <span class="font-bold text-stone-800 dark:text-stone-100">${p.name}</span>
+                    <p class="text-[11px] text-stone-400 mt-0.5">${p.note || ''}</p>
+                  </div>
+
+                  <div class="flex items-center gap-3">
+                    <span class="font-bold text-indigoNavy dark:text-terracotta">$${p.usd * p.qty} USD</span>
+                    <button onclick="deletePurchase('${p.id}')" class="text-stone-400 hover:text-red-500">
+                      <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    </button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function addPurchasePrompt() {
+      const name = prompt('구매 물품 이름 (예: 명품 지갑, 골프웨어):');
+      if (!name) return;
+      const usdStr = prompt('가격 (USD $ 기준):', '100');
+      const usd = parseFloat(usdStr) || 0;
+
+      appState.purchases.push({
+        id: 'p_' + Date.now(),
+        name,
+        category: 'general',
+        usd,
+        qty: 1,
+        volumeMl: 0,
+        note: '추가 물품'
+      });
+
+      saveState();
+      showToast('✨ 구매 품목이 추가되었습니다.');
+    }
+
+    function deletePurchase(id) {
+      appState.purchases = appState.purchases.filter(p => p.id !== id);
+      saveState();
+      showToast('삭제되었습니다.');
+    }
+
+    function renderSettlementView() {
+      const retro = appState.retro;
+      const exp = appState.expenses;
+      const perPerson = Math.round(exp.total / (appState.trip.people || 1));
+
+      return `
+        <div class="space-y-6 animate-pop">
+          <!-- Emotional Travel Retrospection Diary -->
+          <div class="bg-journal-card dark:bg-journal-darkCard p-6 rounded-3xl border border-journal-border dark:border-journal-darkBorder shadow-diary space-y-4 relative overflow-hidden">
+            <div class="flex justify-between items-center border-b border-journal-border dark:border-journal-darkBorder pb-3">
+              <div class="flex items-center gap-2">
+                <i data-lucide="book-open" class="w-5 h-5 text-terracotta"></i>
+                <h3 class="font-serif text-base font-bold text-stone-800 dark:text-stone-100">
+                  ${appState.trip.destination} 여행 회고 다이어리
+                </h3>
+              </div>
+              <span class="font-hand text-stone-400 text-lg">Memory Note</span>
+            </div>
+
+            <div class="space-y-3 font-serif">
+              <div>
+                <label class="block text-xs font-semibold text-stone-500 mb-1">여행 만족도 평가</label>
+                <div class="flex gap-1 text-amber-400 text-lg">
+                  ${[1,2,3,4,5].map(star => `
+                    <button onclick="setRetroRating(${star})" class="hover:scale-110 transition">
+                      ${star <= retro.rating ? '★' : '☆'}
+                    </button>
+                  `).join('')}
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-stone-500 mb-1">이번 여행의 총평 및 소감</label>
+                <textarea id="retro-review" onchange="saveRetroFields()" rows="2" class="w-full p-3 text-xs bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl focus:outline-none focus:border-terracotta dark:text-stone-100">${retro.review}</textarea>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label class="block text-xs font-semibold text-stone-500 mb-1">다음 여행에 꼭 챙길 준비물</label>
+                  <input type="text" id="retro-bring" onchange="saveRetroFields()" value="${retro.bringNext}" class="w-full p-2.5 text-xs bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl focus:outline-none focus:border-terracotta dark:text-stone-100" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-stone-500 mb-1">다음 여행엔 안 가져갈 짐</label>
+                  <input type="text" id="retro-leave" onchange="saveRetroFields()" value="${retro.leaveBehind}" class="w-full p-2.5 text-xs bg-stone-50 dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded-xl focus:outline-none focus:border-terracotta dark:text-stone-100" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Expense Settlement Section -->
+          <div class="bg-journal-card dark:bg-journal-darkCard p-6 rounded-3xl border border-journal-border dark:border-journal-darkBorder shadow-diary space-y-4">
+            <div class="flex justify-between items-center border-b border-journal-border dark:border-journal-darkBorder pb-3">
+              <h3 class="font-serif text-base font-bold text-stone-800 dark:text-stone-100 flex items-center gap-2">
+                <i data-lucide="calculator" class="w-5 h-5 text-terracotta"></i>
+                동행 1/N 정산 내역 (${appState.trip.people}명 기준)
+              </h3>
+              <button onclick="addExpensePrompt()" class="text-xs text-terracotta font-semibold hover:underline">
+                + 경비 추가
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="p-4 rounded-2xl bg-indigoNavy text-white">
+                <span class="text-xs text-stone-300">총 여행 공동 경비</span>
+                <p class="text-2xl font-bold text-amber-300 mt-1">${exp.total.toLocaleString()}원</p>
+              </div>
+
+              <div class="p-4 rounded-2xl bg-terracotta/15 border border-terracotta/30">
+                <span class="text-xs text-stone-600 dark:text-stone-300 font-semibold">1인당 분담금</span>
+                <p class="text-2xl font-bold text-terracotta mt-1">${perPerson.toLocaleString()}원</p>
+              </div>
+            </div>
+
+            <div class="space-y-2 pt-2">
+              ${exp.details.map((d, index) => `
+                <div class="flex items-center justify-between p-3 rounded-xl bg-stone-50 dark:bg-stone-900 border border-stone-200/60 dark:border-stone-800 text-xs">
+                  <span class="font-medium text-stone-800 dark:text-stone-200">${d.item}</span>
+                  <div class="flex items-center gap-3">
+                    <span class="font-bold text-stone-700 dark:text-stone-300">${d.cost.toLocaleString()}원</span>
+                    <button onclick="deleteExpense(${index})" class="text-stone-400 hover:text-red-500">
+                      <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    </button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function setRetroRating(star) {
+      appState.retro.rating = star;
+      saveState();
+      showToast(`⭐ 만족도가 ${star}점으로 설정되었습니다.`);
+    }
+
+    function saveRetroFields() {
+      const review = document.getElementById('retro-review');
+      const bring = document.getElementById('retro-bring');
+      const leave = document.getElementById('retro-leave');
+
+      if (review) appState.retro.review = review.value;
+      if (bring) appState.retro.bringNext = bring.value;
+      if (leave) appState.retro.leaveBehind = leave.value;
+
+      saveState();
+      showToast('✍️ 회고 메모가 저장되었습니다.');
+    }
+
+    function addExpensePrompt() {
+      const item = prompt('경비 항목 이름 (예: 골프 그린피/카트비, 저녁 식사):');
+      if (!item) return;
+      const costStr = prompt('금액 (원 단위):', '100000');
+      const cost = parseInt(costStr) || 0;
+
+      appState.expenses.details.push({ item, cost });
+      appState.expenses.total += cost;
+
+      saveState();
+      showToast('✨ 경비 항목이 추가되었습니다.');
+    }
+
+    function deleteExpense(index) {
+      const removed = appState.expenses.details.splice(index, 1)[0];
+      if (removed) {
+        appState.expenses.total -= removed.cost;
+      }
+      saveState();
+      showToast('경비가 삭제되었습니다.');
+    }
+
+    function renderServicesView() {
+      return `
+        <div class="space-y-6 animate-pop">
+          <div class="bg-gradient-to-r from-indigoNavy to-stone-900 text-white p-6 rounded-3xl shadow-diary space-y-2">
+            <span class="text-[10px] font-bold px-2.5 py-1 rounded-full bg-terracotta/30 text-terracotta-light border border-terracotta/40">
+              스마트 복귀 제휴 케어
+            </span>
+            <h2 class="font-serif text-xl sm:text-2xl font-bold">복귀 피로 회복 & 케어 파트너</h2>
+            <p class="text-xs text-stone-300">
+              여독을 풀고 완벽한 일상으로 손쉽게 되돌아가기 위한 제휴 서비스입니다.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Service Card 1 -->
+            <div class="bg-journal-card dark:bg-journal-darkCard p-5 rounded-2xl border border-journal-border dark:border-journal-darkBorder shadow-diary space-y-3">
+              <div class="w-10 h-10 rounded-2xl bg-terracotta/15 text-terracotta flex items-center justify-center">
+                <i data-lucide="shirt" class="w-5 h-5"></i>
+              </div>
+              <h4 class="font-serif text-sm font-bold text-stone-800 dark:text-stone-100">
+                의류 & 세탁 문앞 수거/배송
+              </h4>
+              <p class="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
+                캐리어 안의 세탁물과 드라이클리닝 의류를 밤에 문앞에 내놓으면 Clean 서비스가 깔끔하게 세탁 후 배송합니다.
+              </p>
+              <button onclick="showToast('🔗 세탁 배송 서비스 제휴 링크로 이동합니다.')" class="w-full py-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 rounded-xl text-xs font-semibold transition">
+                수거 신청하기
+              </button>
+            </div>
+
+            <!-- Service Card 2: Golf Equipment Care -->
+            <div class="bg-journal-card dark:bg-journal-darkCard p-5 rounded-2xl border border-journal-border dark:border-journal-darkBorder shadow-diary space-y-3">
+              <div class="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 flex items-center justify-center">
+                <i data-lucide="trophy" class="w-5 h-5"></i>
+              </div>
+              <h4 class="font-serif text-sm font-bold text-stone-800 dark:text-stone-100">
+                골프백 & 클럽 정밀 세척/보관
+              </h4>
+              <p class="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
+                해외 라운딩 후 오염된 골프채 그립·헤드 세척 및 골프 가방을 항온항습 전용 스토리지에 안전 보관합니다.
+              </p>
+              <button onclick="showToast('⛳ 골프 장비 케어 예약 페이지로 연결됩니다.')" class="w-full py-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 rounded-xl text-xs font-semibold transition">
+                골프 케어 신청
+              </button>
+            </div>
+
+            <!-- Service Card 3 -->
+            <div class="bg-journal-card dark:bg-journal-darkCard p-5 rounded-2xl border border-journal-border dark:border-journal-darkBorder shadow-diary space-y-3">
+              <div class="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300 flex items-center justify-center">
+                <i data-lucide="sparkles" class="w-5 h-5"></i>
+              </div>
+              <h4 class="font-serif text-sm font-bold text-stone-800 dark:text-stone-100">
+                여독 해소 시차 & 스파 마사지
+              </h4>
+              <p class="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
+                오랜 비행 및 운동 피로로 뭉친 근육을 풀어주는 홈케어 방문 출장 테라피 할인 혜택을 제공합니다.
+              </p>
+              <button onclick="showToast('💆 스파 케어 예약 페이지로 이동합니다.')" class="w-full py-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 rounded-xl text-xs font-semibold transition">
+                스파 할인 예약
+              </button>
+            </div>
+
+            <!-- Service Card 4 -->
+            <div class="bg-journal-card dark:bg-journal-darkCard p-5 rounded-2xl border border-journal-border dark:border-journal-darkBorder shadow-diary space-y-3">
+              <div class="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 flex items-center justify-center">
+                <i data-lucide="truck" class="w-5 h-5"></i>
+              </div>
+              <h4 class="font-serif text-sm font-bold text-stone-800 dark:text-stone-100">
+                공항 수하물 당일 딜리버리
+              </h4>
+              <p class="text-xs text-stone-500 dark:text-stone-400 leading-relaxed">
+                공항에서 집까지 무거운 캐리어나 골프백을 대신 배송해 귀국 당일 가볍게 출근 및 식사가 가능합니다.
+              </p>
+              <button onclick="showToast('📦 짐 배송 서비스로 이동합니다.')" class="w-full py-2 bg-stone-100 dark:bg-stone-800 hover:bg-stone-200 dark:hover:bg-stone-700 text-stone-700 dark:text-stone-200 rounded-xl text-xs font-semibold transition">
+                공항 배송 조회
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function openTripModal() {
+      const modal = document.getElementById('modal-container');
+      document.getElementById('input-destination').value = appState.trip.destination;
+      document.getElementById('input-start-date').value = appState.trip.startDate;
+      document.getElementById('input-end-date').value = appState.trip.endDate;
+      document.getElementById('input-work-date').value = appState.trip.workDate;
+      document.getElementById('input-people').value = appState.trip.people;
+      document.getElementById('input-trip-type').value = appState.trip.tripType;
+
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+    }
+
+    function closeTripModal() {
+      const modal = document.getElementById('modal-container');
+      modal.classList.add('opacity-0', 'pointer-events-none');
+    }
+
+    function saveTripSettings(e) {
+      e.preventDefault();
+      appState.trip.destination = document.getElementById('input-destination').value;
+      appState.trip.startDate = document.getElementById('input-start-date').value;
+      appState.trip.endDate = document.getElementById('input-end-date').value;
+      appState.trip.workDate = document.getElementById('input-work-date').value;
+      appState.trip.people = parseInt(document.getElementById('input-people').value) || 1;
+      appState.trip.tripType = document.getElementById('input-trip-type').value;
+
+      // If Golf theme is selected, suggest golf-related default checklist item if not already present
+      if (appState.trip.tripType === '골프') {
+        const hasGolfTask = appState.items.some(i => i.title.includes('골프'));
+        if (!hasGolfTask) {
+          appState.items.unshift({
+            id: 't_golf_' + Date.now(),
+            type: 'task',
+            title: '골프백 습기 제거 및 골프채 그립 세척하기',
+            timeline: 'D+0',
+            done: false,
+            deadline: true,
+            urgentText: '골프장비 보관'
+          });
+        }
+      }
+
+      saveState();
+      closeTripModal();
+      showToast('✨ 여행 기본 설정이 성공적으로 저장되었습니다.');
+    }
+
+    function openCustomsModal() {
+      const totals = calculateDutyFreeTotals();
+      const modal = document.getElementById('customs-modal');
+      const container = document.getElementById('customs-qr-summary');
+
+      container.innerHTML = `
+        <div class="flex justify-between border-b pb-1 dark:border-stone-800">
+          <span class="text-stone-500">여행지 / 인원</span>
+          <span class="font-bold text-stone-800 dark:text-stone-200">${appState.trip.destination} (${appState.trip.people}명)</span>
+        </div>
+        <div class="flex justify-between border-b pb-1 dark:border-stone-800">
+          <span class="text-stone-500">일반 신고금액</span>
+          <span class="font-bold text-stone-800 dark:text-stone-200">$${totals.generalUsd} USD</span>
+        </div>
+        <div class="flex justify-between border-b pb-1 dark:border-stone-800">
+          <span class="text-stone-500">주류 보유</span>
+          <span class="font-bold text-stone-800 dark:text-stone-200">${totals.liquorCount}병 ($${totals.liquorTotalUsd})</span>
+        </div>
+        <div class="flex justify-between text-terracotta pt-1">
+          <span>면세 초과 과세여부</span>
+          <span class="font-bold">${totals.isGeneralExceeded ? '자진신고 대상' : '면세 대상'}</span>
+        </div>
+      `;
+
+      modal.classList.remove('opacity-0', 'pointer-events-none');
+    }
+
+    function closeCustomsModal() {
+      const modal = document.getElementById('customs-modal');
+      modal.classList.add('opacity-0', 'pointer-events-none');
+    }
+
+    function resetSampleData() {
+      if (confirm('샘플 데이터로 다시 초기화하시겠습니까?')) {
+        appState = JSON.parse(JSON.stringify(SAMPLE_STATE));
+        saveState();
+        closeTripModal();
+        showToast('🔄 샘플 데이터가 가득 채워졌습니다.');
+      }
+    }
+
+    function clearAllData() {
+      if (confirm('모든 데이터가 완전히 삭제됩니다. 정말 초기화하시겠습니까?')) {
+        localStorage.removeItem(STORAGE_KEY);
+        appState = {
+          trip: { destination: '새 여행지', startDate: '2026-10-01', endDate: '2026-10-05', workDate: '2026-10-06', people: 1, tripType: '골프', timeDiff: 0 },
+          currentTab: 'dashboard',
+          timelineFilter: 'all',
+          items: [],
+          laundryItems: [],
+          purchases: [],
+          currencies: [],
+          expenses: { total: 0, details: [] },
+          retro: { rating: 5, review: '', leaveBehind: '', bringNext: '' },
+          nextTripPackingList: []
+        };
+        saveState();
+        closeTripModal();
+        showToast('🗑️ 데이터가 깨끗이 초기화되었습니다.');
+      }
+    }
+
+    window.onload = function() {
+      renderCurrentTab();
+    };
+  </script>
+</body>
+</html>

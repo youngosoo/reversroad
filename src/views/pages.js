@@ -146,6 +146,68 @@ const FILTER_SCRIPT = `<script>
 })();
 </script>`;
 
+/** 후원 안내 — 관리자에서 켜고 내용을 고칩니다 (메인 페이지) */
+function supportSection(site) {
+  const support = site.support || {};
+  if (!support.enabled) return '';
+  const accounts = (support.accounts || []).filter((a) => a && (a.bank || a.account));
+  const message = String(support.message || '').split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  if (!accounts.length && !message.length) return '';
+  return `
+    <section class="section support" id="support">
+      <div class="card support-card">
+        <div class="support-copy">
+          <p class="eyebrow">💛 함께 만들어 주세요</p>
+          <h2>${esc(support.title || '후원 안내')}</h2>
+          ${message.map((line) => `<p>${esc(line)}</p>`).join('')}
+          ${support.note ? `<p class="muted small">${esc(support.note)}</p>` : ''}
+        </div>
+        <ul class="support-accounts">
+          ${accounts.map((a) => `
+            <li>
+              ${a.bank ? `<p class="sa-bank">${esc(a.bank)}</p>` : ''}
+              ${a.account ? `<p class="sa-account">${esc(a.account)}</p>` : ''}
+              ${a.holder ? `<p class="sa-holder">예금주 ${esc(a.holder)}</p>` : ''}
+              ${a.account ? `<button class="btn small" type="button" data-copy="${attr(a.account)}">계좌번호 복사</button>` : ''}
+            </li>`).join('')}
+        </ul>
+      </div>
+    </section>`;
+}
+
+/** 후원 계좌 복사 버튼 (이 섹션이 있을 때만 넣습니다) */
+const SUPPORT_SCRIPT = `<script>
+(function () {
+  function fallback(text, done) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'absolute';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) { /* 무시 */ }
+    document.body.removeChild(ta);
+  }
+  document.querySelectorAll('[data-copy]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var text = btn.getAttribute('data-copy') || '';
+      var label = btn.textContent;
+      var done = function () {
+        btn.textContent = '복사했어요 ✓';
+        btn.disabled = true;
+        setTimeout(function () { btn.textContent = label; btn.disabled = false; }, 1800);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function () { fallback(text, done); });
+      } else {
+        fallback(text, done);
+      }
+    });
+  });
+})();
+</script>`;
+
 /**
  * 히어로 인포그래픽 — 숫자와 분야 분포를 한 장의 카드로 보여 줍니다.
  * (텍스트만 나열하지 않고 "앱이 몇 개, 어디에 몰려 있는지"를 눈으로 읽게 합니다)
@@ -273,6 +335,8 @@ function homePage({ site, apps, guides = GUIDES }) {
       ${adSlot(site, { slot: site.adsense?.slotInline, className: 'ad-inline ad-after-faq' })}
     </section>
 
+    ${supportSection(site)}
+
     <section class="section cta">
       <div class="card cta-card">
         <h2>앱에서 문제를 발견하셨나요?</h2>
@@ -281,7 +345,8 @@ function homePage({ site, apps, guides = GUIDES }) {
       </div>
     </section>
   </div>
-  ${FILTER_SCRIPT}`;
+  ${FILTER_SCRIPT}
+  ${site.support && site.support.enabled ? SUPPORT_SCRIPT : ''}`;
 
   const homeDescription = String(site.homeDescription || site.description || '')
     .replace(/\{count\}/g, String(apps.length));

@@ -240,6 +240,64 @@
       </div>
     </form>
   </section>
+
+  <section class="card panel">
+    <h2>후원 안내</h2>
+    <p class="hint">
+      메인 페이지 아래쪽에 후원 안내 카드를 보여 줍니다. 방문자는 버튼 한 번으로 계좌번호를 복사할 수 있습니다.
+      켜 두지 않으면 사이트 어디에도 나오지 않습니다.
+    </p>
+    <form id="supportForm">
+      <div class="form-grid">
+        <div class="field full">
+          <label class="row" style="gap:8px;cursor:pointer">
+            <input type="checkbox" id="sup_on" style="width:auto" />
+            <span>메인 페이지에 후원 안내 노출</span>
+          </label>
+        </div>
+        <div class="field full">
+          <label for="sup_title">제목</label>
+          <input id="sup_title" type="text" maxlength="40" placeholder="후원 안내" />
+        </div>
+        <div class="field full">
+          <label for="sup_message">본문 <span class="muted">(줄바꿈하면 문단이 나뉩니다)</span></label>
+          <textarea id="sup_message" rows="4" maxlength="600" placeholder="지속적으로 무료 앱을 만들어 제공하는 데 도움이 되었다면 소정의 후원금을 받고 있습니다."></textarea>
+        </div>
+        <div class="field full">
+          <label for="sup_note">아래 안내 문구 <span class="muted">(선택 — 내역·사용처 공개 안내 등)</span></label>
+          <input id="sup_note" type="text" maxlength="200" placeholder="후원 내역은 빠짐없이 공개하고, 사용처도 공개하겠습니다." />
+        </div>
+        <div class="field full">
+          <label for="sup_bank_1">계좌 1 <span class="muted">(은행 · 계좌번호 · 예금주 — 비워 두면 표시하지 않습니다)</span></label>
+          <div class="acct-row">
+            <input id="sup_bank_1" type="text" maxlength="30" aria-label="계좌 1 은행" placeholder="은행 (예: 카카오뱅크)" />
+            <input id="sup_acct_1" type="text" maxlength="40" aria-label="계좌 1 계좌번호" placeholder="계좌번호" />
+            <input id="sup_holder_1" type="text" maxlength="30" aria-label="계좌 1 예금주" placeholder="예금주" />
+          </div>
+        </div>
+        <div class="field full">
+          <label for="sup_bank_2">계좌 2 <span class="muted">(은행 · 계좌번호 · 예금주 — 비워 두면 표시하지 않습니다)</span></label>
+          <div class="acct-row">
+            <input id="sup_bank_2" type="text" maxlength="30" aria-label="계좌 2 은행" placeholder="은행 (예: 카카오뱅크)" />
+            <input id="sup_acct_2" type="text" maxlength="40" aria-label="계좌 2 계좌번호" placeholder="계좌번호" />
+            <input id="sup_holder_2" type="text" maxlength="30" aria-label="계좌 2 예금주" placeholder="예금주" />
+          </div>
+        </div>
+        <div class="field full">
+          <label for="sup_bank_3">계좌 3 <span class="muted">(은행 · 계좌번호 · 예금주 — 비워 두면 표시하지 않습니다)</span></label>
+          <div class="acct-row">
+            <input id="sup_bank_3" type="text" maxlength="30" aria-label="계좌 3 은행" placeholder="은행 (예: 카카오뱅크)" />
+            <input id="sup_acct_3" type="text" maxlength="40" aria-label="계좌 3 계좌번호" placeholder="계좌번호" />
+            <input id="sup_holder_3" type="text" maxlength="30" aria-label="계좌 3 예금주" placeholder="예금주" />
+          </div>
+        </div>
+      </div>
+      <div class="form-footer">
+        <button class="btn primary" type="submit" id="supSaveBtn">후원 안내 저장</button>
+        <span class="muted" id="supStatus"></span>
+      </div>
+    </form>
+  </section>
 </div>
 
 <dialog class="modal" id="editModal">
@@ -925,6 +983,69 @@ logoBox.reset.addEventListener('click', async () => {
   }
 });
 
+// ------------------------------------------------------------- 후원 안내
+
+const SUP = {
+  on: document.getElementById('sup_on'),
+  title: document.getElementById('sup_title'),
+  message: document.getElementById('sup_message'),
+  note: document.getElementById('sup_note'),
+  rows: [1, 2, 3].map((i) => ({
+    bank: document.getElementById(`sup_bank_${i}`),
+    account: document.getElementById(`sup_acct_${i}`),
+    holder: document.getElementById(`sup_holder_${i}`),
+  })),
+};
+
+function fillSupport(support = {}) {
+  const accounts = Array.isArray(support.accounts) ? support.accounts : [];
+  SUP.on.checked = Boolean(support.enabled);
+  SUP.title.value = support.title || '';
+  SUP.message.value = support.message || '';
+  SUP.note.value = support.note || '';
+  SUP.rows.forEach((row, index) => {
+    const account = accounts[index] || {};
+    row.bank.value = account.bank || '';
+    row.account.value = account.account || '';
+    row.holder.value = account.holder || '';
+  });
+}
+
+document.getElementById('supportForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('supSaveBtn');
+  const status = document.getElementById('supStatus');
+  btn.disabled = true;
+  status.textContent = '저장 중...';
+  try {
+    const { site } = await api('/api/site', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        support: {
+          enabled: SUP.on.checked,
+          title: SUP.title.value,
+          message: SUP.message.value,
+          note: SUP.note.value,
+          accounts: SUP.rows.map((row) => ({
+            bank: row.bank.value,
+            account: row.account.value,
+            holder: row.holder.value,
+          })),
+        },
+      }),
+    });
+    fillSupport(site.support);
+    status.textContent = '저장되었습니다';
+    say(site.support.enabled ? '후원 안내를 저장했습니다. 메인 페이지에 바로 반영됩니다.' : '후원 안내를 저장했습니다(현재 꺼짐).');
+  } catch (err) {
+    status.textContent = '';
+    say(err.message, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 // ------------------------------------------------------------- 사이트 설정
 
 const S = {
@@ -967,6 +1088,7 @@ function fillSite(site) {
   S.homeHeading.value = site.homeHeading || '';
   S.homeDesc.value = site.homeDescription || '';
   S.showAdmin.checked = Boolean(site.showAdminLink);
+  fillSupport(site.support);
 }
 
 async function loadSite() {

@@ -79,6 +79,7 @@ async function writeSite(env, patch) {
   const current = await readSite(env);
   const next = siteStore.merge(current, patch || {});
   next.adsense = { ...next.adsense, client: siteStore.normalizeAdsClient(next.adsense?.client) };
+  next.support = siteStore.normalizeSupport(next.support);
   next.updatedAt = new Date().toISOString();
   await kv(env).put(KEY.site, JSON.stringify(next));
   return next;

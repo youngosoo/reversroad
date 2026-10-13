@@ -17,6 +17,7 @@ const {
   merge,
   isPlaceholderEmail,
   normalizeAdsClient,
+  normalizeSupport,
   publicSite,
 } = require('./site-config');
 
@@ -37,6 +38,7 @@ async function writeSite(patch) {
   const current = await readSite();
   const next = merge(current, patch);
   next.adsense = { ...next.adsense, client: normalizeAdsClient(next.adsense?.client) };
+  next.support = normalizeSupport(next.support);
   next.updatedAt = new Date().toISOString();
   await fsp.mkdir(path.dirname(FILE), { recursive: true });
   const tmp = `${FILE}.tmp`;

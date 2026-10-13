@@ -30,6 +30,8 @@ const KEY = {
 
 const LOGO_KEY = 'asset:logo';
 const LOGO_META_KEY = 'asset:logo-meta';
+const BANNER_KEY = 'asset:banner';
+const BANNER_META_KEY = 'asset:banner-meta';
 
 const fileKey = (id, rel) => `file:${id}/${rel}`;
 const pageKey = (rel) => `page:${rel}`;
@@ -190,6 +192,25 @@ async function deleteLogo(env) {
   await kv(env).delete(LOGO_META_KEY);
 }
 
+/** 관리자가 올린 상단 배너 이미지 — 없으면 null (글자 배너를 씁니다) */
+async function readBanner(env) {
+  const body = await kv(env).get(BANNER_KEY, 'arrayBuffer');
+  if (!body) return null;
+  const meta = await readJson(env, BANNER_META_KEY, null);
+  return { body, meta: meta || {} };
+}
+
+async function writeBanner(env, { body, meta }) {
+  await kv(env).put(BANNER_KEY, body);
+  await kv(env).put(BANNER_META_KEY, JSON.stringify(meta || {}));
+  return meta;
+}
+
+async function deleteBanner(env) {
+  await kv(env).delete(BANNER_KEY);
+  await kv(env).delete(BANNER_META_KEY);
+}
+
 /* ------------------------------------------------ 세션 키 */
 
 async function sessionSecret(env) {
@@ -205,9 +226,14 @@ module.exports = {
   KEY,
   LOGO_KEY,
   LOGO_META_KEY,
+  BANNER_KEY,
+  BANNER_META_KEY,
   readLogo,
   writeLogo,
   deleteLogo,
+  readBanner,
+  writeBanner,
+  deleteBanner,
   readJson,
   fileKey,
   pageKey,

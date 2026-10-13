@@ -297,6 +297,39 @@ label { font-size: 0.875rem; font-weight: 600; color: var(--text-soft); }
 }
 .lead { font-size: 1.0625rem; color: var(--text-soft); max-width: 62ch; }
 
+/* ------------------------------------------------------ 3-1) 상단 고정 배너 */
+.site-top { position: sticky; top: 0; z-index: 45; }
+.site-top > .site-header { position: relative; top: auto; }
+
+.top-banner {
+  display: flex; align-items: center; justify-content: center; gap: 16px;
+  min-height: 64px; padding: 8px 20px;
+  background: linear-gradient(120deg, #0e4a3c, #136450 55%, #0e4a3c);
+  color: #fff; text-decoration: none; border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+}
+.top-banner:hover { text-decoration: none; filter: brightness(1.06); }
+.top-banner .banner-text { display: flex; flex-direction: column; gap: 2px; line-height: 1.25; }
+.top-banner .banner-text b { font-size: clamp(1rem, 0.9rem + 0.7vw, 1.4rem); font-weight: 800; letter-spacing: -0.01em; }
+.top-banner .banner-text i { font-style: normal; font-size: clamp(0.75rem, 0.7rem + 0.3vw, 0.95rem); opacity: 0.85; }
+.top-banner .banner-cta {
+  border: 1px solid rgba(255, 255, 255, 0.7); border-radius: 999px;
+  padding: 6px 16px; font-size: 0.875rem; font-weight: 700; white-space: nowrap;
+}
+.top-banner.has-image { padding: 6px 12px; background: linear-gradient(120deg, #0e4a3c, #136450 55%, #0e4a3c); }
+.top-banner.has-image img {
+  display: block; width: auto; max-width: 100%; max-height: 104px; height: auto; object-fit: contain;
+  border-radius: var(--radius-sm);
+}
+
+@media (max-width: 640px) {
+  .top-banner { gap: 10px; min-height: 54px; padding: 7px 12px; }
+  .top-banner .banner-text b { font-size: 0.95rem; }
+  .top-banner .banner-text i { font-size: 0.6875rem; }
+  .top-banner .banner-cta { padding: 5px 11px; font-size: 0.8125rem; }
+  .top-banner.has-image { padding: 5px 8px; }
+  .top-banner.has-image img { max-height: 76px; }
+}
+
 .site-header {
   position: sticky; top: 0; z-index: 40;
   background: color-mix(in srgb, var(--surface) 86%, transparent);
@@ -794,6 +827,10 @@ header.top .brand span { color: var(--accent); }
   background: var(--surface-2); border: 1px solid var(--border); display: grid; place-items: center;
 }
 .logo-preview img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.banner-preview { width: min(360px, 100%); height: 64px; border-radius: var(--radius-sm); }
+.banner-preview img { object-fit: cover; }
+.banner-preview.is-text { display: grid; place-items: center; background: var(--surface-2); color: var(--muted); font-size: 0.75rem; }
+.banner-preview.is-text::after { content: '글자 배너 사용 중'; }
 .logo-side { display: flex; flex-direction: column; gap: 10px; flex: 1 1 320px; min-width: 260px; }
 .logo-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .logo-actions input[type="file"] { font-size: 0.875rem; max-width: 100%; }

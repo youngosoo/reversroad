@@ -33,6 +33,21 @@ function resolveLogoName() {
   return found;
 }
 
+const BANNER_CANDIDATES = ['banner.png', 'banner.jpg', 'banner.jpeg', 'banner.webp', 'banner.gif'];
+
+/** 업로드한 상단 배너 파일 (없으면 기본 이름) */
+function resolveBannerName() {
+  if (!HAS_FS) return BANNER_CANDIDATES[0];
+  return BANNER_CANDIDATES.find((name) => fs.existsSync(path.join(ASSETS_DIR, name))) || BANNER_CANDIDATES[0];
+}
+
+/** 상단 배너 경로 (업로드본이 있으면 ?v= 내용 해시) */
+function bannerUrl(site) {
+  const name = resolveBannerName();
+  const version = site && site.banner && site.banner.version ? String(site.banner.version) : '';
+  return version ? `/assets/${name}?v=${encodeURIComponent(version)}` : `/assets/${name}`;
+}
+
 /** 브라우저에서 쓸 수 있는 경로 (예: /assets/logo.png) */
 function logoPath() {
   return `/assets/${resolveLogoName()}`;
@@ -80,4 +95,4 @@ function assetUrl(name) {
   return `/assets/${name}?v=${hash}`;
 }
 
-module.exports = { logoPath, logoUrl, assetUrl, resolveLogoName };
+module.exports = { logoPath, logoUrl, assetUrl, resolveLogoName, resolveBannerName, bannerUrl };

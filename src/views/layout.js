@@ -2,6 +2,7 @@
 
 const { logoUrl, assetUrl } = require('../assets');
 const { getCategory } = require('../categories');
+const { bannerParts } = require('../banner');
 
 function esc(value) {
   return String(value ?? '').replace(/[&<>"']/g, (c) => ({
@@ -165,6 +166,18 @@ function brandLogo({ size = 28, className = 'brand-logo', site = null } = {}) {
  * 사이트 공통 껍데기. 검색엔진과 광고 심사가 읽는 값(제목·설명·canonical·구조화
  * 데이터·광고 스크립트)을 모두 여기서 한 번에 넣습니다.
  */
+/** 사이트 상단 고정 배너 (관리자에서 켜고 이미지·문구를 고칩니다) */
+function topBanner(site) {
+  const parts = bannerParts(site);
+  if (!parts) return '';
+  const target = parts.target ? ' target="_blank" rel="noopener"' : '';
+  const inner = parts.image
+    ? `<img src="${attr(parts.image)}" alt="${attr(parts.alt)}" />`
+    : `<span class="banner-text">${parts.title ? `<b>${esc(parts.title)}</b>` : ''}${parts.subtitle ? `<i>${esc(parts.subtitle)}</i>` : ''}</span>${parts.button ? `<span class="banner-cta">${esc(parts.button)}</span>` : ''}`;
+  return `
+<a class="top-banner${parts.image ? ' has-image' : ''}" href="${attr(parts.url)}"${target} aria-label="${attr(`${parts.title || parts.alt}${parts.button ? ` — ${parts.button}` : ''}`)}">${inner}</a>`;
+}
+
 function layout({
   site,
   title,
@@ -231,6 +244,7 @@ ${graphs.length ? `<script type="application/ld+json">${safeJson(graphs.length =
 </head>
 <body class="${attr(bodyClass)}">
 <a class="skip-link" href="#main">본문으로 바로 가기</a>
+<div class="site-top">${topBanner(site)}
 <header class="site-header">
   <div class="shell header-inner">
     <a class="brand" href="/">${brandLogo({ site })}<span class="brand-text">${esc(site.name)}</span></a>
@@ -241,6 +255,7 @@ ${graphs.length ? `<script type="application/ld+json">${safeJson(graphs.length =
     </nav>
   </div>
 </header>
+</div>
 <main id="main">
 ${body}
 </main>

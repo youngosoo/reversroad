@@ -13,7 +13,7 @@ const meta = require('../src/meta');
 const categories = require('../src/categories');
 const siteStore = require('../src/site-config');
 const imageLib = require('../src/image');
-const { logoUrl } = require('../src/assets');
+const { logoUrl, bannerUrl } = require('../src/assets');
 
 const { HttpError } = meta;
 
@@ -145,6 +145,18 @@ async function handleApi(request, env, url) {
     });
   }
 
+  if (path === '/api/banner' && method === 'GET') {
+    const site = store.publicSite(await store.readSite(env), host);
+    return json({
+      banner: {
+        url: bannerUrl(site),
+        version: site.banner.version || '',
+        uploadedAt: (site.banner.meta && site.banner.meta.uploadedAt) || null,
+        meta: site.banner.meta || null,
+      },
+    });
+  }
+
   /* -------------------------------------------- 관리자 전용 */
   const user = await auth.currentUser(request, env);
   if (!user) throw new HttpError(401, '로그인이 필요합니다');
@@ -206,6 +218,40 @@ async function handleApi(request, env, url) {
   if (path === '/api/logo' && method === 'DELETE') {
     await store.deleteLogo(env);
     const saved = await store.writeSite(env, { logoVersion: '', logoUploadedAt: null, logoMeta: null });
+    const result = await store.rebuild(env, { host, site: saved });
+    return json({ ok: true, site: store.publicSite(saved, host), rebuild: result });
+  }
+
+  if (path === '/api/banner' && method === 'POST') {
+    const body = await readBody(request);
+    const file = (body._files && (body._files.file || body._files.banner)) || null;
+    if (!file) throw new HttpError(400, '올릴 배너 이미지를 선택하세요');
+    const check = imageLib.validate(file.body);
+    if (!check.ok) throw new HttpError(400, check.error);
+
+    const version = await hashBytes(file.body);
+    const meta = {
+      contentType: check.image.type,
+      size: check.image.bytes,
+      width: check.image.width,
+      height: check.image.height,
+      name: String(file.name || '').slice(0, 120),
+      version,
+      uploadedAt: new Date().toISOString(),
+    };
+    await store.writeBanner(env, { body: file.body, meta });
+    const saved = await store.writeSite(env, { banner: { version, meta } });
+    const result = await store.rebuild(env, { host, site: saved });
+    return json({
+      banner: { url: `/assets/banner.png?v=${version}`, version, uploadedAt: meta.uploadedAt, meta },
+      site: store.publicSite(saved, host),
+      rebuild: result,
+    });
+  }
+
+  if (path === '/api/banner' && method === 'DELETE') {
+    await store.deleteBanner(env);
+    const saved = await store.writeSite(env, { banner: { version: '', meta: null } });
     const result = await store.rebuild(env, { host, site: saved });
     return json({ ok: true, site: store.publicSite(saved, host), rebuild: result });
   }

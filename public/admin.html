@@ -158,6 +158,74 @@
   </section>
 
   <section class="card panel">
+    <h2>상단 배너</h2>
+    <p class="hint">
+      사이트 맨 위에 <strong>고정(sticky)</strong>으로 붙는 홍보 배너입니다. 체크한 뒤 저장하면 모든 페이지에 바로 나타납니다.
+      이미지를 올리면 이미지 배너, 올리지 않으면 아래 문구로 만든 글자 배너가 나옵니다.
+    </p>
+    <form id="bannerForm">
+      <div class="form-grid">
+        <div class="field full">
+          <label class="row" style="gap:8px;cursor:pointer">
+            <input type="checkbox" id="ban_on" style="width:auto" />
+            <span>상단 고정 배너 노출</span>
+          </label>
+        </div>
+        <div class="field full">
+          <label class="row" style="gap:8px;cursor:pointer">
+            <input type="checkbox" id="ban_in_apps" style="width:auto" />
+            <span>등록한 웹앱 화면 상단에도 고정으로 붙이기</span>
+          </label>
+        </div>
+        <div class="field full">
+          <label>배너 이미지 <span class="muted">(가로로 긴 이미지 권장 — 예: 1500×220, 2MB 이하)</span></label>
+          <div class="logo-row">
+            <div class="logo-preview banner-preview"><img id="bannerPreview" alt="배너 미리보기" decoding="async" /></div>
+            <div class="logo-side">
+              <div class="logo-actions">
+                <input id="bannerFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+                <button class="btn primary small" type="button" id="bannerUploadBtn">이미지 올리기</button>
+                <button class="btn small" type="button" id="bannerResetBtn">글자 배너로 되돌리기</button>
+              </div>
+              <p class="logo-meta" id="bannerStatus">불러오는 중…</p>
+            </div>
+          </div>
+        </div>
+        <div class="field full">
+          <label for="ban_url">링크 주소</label>
+          <input id="ban_url" type="text" maxlength="300" placeholder="http://www.jademol.com" />
+        </div>
+        <div class="field full">
+          <label class="row" style="gap:8px;cursor:pointer">
+            <input type="checkbox" id="ban_newtab" style="width:auto" />
+            <span>새 창(탭)으로 열기</span>
+          </label>
+        </div>
+        <div class="field">
+          <label for="ban_title">글자 배너 — 제목</label>
+          <input id="ban_title" type="text" maxlength="60" placeholder="원주 판촉물 전문" />
+        </div>
+        <div class="field">
+          <label for="ban_button">버튼 이름</label>
+          <input id="ban_button" type="text" maxlength="20" placeholder="제이드몰" />
+        </div>
+        <div class="field full">
+          <label for="ban_subtitle">부제</label>
+          <input id="ban_subtitle" type="text" maxlength="90" placeholder="기업홍보 · 공공기관 · 홍보물 · 인쇄물" />
+        </div>
+        <div class="field full">
+          <label for="ban_alt">이미지 설명(alt) <span class="muted">(검색·화면읽기용)</span></label>
+          <input id="ban_alt" type="text" maxlength="120" placeholder="제이드몰 — 원주 판촉물 전문" />
+        </div>
+      </div>
+      <div class="form-footer">
+        <button class="btn primary" type="submit" id="bannerSaveBtn">배너 저장</button>
+        <span class="muted" id="bannerSaveStatus"></span>
+      </div>
+    </form>
+  </section>
+
+  <section class="card panel">
     <h2>사이트 설정</h2>
     <p class="hint">
       광고 심사에 필요한 사이트 이름·운영자·문의 이메일·도메인·AdSense 게시자 ID를 여기서 입력합니다. 저장하면 모든 공개 페이지에 바로 반영됩니다.
@@ -1003,6 +1071,140 @@ logoBox.reset.addEventListener('click', async () => {
   }
 });
 
+// ------------------------------------------------------------- 상단 배너
+
+const BAN = {
+  on: document.getElementById('ban_on'),
+  inApps: document.getElementById('ban_in_apps'),
+  url: document.getElementById('ban_url'),
+  newTab: document.getElementById('ban_newtab'),
+  title: document.getElementById('ban_title'),
+  subtitle: document.getElementById('ban_subtitle'),
+  button: document.getElementById('ban_button'),
+  alt: document.getElementById('ban_alt'),
+  preview: document.getElementById('bannerPreview'),
+  file: document.getElementById('bannerFile'),
+  upload: document.getElementById('bannerUploadBtn'),
+  reset: document.getElementById('bannerResetBtn'),
+  status: document.getElementById('bannerStatus'),
+};
+let bannerImage = { version: '', url: '', meta: null };
+
+function renderBannerImage(info) {
+  bannerImage = info || { version: '', url: '', meta: null };
+  const meta = bannerImage.meta || {};
+  if (bannerImage.version) {
+    BAN.preview.src = bannerImage.url || '/assets/banner.png';
+    const bits = [];
+    if (meta.width) bits.push(`${meta.width}×${meta.height}px`);
+    if (meta.size) bits.push(`${Math.round(meta.size / 1024)}KB`);
+    if (meta.name) bits.push(meta.name);
+    if (bannerImage.uploadedAt) bits.push(`올린 시각 ${new Date(bannerImage.uploadedAt).toLocaleString('ko-KR')}`);
+    BAN.status.textContent = bits.join(' · ');
+    BAN.preview.style.display = '';
+    BAN.preview.parentElement.classList.remove('is-text');
+  } else {
+    BAN.status.textContent = '글자 배너를 쓰는 중입니다 (아래 문구로 만들어집니다).';
+    BAN.preview.removeAttribute('src');
+    BAN.preview.style.display = 'none'; // 깨진 이미지 아이콘이 보이지 않게
+    BAN.preview.parentElement.classList.add('is-text');
+  }
+  BAN.reset.disabled = !bannerImage.version;
+}
+
+async function loadBanner() {
+  try {
+    const { banner } = await api('/api/banner');
+    renderBannerImage(banner);
+  } catch (err) {
+    BAN.status.textContent = `배너 정보를 불러오지 못했습니다: ${err.message}`;
+  }
+}
+
+BAN.file.addEventListener('change', () => {
+  if (BAN.file.files && BAN.file.files[0]) BAN.upload.click();
+});
+
+BAN.upload.addEventListener('click', async () => {
+  const file = BAN.file.files && BAN.file.files[0];
+  if (!file) { say('올릴 배너 이미지를 선택하세요', 'err'); return; }
+  const body = new FormData();
+  body.append('file', file);
+  BAN.upload.disabled = true;
+  BAN.status.textContent = '올리는 중...';
+  try {
+    const { banner } = await api('/api/banner', { method: 'POST', body });
+    renderBannerImage(banner);
+    BAN.file.value = '';
+    say('배너 이미지를 올렸습니다.');
+  } catch (err) {
+    BAN.status.textContent = `올리지 못했습니다: ${err.message}`;
+    say(err.message, 'err');
+  } finally {
+    BAN.upload.disabled = false;
+  }
+});
+
+BAN.reset.addEventListener('click', async () => {
+  if (bannerImage.version && !confirm('올린 배너 이미지를 지우고 글자 배너로 되돌릴까요?')) return;
+  BAN.reset.disabled = true;
+  try {
+    await api('/api/banner', { method: 'DELETE' });
+    await loadBanner();
+    say('글자 배너로 되돌렸습니다.');
+  } catch (err) {
+    say(err.message, 'err');
+  } finally {
+    BAN.reset.disabled = false;
+  }
+});
+
+document.getElementById('bannerForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('bannerSaveBtn');
+  const status = document.getElementById('bannerSaveStatus');
+  btn.disabled = true;
+  status.textContent = '저장 중...';
+  try {
+    const { site } = await api('/api/site', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        banner: {
+          enabled: BAN.on.checked,
+          showInApps: BAN.inApps.checked,
+          url: BAN.url.value,
+          newTab: BAN.newTab.checked,
+          title: BAN.title.value,
+          subtitle: BAN.subtitle.value,
+          button: BAN.button.value,
+          alt: BAN.alt.value,
+        },
+      }),
+    });
+    fillBanner(site.banner);
+    status.textContent = '저장되었습니다';
+    say(site.banner.enabled ? '상단 배너를 저장했습니다. 모든 페이지 맨 위에 바로 나타납니다.' : '상단 배너를 저장했습니다(현재 꺼짐).');
+  } catch (err) {
+    status.textContent = '';
+    say(err.message, 'err');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+function fillBanner(banner = {}) {
+  BAN.on.checked = Boolean(banner.enabled);
+  BAN.inApps.checked = banner.showInApps !== false;
+  BAN.url.value = banner.url || '';
+  BAN.newTab.checked = banner.newTab !== false;
+  BAN.title.value = banner.title || '';
+  BAN.subtitle.value = banner.subtitle || '';
+  BAN.button.value = banner.button || '';
+  BAN.alt.value = banner.alt || '';
+  loadBanner();
+}
+
 // ------------------------------------------------------------- 후원 안내
 
 const won = (n) => String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -1166,6 +1368,7 @@ function fillSite(site) {
   S.homeDesc.value = site.homeDescription || '';
   S.showAdmin.checked = Boolean(site.showAdminLink);
   fillSupport(site.support);
+  fillBanner(site.banner);
 }
 
 async function loadSite() {

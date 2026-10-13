@@ -13,12 +13,14 @@ const { handleApi, json, HttpError } = require('./api');
 const store = require('./store');
 const auth = require('./auth');
 const build = require('../src/build');
-const { injectAppAds, injectAppMeta } = require('../src/miniapp-ads');
+const { injectAppAds, injectAppMeta, injectAppBanner } = require('../src/miniapp-ads');
 const { redactSecrets } = require('../src/secrets');
 
 const CANONICAL_HOST = 'www.reversroad.com';
 // 관리자가 올린 로고를 내려보내는 주소 (기본 로고 파일과 같은 이름)
 const LOGO_PATHS = new Set(['/assets/logo.png', '/assets/logo.jpg', '/assets/logo.jpeg', '/assets/logo.webp', '/assets/logo.gif']);
+// 관리자가 올린 상단 배너 이미지를 내려보내는 주소
+const BANNER_PATHS = new Set(['/assets/banner.png', '/assets/banner.jpg', '/assets/banner.jpeg', '/assets/banner.webp', '/assets/banner.gif']);
 const PRODUCTION_HOSTS = new Set([CANONICAL_HOST, 'reversroad.com']);
 
 /** 같은 페이지가 여러 주소로 열리지 않도록 표준 주소로 301 (링크 점수 한 곳으로 모음) */
@@ -64,10 +66,14 @@ export default {
         return serveAsset(request, env, path, { 'cache-control': 'no-store' });
       }
 
-      // 2-1) 관리자가 올린 로고 (KV) — 배포된 기본 로고 파일보다 우선
+      // 2-1) 관리자가 올린 로고·배너 (KV) — 배포된 기본 파일보다 우선
       if (LOGO_PATHS.has(path) && (request.method === 'GET' || request.method === 'HEAD')) {
         const uploaded = await store.readLogo(env);
-        if (uploaded) return logoResponse(request, uploaded);
+        if (uploaded) return kvAssetResponse(request, uploaded);
+      }
+      if (BANNER_PATHS.has(path) && (request.method === 'GET' || request.method === 'HEAD')) {
+        const uploaded = await store.readBanner(env);
+        if (uploaded) return kvAssetResponse(request, uploaded);
       }
 
       // 2-2) 사용설명서 원문(.md)
@@ -109,6 +115,7 @@ export default {
               const publicSite = store.publicSite(site, url.host);
               let served = redactSecrets(new TextDecoder().decode(body)).html; // 혹시 남아 있으면 내보내지 않음
               served = injectAppMeta(served, { app, site: publicSite });
+              served = injectAppBanner(served, { site: publicSite });
               if (ads.inApps !== false) {
                 const html = injectAppAds(served, {
                   client: ads.client,
@@ -139,7 +146,9 @@ export default {
           const ads = site.adsense || {};
           const appId = (path.match(/^\/apps\/([^/]+)/) || [])[1];
           const app = appId ? await store.getApp(env, decodeURIComponent(appId)) : null;
-          let text = injectAppMeta(redactSecrets(await asset.text()).html, { app, site: store.publicSite(site, url.host) });
+          const publicSite = store.publicSite(site, url.host);
+          let text = injectAppMeta(redactSecrets(await asset.text()).html, { app, site: publicSite });
+          text = injectAppBanner(text, { site: publicSite });
           if (ads.inApps !== false) {
             const html = injectAppAds(text, {
               client: ads.client,
@@ -197,10 +206,10 @@ export default {
 };
 
 /**
- * 관리자가 올린 로고를 내려보냅니다.
+ * 관리자가 올린 로고·배너 이미지를 내려보냅니다.
  * 로고를 바꾸면 곧바로 보여야 하므로 캐시하지 않고(no-cache) ETag 로만 다시 확인합니다.
  */
-function logoResponse(request, { body, meta }) {
+function kvAssetResponse(request, { body, meta }) {
   const etag = `"${meta.version || meta.hash || 'logo'}"`;
   const headers = {
     'content-type': meta.contentType || 'image/png',

@@ -93,6 +93,23 @@ async function main() {
     console.log('△ 올린 로고 없음(기본 로고 사용 중)');
   }
 
+  // 관리자가 올린 상단 배너도 내려받습니다 (없으면 기존 파일 유지)
+  try {
+    const banner = await getValue(token, 'asset:banner');
+    const metaRaw = await getValue(token, 'asset:banner-meta');
+    const meta = JSON.parse(metaRaw.toString('utf8'));
+    const ext = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' }[meta.contentType] || 'png';
+    const dir = path.join(outRoot, 'public', 'assets');
+    fs.mkdirSync(dir, { recursive: true });
+    for (const name of ['banner.png', 'banner.jpg', 'banner.jpeg', 'banner.webp', 'banner.gif']) {
+      try { fs.unlinkSync(path.join(dir, name)); } catch { /* 없으면 무시 */ }
+    }
+    fs.writeFileSync(path.join(dir, `banner.${ext}`), banner);
+    console.log(`✓ 상단 배너 ${Math.round(banner.length / 1024)}KB → public/assets/banner.${ext}`);
+  } catch {
+    console.log('△ 올린 상단 배너 없음(글자 배너 사용 중)');
+  }
+
   const fileKeys = await listKeys(token, 'file:');
   let count = 0;
   for (const key of fileKeys) {

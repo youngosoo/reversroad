@@ -30,6 +30,19 @@ const DEFAULTS = {
     slotDisplay: '', // 콘텐츠 페이지용 광고 단위 ID (숫자)
     inApps: true, // 업로드된 앱 화면에도 광고를 넣을지
   },
+  // 상단 고정 배너 (관리자 → 상단 배너). 이미지를 올리면 이미지 배너, 없으면 글자 배너.
+  banner: {
+    enabled: false,
+    url: 'http://www.jademol.com',
+    newTab: true,
+    alt: '제이드몰 — 원주 판촉물 전문',
+    title: '원주 판촉물 전문',
+    subtitle: '기업홍보 · 공공기관 · 홍보물 · 인쇄물',
+    button: '제이드몰',
+    showInApps: true, // 앱 실행 화면 상단에도 고정으로 붙일지
+    version: '', // 올린 배너 이미지 내용 해시
+    meta: null, // { contentType, size, width, height, name, uploadedAt }
+  },
   // 후원 안내 (관리자 → 후원 안내). 계좌는 최대 3개까지 보여 줍니다.
   support: {
     enabled: false,
@@ -86,6 +99,26 @@ function normalizeDonors(list) {
     })
     .filter((d) => d.name || d.amount > 0)
     .slice(0, MAX_DONORS);
+}
+
+/** 상단 배너 값을 다듬습니다 (주소 형식 확인, 문구 길이 제한) */
+function normalizeBanner(input) {
+  const raw = input && typeof input === 'object' ? input : {};
+  const clip = (v, n) => String(v ?? '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, n);
+  const url = clip(raw.url, 300);
+  const safeUrl = /^(https?:\/\/|\/)/i.test(url) ? url : 'http://www.jademol.com';
+  return {
+    enabled: raw.enabled === true,
+    url: safeUrl,
+    newTab: raw.newTab !== false,
+    alt: clip(raw.alt, 120),
+    title: clip(raw.title, 60),
+    subtitle: clip(raw.subtitle, 90),
+    button: clip(raw.button, 20),
+    showInApps: raw.showInApps !== false,
+    version: clip(raw.version, 40),
+    meta: raw.meta && typeof raw.meta === 'object' ? raw.meta : null,
+  };
 }
 
 /** 후원 안내 값을 안전한 형태로 다듬습니다 (계좌 3개까지, 길이 제한) */
@@ -153,6 +186,7 @@ function publicSite(site, reqDomain = '') {
     email,
     adsense: { ...site.adsense, client },
     support: normalizeSupport(site.support),
+    banner: normalizeBanner(site.banner),
     emailReady: Boolean(email) && !isPlaceholderEmail(email),
     domainReady: Boolean(domain) && !/localhost|127\.0\.0\.1/.test(domain) && domain.startsWith('https://'),
     adsenseReady: /^ca-pub-\d{10,}$/.test(client),
@@ -166,6 +200,7 @@ module.exports = {
   merge,
   normalizeSupport,
   normalizeDonors,
+  normalizeBanner,
   isPlaceholderEmail,
   normalizeAdsClient,
   publicSite,

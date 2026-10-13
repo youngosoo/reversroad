@@ -20,7 +20,7 @@ const auth = require('./src/auth');
 const siteStore = require('./src/site');
 const categories = require('./src/categories');
 const imageLib = require('./src/image');
-const { logoUrl } = require('./src/assets');
+const { logoUrl, bannerUrl } = require('./src/assets');
 const passwordStore = require('./src/password');
 const seo = require('./src/seo');
 const pages = require('./src/views/pages');
@@ -299,6 +299,9 @@ app.put('/api/site', auth.requireAuth, async (req, res, next) => {
 
 const LOGO_FILE = path.join(PUBLIC_DIR, 'assets', 'logo.png');
 const LOGO_BACKUP = path.join(PUBLIC_DIR, 'assets', 'logo.default.png');
+const BANNER_EXT = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' };
+const bannerFiles = () => ['banner.png', 'banner.jpg', 'banner.jpeg', 'banner.webp', 'banner.gif']
+  .map((name) => path.join(PUBLIC_DIR, 'assets', name));
 
 const logoHash = (buffer) => crypto.createHash('sha1').update(buffer).digest('hex').slice(0, 8);
 
@@ -370,6 +373,69 @@ app.delete('/api/logo', auth.requireAuth, async (req, res, next) => {
     }
     const saved = await siteStore.writeSite({ logoVersion: '', logoUploadedAt: null, logoMeta: null });
     res.json({ ok: true, restored, site: siteStore.publicSite(saved, `${req.protocol}://${req.get('host')}`) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ---------------- 상단 배너 (관리자 업로드) ----------------
+
+app.get('/api/banner', async (req, res, next) => {
+  try {
+    const site = await currentSite(req);
+    res.json({
+      banner: {
+        url: bannerUrl(site),
+        version: site.banner.version || '',
+        uploadedAt: (site.banner.meta && site.banner.meta.uploadedAt) || null,
+        meta: site.banner.meta || null,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.post('/api/banner', auth.requireAuth, upload.single('file'), async (req, res, next) => {
+  try {
+    const file = req.file;
+    if (!file) throw badRequest('올릴 배너 이미지를 선택하세요');
+    const check = imageLib.validate(new Uint8Array(file.buffer));
+    if (!check.ok) throw badRequest(check.error);
+
+    for (const target of bannerFiles()) {
+      try { await fsp.unlink(target); } catch { /* 없으면 무시 */ }
+    }
+    const target = path.join(PUBLIC_DIR, 'assets', `banner.${BANNER_EXT[check.image.type] || 'png'}`);
+    await fsp.mkdir(path.dirname(target), { recursive: true });
+    await fsp.writeFile(target, file.buffer);
+
+    const meta = {
+      contentType: check.image.type,
+      size: check.image.bytes,
+      width: check.image.width,
+      height: check.image.height,
+      name: String(file.originalname || '').slice(0, 120),
+      version: logoHash(file.buffer),
+      uploadedAt: new Date().toISOString(),
+    };
+    const saved = await siteStore.writeSite({ banner: { version: meta.version, meta } });
+    res.json({
+      banner: { url: bannerUrl(siteStore.publicSite(saved, `${req.protocol}://${req.get('host')}`)), version: meta.version, uploadedAt: meta.uploadedAt, meta },
+      site: siteStore.publicSite(saved, `${req.protocol}://${req.get('host')}`),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.delete('/api/banner', auth.requireAuth, async (req, res, next) => {
+  try {
+    for (const target of bannerFiles()) {
+      try { await fsp.unlink(target); } catch { /* 없으면 무시 */ }
+    }
+    const saved = await siteStore.writeSite({ banner: { version: '', meta: null } });
+    res.json({ ok: true, site: siteStore.publicSite(saved, `${req.protocol}://${req.get('host')}`) });
   } catch (err) {
     next(err);
   }
@@ -597,6 +663,7 @@ app.get([/^\/apps\/([a-z0-9-]+)\/$/i, /^\/apps\/([a-z0-9-]+)\/([^/]+\.html?)$/i]
     if (!target.startsWith(APPS_DIR)) return next();
     let html = secrets.cleanHtml(await fsp.readFile(target, 'utf8')).html;
     html = miniappAds.injectAppMeta(html, { app: await manifest.getApp(slug), site });
+    html = miniappAds.injectAppBanner(html, { site });
     res.type('html').send(miniappAds.injectAppAds(html, {
       client: ads.client,
       slot: ads.slotDisplay || ads.slotInline,

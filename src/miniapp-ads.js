@@ -1,5 +1,7 @@
 'use strict';
 
+const { bannerParts } = require('./banner');
+
 /**
  * 업로드된 앱 화면(/apps/<id>/…)에 애드센스 광고 코드를 끼워 넣습니다.
  *
@@ -103,4 +105,54 @@ function injectAppMeta(html, { app, site } = {}) {
   return `${tags.join('\n')}\n${out}`;
 }
 
-module.exports = { injectAppAds, injectAppMeta, headTag, adBlock, PUB_RE };
+/**
+ * 앱 화면 상단에 고정 배너를 넣습니다.
+ *
+ * 앱은 자기 CSS 를 쓰므로 #rr-promo-banner 안에서만 적용되는 스타일을 함께 넣고,
+ * position: sticky 로 두어 앱의 고정 툴바를 가리지 않습니다(안 되면 그냥 맨 위에 표시).
+ */
+function injectAppBanner(html, { site } = {}) {
+  if (typeof html !== 'string' || !html) return html;
+  const parts = bannerParts(site);
+  if (!parts) return html;
+  if (!parts.image && !parts.title && !parts.button) return html;
+  if (site && site.banner && site.banner.showInApps === false) return html;
+  if (/id=["']rr-promo-banner["']/.test(html)) return html; // 이미 들어 있으면 그대로
+
+  const escAttr = (v) => String(v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const target = parts.target ? ' target="_blank" rel="noopener"' : '';
+  const inner = parts.image
+    ? `<img src="${escAttr(parts.image)}" alt="${escAttr(parts.alt)}" />`
+    : [
+      '<span class="rb-text">',
+      parts.title ? `<b>${escAttr(parts.title)}</b>` : '',
+      parts.subtitle ? `<i>${escAttr(parts.subtitle)}</i>` : '',
+      '</span>',
+      parts.button ? `<span class="rb-cta">${escAttr(parts.button)}</span>` : '',
+    ].join('');
+
+  const block = `<div id="rr-promo-banner"><a href="${escAttr(parts.url)}"${target} aria-label="${escAttr(`${parts.title || parts.alt} 바로가기`)}">${inner}</a></div>
+<style>
+#rr-promo-banner{position:sticky;top:0;z-index:2147483000;width:100%;}
+#rr-promo-banner a{display:flex;align-items:center;justify-content:center;gap:14px;min-height:60px;padding:7px 14px;background:linear-gradient(120deg,#0e4a3c,#136450 55%,#0e4a3c);color:#fff;text-decoration:none;font-family:inherit;}
+#rr-promo-banner img{display:block;width:auto;max-width:100%;max-height:104px;height:auto;object-fit:contain;}
+#rr-promo-banner .rb-text{display:flex;flex-direction:column;gap:2px;line-height:1.25;}
+#rr-promo-banner .rb-text b{font-size:1.05rem;font-weight:800;letter-spacing:-0.01em;}
+#rr-promo-banner .rb-text i{font-style:normal;font-size:0.82rem;opacity:0.85;}
+#rr-promo-banner .rb-cta{border:1px solid rgba(255,255,255,0.7);border-radius:999px;padding:5px 14px;font-size:0.85rem;font-weight:700;white-space:nowrap;}
+@media (max-width:640px){
+  #rr-promo-banner a{gap:10px;min-height:52px;padding:7px 12px;}
+  #rr-promo-banner img{max-height:76px;}
+  #rr-promo-banner .rb-text i{display:none;}
+}
+</style>
+`;
+
+  if (/<body[^>]*>/i.test(html)) return html.replace(/<body[^>]*>/i, (m) => `${m}
+${block}`);
+  if (/<html[^>]*>/i.test(html)) return html.replace(/<html[^>]*>/i, (m) => `${m}
+${block}`);
+  return block + html;
+}
+
+module.exports = { injectAppAds, injectAppMeta, injectAppBanner, headTag, adBlock, PUB_RE };

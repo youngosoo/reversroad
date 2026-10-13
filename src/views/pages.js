@@ -154,10 +154,12 @@ function won(amount) {
 /** 2026-10 → 2026년 10월 / 2026-10-13 → 2026.10.13 */
 const monthLabel = (ym) => `${ym.slice(0, 4)}년 ${Number(ym.slice(5, 7))}월`;
 const dayLabel = (date) => (date ? date.replace(/-/g, '.') : '');
+/** 한국 시간 기준 이번 달 (YYYY-MM) */
+const kstMonth = () => new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 7);
 
 /**
- * 후원 내역 — 합계금액 · 월별 누적 · 후원자 명단.
- * (관리자에서 성명(닉네임)·후원금·날짜를 입력하면 자동으로 계산됩니다)
+ * 후원 내역 — 누적 합계금액(크게) · 월별 누적금액 · 후원자 명단.
+ * 관리자에서 성명(닉네임)·후원금·날짜를 입력하면 자동으로 계산됩니다.
  */
 function supportLedger(support) {
   if (support.donorsEnabled === false) return '';
@@ -171,51 +173,69 @@ function supportLedger(support) {
     byMonth.set(ym, (byMonth.get(ym) || 0) + (Number(d.amount) || 0));
   }
   const months = [...byMonth.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  const thisMonth = kstMonth();
   const maxMonth = Math.max(1, ...months.map(([, amount]) => amount));
   let running = 0;
   const monthRows = months.map(([ym, amount]) => {
     running += amount;
     const width = Math.max(4, Math.round((amount / maxMonth) * 100));
+    const isCurrent = ym === thisMonth;
     return `
-        <li>
-          <span class="lm-month">${esc(monthLabel(ym))}</span>
-          <span class="lm-bar" aria-hidden="true"><i style="width:${width}%"></i></span>
-          <span class="lm-amount">${won(amount)}원</span>
-          <span class="lm-cum">누적 ${won(running)}원</span>
-        </li>`;
+              <li${isCurrent ? ' class="current"' : ''}>
+                <span class="lm-month">${esc(monthLabel(ym))}${isCurrent ? '<span class="lm-now">이번 달</span>' : ''}</span>
+                <span class="lm-bar" aria-hidden="true"><i style="width:${width}%"></i></span>
+                <span class="lm-amount">${won(amount)}원</span>
+                <span class="lm-cum">누적 ${won(running)}원</span>
+              </li>`;
   }).join('');
 
   const rows = [...donors]
     .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
     .map((d) => `
-          <tr>
-            <td>${esc(d.name || '익명')}</td>
-            <td class="num">${won(d.amount)}원</td>
-            <td class="muted">${esc(dayLabel(d.date) || '—')}</td>
-          </tr>`).join('');
+              <tr>
+                <td>
+                  <span class="donor-name">
+                    <span class="donor-avatar" aria-hidden="true">${esc((d.name || '익').slice(0, 1))}</span>
+                    ${esc(d.name || '익명')}
+                  </span>
+                </td>
+                <td class="num">${won(d.amount)}원</td>
+                <td class="muted mono-date">${esc(dayLabel(d.date) || '—')}</td>
+              </tr>`).join('');
 
   return `
-      <div class="support-ledger">
-        <div class="ledger-head">
-          <div>
-            <p class="viz-kicker">후원 내역</p>
-            <p class="ledger-total"><strong>${won(total)}</strong>원</p>
-            <p class="muted small">누적 합계 · 후원자 ${donors.length}명${months.length ? ` · ${months.length}개월` : ''}</p>
+        <div class="support-ledger">
+          <div class="ledger-total-card">
+            <p class="viz-kicker">누적 후원 합계</p>
+            <p class="ledger-total"><strong>${won(total)}</strong><span>원</span></p>
+            <ul class="ledger-chips">
+              <li>후원자 <b>${donors.length}</b>명</li>
+              ${months.length ? `<li>기간 <b>${months.length}</b>개월</li>` : ''}
+              ${byMonth.get(thisMonth) ? `<li>이번 달 <b>${won(byMonth.get(thisMonth))}</b>원</li>` : ''}
+            </ul>
           </div>
-          ${months.length ? `<ul class="ledger-months">${monthRows}
-          </ul>` : ''}
-        </div>
-        ${donors.length
-          ? `<div class="ledger-list">
-          <table class="ledger-table">
-            <caption class="sr-only">후원자 명단</caption>
-            <thead><tr><th scope="col">성명(닉네임)</th><th scope="col">후원금</th><th scope="col">날짜</th></tr></thead>
-            <tbody>${rows}
-            </tbody>
-          </table>
-        </div>`
-          : '<p class="muted small ledger-empty">아직 후원 내역이 없습니다. 후원해 주시면 합계·월별 누적과 함께 빠짐없이 기록합니다.</p>'}
-      </div>`;
+          <div class="ledger-panels">
+            ${months.length ? `
+            <section class="ledger-panel">
+              <p class="viz-kicker">월별 누적금액</p>
+              <ul class="ledger-months">${monthRows}
+              </ul>
+            </section>` : ''}
+            <section class="ledger-panel">
+              <p class="viz-kicker">후원자 명단 <span class="muted">${donors.length}명</span></p>
+              ${donors.length
+                ? `<div class="ledger-list">
+                <table class="ledger-table">
+                  <caption class="sr-only">후원자 명단</caption>
+                  <thead><tr><th scope="col">성명(닉네임)</th><th scope="col">후원금</th><th scope="col">날짜</th></tr></thead>
+                  <tbody>${rows}
+                  </tbody>
+                </table>
+              </div>`
+                : `<p class="ledger-empty">아직 후원 내역이 없습니다.<br /><span class="muted">첫 후원이 들어오면 합계·월별 누적과 함께 이곳에 빠짐없이 기록합니다.</span></p>`}
+            </section>
+          </div>
+        </div>`;
 }
 
 /** 후원 안내 — 관리자에서 켜고 내용을 고칩니다 (메인 페이지) */
@@ -227,7 +247,8 @@ function supportSection(site) {
   if (!accounts.length && !message.length) return '';
   return `
     <section class="section support" id="support">
-      <div class="card support-card">
+      <div class="support-band">
+        <div class="support-main">
         <div class="support-copy">
           <p class="eyebrow">💛 함께 만들어 주세요</p>
           <h2>${esc(support.title || '후원 안내')}</h2>
@@ -243,6 +264,7 @@ function supportSection(site) {
               ${a.account ? `<button class="btn small" type="button" data-copy="${attr(a.account)}">계좌번호 복사</button>` : ''}
             </li>`).join('')}
         </ul>
+        </div>
         ${supportLedger(support)}
       </div>
     </section>`;

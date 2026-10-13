@@ -381,49 +381,101 @@ header.top .theme-toggle { margin-left: 0; }
 }
 
 /* ------------------------------------------------------ 4-2) 후원 안내 */
-.support-card {
-  display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
-  gap: clamp(20px, 3vw, 36px); align-items: start;
-  padding: clamp(20px, 3vw, 32px);
+.support-band {
+  position: relative; overflow: hidden;
+  display: grid; gap: clamp(20px, 3vw, 34px);
+  padding: clamp(22px, 3vw, 38px);
+  border: 1px solid var(--border); border-radius: var(--radius-lg);
   background:
-    radial-gradient(600px 220px at 0% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%),
+    radial-gradient(ellipse 55% 50% at 92% 4%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 70%),
+    radial-gradient(ellipse 45% 40% at 4% 100%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 70%),
     var(--surface);
+  box-shadow: var(--shadow-lg);
 }
-.support-copy h2 { margin: 0 0 0.6em; }
+.support-main { display: grid; gap: clamp(20px, 3vw, 34px); grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.7fr); align-items: start; }
+.support-copy h2 { margin: 0 0 0.55em; font-size: clamp(1.35rem, 1.15rem + 0.8vw, 1.75rem); letter-spacing: -0.02em; }
 .support-copy p { color: var(--text-soft); }
 .support-copy p:last-child { margin-bottom: 0; }
+
+/* 계좌 슬립 */
 .support-accounts { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
 .support-accounts li {
-  display: grid; gap: 4px; justify-items: start;
-  background: var(--surface-2); border: 1px solid var(--border);
-  border-radius: var(--radius); padding: 16px 18px;
+  position: relative; display: grid; gap: 3px; justify-items: start;
+  padding: 18px 20px 18px 22px;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius);
+}
+.support-accounts li::before {
+  content: ''; position: absolute; left: 0; top: 14px; bottom: 14px; width: 3px;
+  background: var(--accent); border-radius: 0 3px 3px 0;
 }
 .sa-bank { margin: 0; font-weight: 700; font-size: 0.9375rem; }
 .sa-account {
   margin: 0; font-weight: 800; letter-spacing: 0.01em; color: var(--accent);
-  font-size: clamp(1.125rem, 1rem + 1vw, 1.5rem); font-variant-numeric: tabular-nums;
+  font-size: clamp(1.15rem, 1rem + 1vw, 1.5rem); font-variant-numeric: tabular-nums;
 }
-.sa-holder { margin: 0 0 8px; font-size: 0.8125rem; color: var(--muted); }
+.sa-holder { margin: 0 0 10px; font-size: 0.8125rem; color: var(--muted); }
 
 /* 후원 내역 — 합계·월별 누적·명단 */
-.support-ledger {
-  grid-column: 1 / -1; margin-top: 2px; padding-top: 20px;
-  border-top: 1px solid var(--border); display: grid; gap: 18px;
+.support-ledger { display: grid; gap: 16px; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); align-items: stretch; }
+.ledger-total-card {
+  display: grid; gap: 6px; align-content: center;
+  padding: clamp(18px, 2.2vw, 26px);
+  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
+  border-radius: var(--radius);
+  background: linear-gradient(165deg, color-mix(in srgb, var(--accent) 12%, var(--surface-2)), var(--surface-2) 72%);
 }
-.ledger-head { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); align-items: center; }
-.ledger-total { margin: 0; font-size: clamp(1.75rem, 1.3rem + 1.8vw, 2.5rem); font-weight: 800; line-height: 1.1; letter-spacing: -0.03em; }
-.ledger-total strong { color: var(--accent); }
-.ledger-months { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; font-size: 0.875rem; }
-.ledger-months li { display: grid; grid-template-columns: 92px minmax(0, 1fr) 100px 124px; gap: 10px; align-items: center; }
-.lm-month { color: var(--muted); white-space: nowrap; }
-.lm-bar { height: 10px; border-radius: 999px; overflow: hidden; background: var(--surface-2); border: 1px solid var(--border); }
-.lm-bar i { display: block; height: 100%; background: var(--accent); }
+.ledger-total { display: flex; align-items: baseline; gap: 7px; margin: 0; flex-wrap: wrap; }
+.ledger-total strong {
+  font-size: clamp(2.5rem, 1.4rem + 3.6vw, 3.9rem); font-weight: 800; line-height: 1;
+  letter-spacing: -0.045em; color: var(--accent); font-variant-numeric: tabular-nums;
+}
+.ledger-total span { font-size: clamp(1rem, 0.85rem + 0.6vw, 1.4rem); font-weight: 700; color: var(--muted); }
+.ledger-chips { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 8px; padding: 0; margin: 8px 0 0; font-size: 0.8125rem; color: var(--muted); }
+.ledger-chips li { padding: 4px 11px; border: 1px solid var(--border); border-radius: 999px; background: color-mix(in srgb, var(--surface) 72%, transparent); }
+.ledger-chips b { color: var(--text); font-variant-numeric: tabular-nums; }
+
+.ledger-panels { display: grid; gap: 16px; }
+.ledger-panel { padding: clamp(16px, 2vw, 22px); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-2); }
+.ledger-panel .viz-kicker { margin-bottom: 12px; }
+
+.ledger-months { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; font-size: 0.875rem; }
+.ledger-months li { display: grid; grid-template-columns: 152px minmax(0, 1fr) 104px 128px; gap: 10px; align-items: center; }
+.lm-month { color: var(--muted); white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.ledger-months li.current .lm-month { color: var(--text); font-weight: 700; }
+.lm-now { font-style: normal; font-size: 0.6875rem; font-weight: 700; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 1px 7px; }
+.lm-bar { height: 12px; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--surface) 75%, transparent); border: 1px solid var(--border); }
+.lm-bar i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 60%, transparent), var(--accent)); }
 .lm-amount { font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
 .lm-cum { color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.ledger-list { max-height: 420px; overflow: auto; }
+
+.ledger-list { max-height: 380px; overflow: auto; }
+.ledger-table th, .ledger-table td { padding: 10px 12px; font-size: 0.9375rem; }
 .ledger-table th:last-child, .ledger-table td:last-child { text-align: right; }
-.ledger-table td.num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; }
-.ledger-empty { margin: 0; }
+.ledger-table td.num { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ledger-table .mono-date { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.donor-name { display: inline-flex; align-items: center; gap: 9px; }
+.donor-avatar {
+  width: 26px; height: 26px; border-radius: 50%; flex: 0 0 auto;
+  display: grid; place-items: center; background: var(--accent-soft); color: var(--accent);
+  font-size: 0.75rem; font-weight: 800;
+}
+.ledger-empty { margin: 0; padding: 20px; border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); text-align: center; color: var(--text-soft); }
+.ledger-empty .muted { display: inline-block; margin-top: 4px; font-size: 0.875rem; }
+
+@media (max-width: 900px) {
+  .support-main, .support-ledger { grid-template-columns: minmax(0, 1fr); }
+  .ledger-months li { grid-template-columns: 140px minmax(0, 1fr) 96px 116px; }
+}
+@media (max-width: 640px) {
+  .ledger-table th, .ledger-table td { padding: 10px 6px; font-size: 0.875rem; }
+  .ledger-table td.num { white-space: nowrap; }
+  .ledger-table .mono-date { font-size: 0.75rem; }
+  .donor-name { gap: 6px; }
+  .donor-avatar { width: 22px; height: 22px; font-size: 0.6875rem; }
+  .ledger-months li { grid-template-columns: minmax(0, 1fr) auto; gap: 5px 10px; }
+  .lm-bar { grid-column: 1 / -1; }
+  .lm-cum { grid-column: 1 / -1; text-align: right; font-size: 0.8125rem; }
+}
 
 /* 관리자 — 후원자 입력 줄 */
 .donor-table { display: grid; gap: 8px; }
@@ -433,10 +485,6 @@ header.top .theme-toggle { margin-left: 0; }
 .donor-row .btn { padding: 8px 10px; }
 
 @media (max-width: 820px) {
-  .support-card { grid-template-columns: minmax(0, 1fr); }
-  .ledger-head { grid-template-columns: minmax(0, 1fr); }
-  .ledger-months li { grid-template-columns: 84px minmax(0, 1fr) 96px; }
-  .lm-cum { grid-column: 2 / -1; text-align: right; }
   .donor-head { display: none; }
   .donor-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) 44px; }
 }

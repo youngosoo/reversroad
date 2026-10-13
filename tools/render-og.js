@@ -40,7 +40,7 @@ function page({ title, subtitle, chips, badge }) {
   * { box-sizing: border-box; margin: 0; }
   body {
     width: 1200px; height: 630px; overflow: hidden;
-    font-family: -apple-system, "Apple SD Gothic Neo", "Segoe UI", system-ui, sans-serif;
+    font-family: "Paperlogy", -apple-system, "Apple SD Gothic Neo", "Segoe UI", system-ui, sans-serif;
     background: #FFD400; color: #0D0D0D;
     display: flex; flex-direction: column; justify-content: space-between; padding: 64px 72px;
     position: relative;
@@ -141,6 +141,8 @@ class CDP {
 
     for (const shot of shots) {
       await cdp.send('Page.navigate', { url: `data:text/html;charset=utf-8,${encodeURIComponent(shot.html)}` });
+      // 웹폰트(Paperlogy)가 준비될 때까지 기다립니다
+      try { await cdp.eval('document.fonts && document.fonts.ready ? document.fonts.ready.then(() => true) : true'); } catch { /* 무시 */ }
       await sleep(700);
       const png = await cdp.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
       fs.writeFileSync(shot.file, Buffer.from(png.data, 'base64'));

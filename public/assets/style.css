@@ -4,6 +4,35 @@
    4) 공개 페이지  5) 관리자 화면(admin.html, login.html)  6) 반응형
    ========================================================================= */
 
+/* ------------------------------------------------ 0) 웹폰트: 페이퍼로지 */
+/* 프로젝트눈누(Project Noonnu) Paperlogy — jsDelivr 배포본.
+   앱 화면(compound-lab 등)과 같은 주소를 쓰므로 브라우저가 한 번만 내려받습니다. */
+@font-face {
+  font-family: 'Paperlogy';
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-4Regular.woff2') format('woff2');
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Paperlogy';
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-5Medium.woff2') format('woff2');
+  font-weight: 500; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Paperlogy';
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-6SemiBold.woff2') format('woff2');
+  font-weight: 600; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Paperlogy';
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-7Bold.woff2') format('woff2');
+  font-weight: 700; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: 'Paperlogy';
+  src: url('https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-8ExtraBold.woff2') format('woff2');
+  font-weight: 800; font-style: normal; font-display: swap;
+}
+
 /* ------------------------------------------------------------ 1) 토큰 */
 /* 색상 값은 한 곳에서만 정의하고, 라이트/다크 두 팔레트를 아래에서 매핑합니다. */
 :root {
@@ -160,7 +189,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font: 16px/1.72 system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  font: 16px/1.72 "Paperlogy", system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -381,17 +410,47 @@ header.top .theme-toggle { margin-left: 0; }
 }
 
 /* ------------------------------------------------------ 4-2) 후원 안내 */
+/* 브랜드 노랑(로고의 #FFD400)으로 강조 — 밴드 안에서만 색 토큰을 다시 정의해
+   흰 카드 + 검정 글씨로 또렷하게 읽히도록 합니다. (라이트/다크 모두 노랑 유지) */
+.section.support {
+  --band-yellow: #ffd400;
+  --band-yellow-deep: #eec300;
+  --surface: #ffffff;
+  --surface-2: rgba(255, 255, 255, 0.74);
+  --border: rgba(13, 13, 13, 0.12);
+  --border-strong: rgba(13, 13, 13, 0.28);
+  --text: #16130a;
+  --text-soft: #3d3726;
+  --muted: #6b6450;
+  --accent: #16130a;
+  --accent-soft: rgba(13, 13, 13, 0.08);
+  --accent-contrast: #ffffff;
+  --shadow-xs: 0 1px 2px rgba(74, 60, 0, 0.14);
+  --shadow: 0 1px 2px rgba(74, 60, 0, 0.12), 0 10px 24px -14px rgba(74, 60, 0, 0.35);
+  --shadow-lg: 0 2px 4px rgba(74, 60, 0, 0.14), 0 24px 46px -24px rgba(74, 60, 0, 0.4);
+}
 .support-band {
   position: relative; overflow: hidden;
   display: grid; gap: clamp(20px, 3vw, 34px);
   padding: clamp(22px, 3vw, 38px);
-  border: 1px solid var(--border); border-radius: var(--radius-lg);
+  border: 1px solid rgba(13, 13, 13, 0.22); border-radius: var(--radius-lg);
   background:
-    radial-gradient(ellipse 55% 50% at 92% 4%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 70%),
-    radial-gradient(ellipse 45% 40% at 4% 100%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 70%),
-    var(--surface);
+    radial-gradient(ellipse 58% 55% at 94% 0%, rgba(255, 255, 255, 0.55), transparent 70%),
+    radial-gradient(ellipse 50% 45% at 2% 100%, rgba(255, 255, 255, 0.32), transparent 70%),
+    linear-gradient(152deg, var(--band-yellow) 0%, var(--band-yellow) 58%, var(--band-yellow-deep) 100%);
   box-shadow: var(--shadow-lg);
 }
+/* 은은한 도트 무늬로 브랜드 느낌 (로고의 노란 원과 어울리게) */
+.support-band::before {
+  content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background-image: radial-gradient(circle, rgba(13, 13, 13, 0.16) 1px, transparent 1px);
+  background-size: 22px 22px;
+  mask-image: linear-gradient(115deg, transparent 42%, #000 100%);
+  -webkit-mask-image: linear-gradient(115deg, transparent 42%, #000 100%);
+}
+.support-band > * { position: relative; z-index: 1; }
+/* 노랑 바탕 위에서는 뱃지를 흰색으로 (또렷하게) */
+.section.support .eyebrow { background: rgba(255, 255, 255, 0.92); border-color: rgba(13, 13, 13, 0.16); color: var(--text); }
 .support-main { display: grid; gap: clamp(20px, 3vw, 34px); grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.7fr); align-items: start; }
 .support-copy h2 { margin: 0 0 0.55em; font-size: clamp(1.35rem, 1.15rem + 0.8vw, 1.75rem); letter-spacing: -0.02em; }
 .support-copy p { color: var(--text-soft); }
@@ -420,9 +479,10 @@ header.top .theme-toggle { margin-left: 0; }
 .ledger-total-card {
   display: grid; gap: 6px; align-content: center;
   padding: clamp(18px, 2.2vw, 26px);
-  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--border));
+  border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: linear-gradient(165deg, color-mix(in srgb, var(--accent) 12%, var(--surface-2)), var(--surface-2) 72%);
+  background: var(--surface);
+  box-shadow: var(--shadow);
 }
 .ledger-total { display: flex; align-items: baseline; gap: 7px; margin: 0; flex-wrap: wrap; }
 .ledger-total strong {

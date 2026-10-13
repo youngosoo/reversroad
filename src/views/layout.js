@@ -209,6 +209,9 @@ ${site.domain ? `<link rel="alternate" type="application/rss+xml" title="${attr(
 <meta property="og:description" content="${attr(desc)}" />
 ${canonical ? `<meta property="og:url" content="${attr(canonical)}" />` : ''}
 <meta name="twitter:card" content="summary_large_image" />
+<link rel="preconnect" href="https://fastly.jsdelivr.net" crossorigin />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="https://fastly.jsdelivr.net/gh/projectnoonnu/2408-3@1.0/Paperlogy-4Regular.woff2" />
+<link rel="preconnect" href="https://pagead2.googlesyndication.com" crossorigin />
 <link rel="icon" href="/favicon.ico" sizes="any" />
 <link rel="icon" href="${attr(assetUrl('favicon-48.png'))}" sizes="48x48" type="image/png" />
 <link rel="icon" href="${attr(assetUrl('favicon-96.png'))}" sizes="96x96" type="image/png" />

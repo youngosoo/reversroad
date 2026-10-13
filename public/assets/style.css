@@ -315,9 +315,16 @@ label { font-size: 0.875rem; font-weight: 600; color: var(--text-soft); }
   border: 1px solid rgba(255, 255, 255, 0.7); border-radius: 999px;
   padding: 6px 16px; font-size: 0.875rem; font-weight: 700; white-space: nowrap;
 }
-.top-banner.has-image { padding: 6px 12px; background: linear-gradient(120deg, #0e4a3c, #136450 55%, #0e4a3c); }
+/* 이미지 배너 — 좌우가 똑같이 보이도록 가운데 기준 대칭 배경, 이미지는 정확히 가운데 정렬 */
+.top-banner.has-image {
+  padding: 6px 12px;
+  background: radial-gradient(ellipse 75% 130% at 50% 50%, #136450 0%, #0e4a3c 72%);
+}
 .top-banner.has-image img {
-  display: block; width: auto; max-width: 100%; max-height: 104px; height: auto; object-fit: contain;
+  display: block; margin: 0 auto; /* 페이지 가운데 */
+  width: auto; height: auto; object-fit: contain;
+  max-width: min(100%, var(--shell)); /* 본문 컬럼과 같은 폭 */
+  max-height: 132px;
   border-radius: var(--radius-sm);
 }
 
@@ -327,7 +334,7 @@ label { font-size: 0.875rem; font-weight: 600; color: var(--text-soft); }
   .top-banner .banner-text i { font-size: 0.6875rem; }
   .top-banner .banner-cta { padding: 5px 11px; font-size: 0.8125rem; }
   .top-banner.has-image { padding: 5px 8px; }
-  .top-banner.has-image img { max-height: 76px; }
+  .top-banner.has-image img { max-height: 84px; }
 }
 
 .site-header {

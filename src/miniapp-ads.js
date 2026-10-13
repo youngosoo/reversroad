@@ -134,15 +134,15 @@ function injectAppBanner(html, { site } = {}) {
   const block = `<div id="rr-promo-banner"><a href="${escAttr(parts.url)}"${target} aria-label="${escAttr(`${parts.title || parts.alt} 바로가기`)}">${inner}</a></div>
 <style>
 #rr-promo-banner{position:sticky;top:0;z-index:2147483000;width:100%;}
-#rr-promo-banner a{display:flex;align-items:center;justify-content:center;gap:14px;min-height:60px;padding:7px 14px;background:linear-gradient(120deg,#0e4a3c,#136450 55%,#0e4a3c);color:#fff;text-decoration:none;font-family:inherit;}
-#rr-promo-banner img{display:block;width:auto;max-width:100%;max-height:104px;height:auto;object-fit:contain;}
+#rr-promo-banner a{display:flex;align-items:center;justify-content:center;gap:14px;min-height:60px;padding:7px 14px;background:radial-gradient(ellipse 75% 130% at 50% 50%,#136450 0%,#0e4a3c 72%);color:#fff;text-decoration:none;font-family:inherit;}
+#rr-promo-banner img{display:block;margin:0 auto;width:auto;height:auto;object-fit:contain;max-width:min(100%,1120px);max-height:132px;}
 #rr-promo-banner .rb-text{display:flex;flex-direction:column;gap:2px;line-height:1.25;}
 #rr-promo-banner .rb-text b{font-size:1.05rem;font-weight:800;letter-spacing:-0.01em;}
 #rr-promo-banner .rb-text i{font-style:normal;font-size:0.82rem;opacity:0.85;}
 #rr-promo-banner .rb-cta{border:1px solid rgba(255,255,255,0.7);border-radius:999px;padding:5px 14px;font-size:0.85rem;font-weight:700;white-space:nowrap;}
 @media (max-width:640px){
   #rr-promo-banner a{gap:10px;min-height:52px;padding:7px 12px;}
-  #rr-promo-banner img{max-height:76px;}
+  #rr-promo-banner img{max-height:84px;}
   #rr-promo-banner .rb-text i{display:none;}
 }
 </style>

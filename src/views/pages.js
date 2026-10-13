@@ -146,6 +146,78 @@ const FILTER_SCRIPT = `<script>
 })();
 </script>`;
 
+/** 원 단위 금액 표기: 1234567 → 1,234,567 */
+function won(amount) {
+  return String(Math.round(Number(amount) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+/** 2026-10 → 2026년 10월 / 2026-10-13 → 2026.10.13 */
+const monthLabel = (ym) => `${ym.slice(0, 4)}년 ${Number(ym.slice(5, 7))}월`;
+const dayLabel = (date) => (date ? date.replace(/-/g, '.') : '');
+
+/**
+ * 후원 내역 — 합계금액 · 월별 누적 · 후원자 명단.
+ * (관리자에서 성명(닉네임)·후원금·날짜를 입력하면 자동으로 계산됩니다)
+ */
+function supportLedger(support) {
+  if (support.donorsEnabled === false) return '';
+  const donors = Array.isArray(support.donors) ? support.donors : [];
+  const total = donors.reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
+
+  const byMonth = new Map();
+  for (const d of donors) {
+    if (!d.date) continue;
+    const ym = d.date.slice(0, 7);
+    byMonth.set(ym, (byMonth.get(ym) || 0) + (Number(d.amount) || 0));
+  }
+  const months = [...byMonth.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  const maxMonth = Math.max(1, ...months.map(([, amount]) => amount));
+  let running = 0;
+  const monthRows = months.map(([ym, amount]) => {
+    running += amount;
+    const width = Math.max(4, Math.round((amount / maxMonth) * 100));
+    return `
+        <li>
+          <span class="lm-month">${esc(monthLabel(ym))}</span>
+          <span class="lm-bar" aria-hidden="true"><i style="width:${width}%"></i></span>
+          <span class="lm-amount">${won(amount)}원</span>
+          <span class="lm-cum">누적 ${won(running)}원</span>
+        </li>`;
+  }).join('');
+
+  const rows = [...donors]
+    .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
+    .map((d) => `
+          <tr>
+            <td>${esc(d.name || '익명')}</td>
+            <td class="num">${won(d.amount)}원</td>
+            <td class="muted">${esc(dayLabel(d.date) || '—')}</td>
+          </tr>`).join('');
+
+  return `
+      <div class="support-ledger">
+        <div class="ledger-head">
+          <div>
+            <p class="viz-kicker">후원 내역</p>
+            <p class="ledger-total"><strong>${won(total)}</strong>원</p>
+            <p class="muted small">누적 합계 · 후원자 ${donors.length}명${months.length ? ` · ${months.length}개월` : ''}</p>
+          </div>
+          ${months.length ? `<ul class="ledger-months">${monthRows}
+          </ul>` : ''}
+        </div>
+        ${donors.length
+          ? `<div class="ledger-list">
+          <table class="ledger-table">
+            <caption class="sr-only">후원자 명단</caption>
+            <thead><tr><th scope="col">성명(닉네임)</th><th scope="col">후원금</th><th scope="col">날짜</th></tr></thead>
+            <tbody>${rows}
+            </tbody>
+          </table>
+        </div>`
+          : '<p class="muted small ledger-empty">아직 후원 내역이 없습니다. 후원해 주시면 합계·월별 누적과 함께 빠짐없이 기록합니다.</p>'}
+      </div>`;
+}
+
 /** 후원 안내 — 관리자에서 켜고 내용을 고칩니다 (메인 페이지) */
 function supportSection(site) {
   const support = site.support || {};
@@ -171,6 +243,7 @@ function supportSection(site) {
               ${a.account ? `<button class="btn small" type="button" data-copy="${attr(a.account)}">계좌번호 복사</button>` : ''}
             </li>`).join('')}
         </ul>
+        ${supportLedger(support)}
       </div>
     </section>`;
 }

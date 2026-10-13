@@ -292,6 +292,26 @@
           </div>
         </div>
       </div>
+        <div class="field full">
+          <label class="row" style="gap:8px;cursor:pointer">
+            <input type="checkbox" id="sup_donors_on" style="width:auto" />
+            <span>메인 페이지에 후원 내역(합계금액·월별 누적·명단) 공개</span>
+          </label>
+        </div>
+        <div class="field full">
+          <p class="muted small" style="margin:0">후원 내역 — 성명(닉네임)·후원금·날짜를 입력하면 합계와 월별 누적이 자동으로 계산됩니다. 성명은 닉네임이나 “익명”으로 적어도 됩니다.</p>
+        </div>
+        <div class="field full">
+          <div class="donor-table">
+            <div class="donor-head"><span>성명(닉네임)</span><span>후원금(원)</span><span>날짜</span><span></span></div>
+            <div id="donorRows"></div>
+          </div>
+          <div class="row" style="margin-top:10px;gap:12px;align-items:center">
+            <button class="btn small" type="button" id="donorAdd">+ 후원자 추가</button>
+            <span class="muted" id="donorTotal"></span>
+          </div>
+        </div>
+      </div>
       <div class="form-footer">
         <button class="btn primary" type="submit" id="supSaveBtn">후원 안내 저장</button>
         <span class="muted" id="supStatus"></span>
@@ -985,8 +1005,14 @@ logoBox.reset.addEventListener('click', async () => {
 
 // ------------------------------------------------------------- 후원 안내
 
+const won = (n) => String(Math.round(Number(n) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+const todayISO = () => new Date().toLocaleDateString('sv-SE'); // YYYY-MM-DD (로컬 시간)
+
 const SUP = {
   on: document.getElementById('sup_on'),
+  donorsOn: document.getElementById('sup_donors_on'),
+  donorRows: document.getElementById('donorRows'),
+  donorTotal: document.getElementById('donorTotal'),
   title: document.getElementById('sup_title'),
   message: document.getElementById('sup_message'),
   note: document.getElementById('sup_note'),
@@ -997,12 +1023,61 @@ const SUP = {
   })),
 };
 
+/** 후원자 입력 줄 하나 만들기 */
+function donorRow(donor = {}) {
+  const row = document.createElement('div');
+  row.className = 'donor-row';
+  row.innerHTML = `
+    <input type="text" maxlength="30" data-field="name" aria-label="성명(닉네임)" placeholder="성명 또는 닉네임" />
+    <input type="number" min="0" step="1000" data-field="amount" aria-label="후원금" placeholder="0" />
+    <input type="date" data-field="date" aria-label="후원 날짜" />
+    <button class="btn small danger" type="button" data-remove aria-label="이 줄 삭제">✕</button>`;
+  row.querySelector('[data-field="name"]').value = donor.name || '';
+  row.querySelector('[data-field="amount"]').value = donor.amount ? String(donor.amount) : '';
+  row.querySelector('[data-field="date"]').value = donor.date || todayISO();
+  row.querySelector('[data-remove]').addEventListener('click', () => {
+    row.remove();
+    updateDonorTotal();
+  });
+  row.addEventListener('input', updateDonorTotal);
+  return row;
+}
+
+function collectDonors() {
+  return [...SUP.donorRows.querySelectorAll('.donor-row')].map((row) => ({
+    name: row.querySelector('[data-field="name"]').value,
+    amount: Number(row.querySelector('[data-field="amount"]').value || 0),
+    date: row.querySelector('[data-field="date"]').value,
+  })).filter((d) => String(d.name).trim() || d.amount > 0);
+}
+
+function updateDonorTotal() {
+  const donors = collectDonors();
+  const total = donors.reduce((sum, d) => sum + (Number(d.amount) || 0), 0);
+  SUP.donorTotal.textContent = donors.length ? `합계 ${won(total)}원 · ${donors.length}명` : '입력된 후원 내역이 없습니다';
+}
+
+function fillDonors(donors = []) {
+  SUP.donorRows.innerHTML = '';
+  const list = Array.isArray(donors) ? donors : [];
+  for (const donor of list) SUP.donorRows.appendChild(donorRow(donor));
+  if (!list.length) SUP.donorRows.appendChild(donorRow({}));
+  updateDonorTotal();
+}
+
+document.getElementById('donorAdd').addEventListener('click', () => {
+  SUP.donorRows.appendChild(donorRow({}));
+  updateDonorTotal();
+});
+
 function fillSupport(support = {}) {
   const accounts = Array.isArray(support.accounts) ? support.accounts : [];
   SUP.on.checked = Boolean(support.enabled);
   SUP.title.value = support.title || '';
   SUP.message.value = support.message || '';
   SUP.note.value = support.note || '';
+  SUP.donorsOn.checked = support.donorsEnabled !== false;
+  fillDonors(support.donors);
   SUP.rows.forEach((row, index) => {
     const account = accounts[index] || {};
     row.bank.value = account.bank || '';
@@ -1032,6 +1107,8 @@ document.getElementById('supportForm').addEventListener('submit', async (e) => {
             account: row.account.value,
             holder: row.holder.value,
           })),
+          donorsEnabled: SUP.donorsOn.checked,
+          donors: collectDonors(),
         },
       }),
     });

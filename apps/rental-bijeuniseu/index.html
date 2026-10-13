@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="ko" class="transition-colors duration-300">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>렌탈 비즈니스 시뮬레이터</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- PDF 생성 라이브러리 (html2pdf.js) CDN 임포트 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <script>
+    // Tailwind 설정 (다크모드 및 기본 테마 설정 확장)
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            slate: {
+              950: '#070a13'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* 기본 프린트 여백 및 크기 지정 */
+    @page {
+      size: A4 portrait;
+      margin: 10mm; /* 물리적인 여백 설정 */
+    }
+
+    @media print {
+      /* 프린트 출력 시 강제 라이트 모드 전환 및 컬러 강제 지정 */
+      * {
+        color-scheme: light !important;
+      }
+      
+      /* 헤더, 메인 대시보드, 푸터 및 모달의 제어용 헤더/푸터 버튼 영역 숨김 */
+      header, main, footer, .no-print {
+        display: none !important;
+      }
+      
+      /* 인쇄 시 배경을 흰색으로 강제 조정 및 마진 최소화, 배경 채우기 강제 설정 */
+      html, body {
+        background: white !important;
+        color: black !important;
+        height: 100% !important; /* 물리적인 1페이지 고정 */
+        max-height: 100% !important;
+        overflow: hidden !important; /* 스필오버 및 빈 페이지 생성 강제 방지 */
+        margin: 0 !important;
+        padding: 0 !important;
+        -webkit-print-color-adjust: exact !important; /* 배경 그래디언트/컬러 유실 방지 */
+        print-color-adjust: exact !important;
+      }
+      
+      /* 모달 외곽 요소들 비활성화 */
+      .print-modal-backdrop {
+        position: static !important;
+        background: transparent !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        display: block !important;
+        overflow: visible !important;
+        max-height: none !important;
+      }
+
+      /* 모달 카드의 테두리 및 쉐도우 제거하고 전체 인쇄 영역 채우기 */
+      .print-modal-card {
+        border: none !important;
+        box-shadow: none !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        height: 100% !important;
+        max-height: none !important;
+        overflow: hidden !important;
+      }
+
+      /* 보고서 본문 영역의 크기를 인쇄 마진 안쪽에 정확히 핏(Fit) 시킴 */
+      #report-content {
+        width: 100% !important;
+        height: 277mm !important; /* A4 세로 297mm - 상하마진 20mm */
+        max-height: 277mm !important;
+        overflow: hidden !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+      }
+    }
+  </style>
+
+  <script>
+    function rentalApp() {
+      return {
+        // 입력값 초기 세팅 (콤마 포맷 문자열로 원활하게 표기 관리)
+        importPrice: '1,200,000',
+        importQty: '10',
+        rentalPrice: '150,000',
+        rentalQty: '8',
+        rentalCount: '12',
+
+        // 1대당 적정 렌탈가 추천 산정용 타겟 데이터
+        targetPaybackCount: '10',
+        targetRoi: '30',
+        estimatedUtilRate: '80',
+
+        // 앱 제어용 상태 변수
+        currency: 'KRW',
+        showTooltip: null,
+        simName: '',
+        notification: null,
+        showReportModal: false, // 출력보고서 모달 노출 여부
+        darkMode: false,       // 다크 모드 상태 변수
+
+        // 시뮬레이션 비교 데이터 목록
+        savedSims: [],
+
+        // 기본 데모 프리셋 데이터
+        defaultPresets: [
+          {
+            id: 1,
+            name: "기본 카메라 렌탈 예시",
+            importPrice: "1,200,000",
+            importQty: "10",
+            rentalPrice: "150,000",
+            rentalQty: "8",
+            rentalCount: "12",
+            currency: "KRW"
+          },
+          {
+            id: 2,
+            name: "노트북 대량 장기 렌탈",
+            importPrice: "850,000",
+            importQty: "50",
+            rentalPrice: "45,000",
+            rentalQty: "40",
+            rentalCount: "24",
+            currency: "KRW"
+          }
+        ],
+
+        // 초기화 메서드 (로컬 스토리지 동기화 및 테마 바인딩)
+        init() {
+          const stored = localStorage.getItem('rental_sims');
+          if (stored) {
+            try {
+              this.savedSims = JSON.parse(stored);
+            } catch (e) {
+              this.savedSims = [...this.defaultPresets];
+            }
+          } else {
+            this.savedSims = [...this.defaultPresets];
+            localStorage.setItem('rental_sims', JSON.stringify(this.savedSims));
+          }
+
+          // 시뮬레이션 리스트 변경 발생 시 실시간 로컬 스토리지 저장 자동 동기화
+          this.$watch('savedSims', value => {
+            localStorage.setItem('rental_sims', JSON.stringify(value));
+          });
+
+          // 다크모드 로컬스토리지 복구 및 강제 적용
+          const savedTheme = localStorage.getItem('theme') || 'light';
+          this.darkMode = savedTheme === 'dark';
+          this.applyTheme();
+        },
+
+        // 다크 테마 적용 헬퍼 함수
+        toggleTheme() {
+          this.darkMode = !this.darkMode;
+          localStorage.setItem('theme', this.darkMode ? 'dark' : 'light');
+          this.applyTheme();
+        },
+
+        applyTheme() {
+          if (this.darkMode) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        },
+
+        // 기본 프리셋 완전 원복 복구 시스템
+        restoreDefaults() {
+          this.savedSims = [...this.defaultPresets];
+          this.triggerNotification("기본 시뮬레이션 샘플이 복구되었습니다.", "success");
+        },
+
+        // 실시간 사용자 타이핑시 콤마 표기를 입히는 인풋 포맷터
+        formatInputWithCommas(val) {
+          if (val === undefined || val === null) return '';
+          // 숫자 이외의 문자 전부 제거
+          const clean = val.toString().replace(/[^0-9]/g, '');
+          if (!clean) return '';
+          return parseInt(clean).toLocaleString('ko-KR');
+        },
+
+        // 문자열 상태값을 연산 가능한 안전한 숫자 데이터 구조로 파싱 (Defensive Coding)
+        get numeric() {
+          const parseRaw = (val) => {
+            if (typeof val === 'number') return val;
+            return parseFloat((val || '').toString().replace(/,/g, '')) || 0;
+          };
+          return {
+            importPrice: Math.max(0, parseRaw(this.importPrice)),
+            importQty: Math.max(0, parseRaw(this.importQty)),
+            rentalPrice: Math.max(0, parseRaw(this.rentalPrice)),
+            rentalQty: Math.max(0, parseRaw(this.rentalQty)),
+            rentalCount: Math.max(0, parseRaw(this.rentalCount)),
+            targetPaybackCount: Math.max(1, parseFloat(this.targetPaybackCount) || 1),
+            targetRoi: Math.max(0, parseFloat(this.targetRoi) || 0),
+            estimatedUtilRate: Math.max(1, Math.min(100, parseFloat(this.estimatedUtilRate) || 100)),
+          };
+        },
+
+        // 적정 렌탈 단가 추천 산출 로직
+        get recommendedRentalPrice() {
+          const num = this.numeric;
+          if (num.importPrice <= 0) return 0;
+          
+          const targetRevenuePerUnit = num.importPrice * (1 + num.targetRoi / 100);
+          const effectiveCycles = num.targetPaybackCount * (num.estimatedUtilRate / 100);
+          
+          if (effectiveCycles <= 0) return 0;
+          return Math.round(targetRevenuePerUnit / effectiveCycles);
+        },
+
+        // 실시간 재무 분석 연산 로직
+        get calculations() {
+          const num = this.numeric;
+
+          const totalCost = num.importPrice * num.importQty;
+          const revenuePerCycle = num.rentalPrice * num.rentalQty;
+          const totalRevenue = revenuePerCycle * num.rentalCount;
+          const netProfit = totalRevenue - totalCost;
+          const roi = totalCost > 0 ? (netProfit / totalCost) * 100 : 0;
+          const breakevenCycles = revenuePerCycle > 0 ? (totalCost / revenuePerCycle) : 0;
+          const recoveryRate = totalCost > 0 ? (totalRevenue / totalCost) : 0;
+
+          return {
+            totalCost,
+            revenuePerCycle,
+            totalRevenue,
+            netProfit,
+            roi,
+            breakevenCycles,
+            recoveryRate
+          };
+        },
+
+        // 사용자의 요청에 맞춰 모든 렌탈 회차가 순서대로 누락 없이 표기되도록 배열 생성
+        get reportSteps() {
+          const count = this.numeric.rentalCount;
+          if (count <= 0) return [];
+          
+          const steps = [];
+          for (let i = 1; i <= count; i++) {
+            steps.push(i);
+          }
+          return steps;
+        },
+
+        // 손익분기점 도달 여부 및 상태 스타일 데이터 반환
+        get bepStatus() {
+          const num = this.numeric;
+          const calc = this.calculations;
+          if (calc.netProfit > 0) {
+            return {
+              text: `손익분기점 돌파 완료! (${calc.breakevenCycles.toFixed(1)}회차부터 순수익 발생)`,
+              class: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/30',
+              barColor: 'bg-emerald-500'
+            };
+          } else if (calc.netProfit === 0) {
+            return {
+              text: '정확히 투자원금에 도달한 손익평형 지점입니다.',
+              class: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/30',
+              barColor: 'bg-amber-500'
+            };
+          } else {
+            return {
+              text: `투자 회수 미달 상태: 손익분기 도달을 위해 약 ${Math.ceil(calc.breakevenCycles - num.rentalCount)}회의 추가 렌탈 가동이 필요합니다.`,
+              class: 'text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/30',
+              barColor: 'bg-rose-500'
+            };
+          }
+        },
+
+        // 동적 SVG 그래프 좌표 연산 (Division by zero 방지 포함)
+        get chart() {
+          const calc = this.calculations;
+          const num = this.numeric;
+          const maxVal = Math.max(calc.totalCost * 1.5, calc.totalRevenue * 1.2, 1);
+          const costY = 90 - (calc.totalCost / maxVal) * 80;
+          const startX = 5;
+          const endX = 95;
+          const endY = 90 - (calc.totalRevenue / maxVal) * 80;
+
+          const hasCycles = num.rentalCount > 0;
+          const bepX = startX + (endX - startX) * (hasCycles ? Math.min(1, calc.breakevenCycles / num.rentalCount) : 0);
+          const isBepWithin = hasCycles && (calc.breakevenCycles <= num.rentalCount);
+
+          return {
+            costY: isNaN(costY) ? 0 : costY,
+            startX: isNaN(startX) ? 0 : startX,
+            endX: isNaN(endX) ? 0 : endX,
+            endY: isNaN(endY) ? 0 : endY,
+            bepX: isNaN(bepX) ? 0 : bepX,
+            isBepWithin: !!isBepWithin
+          };
+        },
+
+        // 통화 포맷 변환기
+        formatValue(val) {
+          const num = parseFloat(val) || 0;
+          if (this.currency === 'KRW') {
+            return `₩${Math.round(num).toLocaleString()}`;
+          } else {
+            return `$${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+          }
+        },
+
+        // 실시간 한글 금액 읽기 도우미 (오타 검증용 - 콤마 제거 파싱 지원)
+        formatKoreanReadable(numStr) {
+          if (!numStr) return '0원';
+          const value = parseInt(numStr.toString().replace(/,/g, '')) || 0;
+          if (value === 0) return '0원';
+          if (this.currency === 'USD') return `$${value.toLocaleString()}`;
+          
+          if (value >= 100000000) {
+            const eok = Math.floor(value / 100000000);
+            const man = Math.floor((value % 100000000) / 10000);
+            return `${eok}억 ${man > 0 ? man + '만' : ''} 원`;
+          }
+          if (value >= 10000) {
+            const man = Math.floor(value / 10000);
+            const won = value % 10000;
+            return `${man}만 ${won > 0 ? won : ''} 원`;
+          }
+          return `${value} 원`;
+        },
+
+        // 알림 토스트 핸들러
+        triggerNotification(message, type = "success") {
+          this.notification = { message, type };
+          setTimeout(() => {
+            this.notification = null;
+          }, 3000);
+        },
+
+        // 기등록 프리셋 불러오기
+        handlePresetSelect(sim) {
+          this.importPrice = this.formatInputWithCommas(sim.importPrice);
+          this.importQty = sim.importQty.toString();
+          this.rentalPrice = this.formatInputWithCommas(sim.rentalPrice);
+          this.rentalQty = sim.rentalQty.toString();
+          this.rentalCount = sim.rentalCount.toString();
+          this.currency = sim.currency || 'KRW';
+          this.triggerNotification(`'${sim.name}' 시뮬레이션을 불러왔습니다.`, 'success');
+        },
+
+        // 추천 단가를 렌탈 기본 단가 항목에 반영
+        handleApplyRecommendedPrice() {
+          if (this.recommendedRentalPrice <= 0) {
+            this.triggerNotification("원가를 먼저 입력해 주세요.", "error");
+            return;
+          }
+          this.rentalPrice = this.formatInputWithCommas(this.recommendedRentalPrice);
+          this.triggerNotification(`추천된 1대당 렌탈단가(${this.formatValue(this.recommendedRentalPrice)})가 적용되었습니다!`, 'success');
+        },
+
+        // 현재 수치 정보 저장
+        handleSaveSimulation() {
+          if (!this.simName.trim()) {
+            this.triggerNotification("시뮬레이션 이름을 입력해주세요.", "error");
+            return;
+          }
+          const newSim = {
+            id: Date.now(),
+            name: this.simName,
+            importPrice: this.importPrice.toString(),
+            importQty: this.importQty.toString(),
+            rentalPrice: this.rentalPrice.toString(),
+            rentalQty: this.rentalQty.toString(),
+            rentalCount: this.rentalCount.toString(),
+            currency: this.currency
+          };
+          this.savedSims.push(newSim);
+          this.simName = '';
+          this.triggerNotification("시뮬레이션이 성공적으로 저장되었습니다!", 'success');
+        },
+
+        // 시뮬레이션 리스트에서 삭제
+        handleDeleteSimulation(id) {
+          this.savedSims = this.savedSims.filter(sim => sim.id !== id);
+          this.triggerNotification("시뮬레이션이 삭제되었습니다.", "info");
+        },
+
+        // 기본 상태로 재설정
+        handleReset() {
+          this.importPrice = '1,200,000';
+          this.importQty = '10';
+          this.rentalPrice = '150,000';
+          this.rentalQty = '8';
+          this.rentalCount = '12';
+          this.targetPaybackCount = '10';
+          this.targetRoi = '30';
+          this.estimatedUtilRate = '80';
+          this.currency = 'KRW';
+          this.triggerNotification("입력값이 초기화되었습니다.", "info");
+        },
+
+        downloadPDF() {
+          if (typeof html2pdf === 'undefined') {
+            this.triggerNotification("PDF 생성 엔진이 로드 중입니다. 잠시 후 다시 시도해 주세요.", "error");
+            return;
+          }
+
+          const reportElement = document.getElementById('report-content');
+          if (!reportElement) {
+            this.triggerNotification("보고서 요소를 찾을 수 없습니다.", "error");
+            return;
+          }
+
+          // 1. 현재의 클래스 명세, 스타일값 및 스크롤 정보를 안전하게 보관
+          const originalClasses = reportElement.className;
+          const originalStyle = reportElement.getAttribute('style') || '';
+          const scrollPos = reportElement.scrollTop;
+
+          // 2. 다크 모드 활성화 시 html2canvas가 백지 캡처하거나 어둡게 잡는 현상을 피하기 위해 순간 라이트 테마 강제
+          const isDark = document.documentElement.classList.contains('dark');
+          if (isDark) {
+            document.documentElement.classList.remove('dark');
+          }
+
+          // 3. 인라인 강제 인쇄 크기 할당 (A4 정비율 190mm x 277mm 설정으로 스필오버 및 빈 페이지 차단)
+          reportElement.classList.remove('max-h-[70vh]', 'overflow-y-auto', 'shadow-inner');
+          reportElement.style.width = '190mm';
+          reportElement.style.height = '277mm';
+          reportElement.style.maxHeight = '277mm';
+          reportElement.style.overflow = 'hidden';
+          reportElement.style.padding = '0';
+          reportElement.style.margin = '0 auto';
+          reportElement.style.boxSizing = 'border-box';
+          reportElement.style.backgroundColor = '#ffffff';
+          reportElement.style.color = '#000000';
+
+          // 세부 엘리먼트들의 간격 축소를 통해 모든 회차가 있어도 한 페이지에 들어오도록 압축
+          const spacingElements = reportElement.querySelectorAll('.mb-8, .my-8, .mt-16, .my-4');
+          const originalSpacings = [];
+          spacingElements.forEach((el) => {
+            originalSpacings.push({
+              el: el,
+              className: el.className,
+              style: el.getAttribute('style') || ''
+            });
+            el.style.marginTop = '6px';
+            el.style.marginBottom = '6px';
+          });
+
+          // 4. html2pdf 컴파일 가이드 옵션 정의
+          const opt = {
+            margin:       10, // 상하좌우 안전 공백 10mm 부여
+            filename:     `렌탈_비즈니스_종합보고서_${new Date().toISOString().slice(0,10)}.pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { 
+              scale: 2.2, // 2.2배 고화질 렌더링으로 글씨 깨짐 방지
+              useCORS: true, 
+              letterRendering: true,
+              scrollX: 0,
+              scrollY: 0,
+              backgroundColor: '#ffffff'
+            },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+          };
+
+          this.triggerNotification("전체 보고서를 분석하여 PDF를 빌드하고 있습니다...", "info");
+          
+          // 5. 컴파일 및 다운로드 흐름 구동
+          html2pdf().set(opt).from(reportElement).save().then(() => {
+            // 원 상태 및 다크테마 스펙 복원
+            reportElement.className = originalClasses;
+            reportElement.setAttribute('style', originalStyle);
+            reportElement.scrollTop = scrollPos;
+
+            spacingElements.forEach((item) => {
+              item.el.className = item.className;
+              item.el.setAttribute('style', item.style);
+            });
+
+            if (isDark) {
+              document.documentElement.classList.add('dark');
+            }
+            this.triggerNotification("PDF 다운로드가 완료되었습니다.", "success");
+          }).catch(err => {
+            console.error("PDF 생성 에러 로그: ", err);
+            // 에러 시에도 무조건 상태 복조 수행
+            reportElement.className = originalClasses;
+            reportElement.setAttribute('style', originalStyle);
+
+            spacingElements.forEach((item) => {
+              item.el.className = item.className;
+              item.el.setAttribute('style', item.style);
+            });
+
+            if (isDark) {
+              document.documentElement.classList.add('dark');
+            }
+            this.triggerNotification("PDF 변환 중 오류가 발생했습니다. 직접 인쇄 기능을 이용해 보세요.", "error");
+          });
+        },
+
+        // 직접 인쇄 실행 핸들러
+        printReport() {
+          this.triggerNotification("시스템 인쇄 모듈을 준비하는 중입니다...", "info");
+          
+          this.$nextTick(() => {
+            setTimeout(() => {
+              try {
+                window.print();
+              } catch (e) {
+                console.error(e);
+                this.triggerNotification("인쇄 기능을 호출하지 못했습니다. 단축키(Ctrl+P)를 직접 눌러주세요.", "error");
+              }
+            }, 250);
+          });
+        }
+      };
+    }
+  </script>
+
+  <!-- [중요] Alpine.js CDN은 비동기적으로(defer) 선언되어 위에서 준비한 데이터 구조를 완벽하게 연동시킵니다 -->
+  <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300" x-data="rentalApp()">
+
+  <!-- --- 알림 메시지 토스트 영역 --- -->
+  <template x-if="notification">
+    <div 
+      class="fixed top-4 right-4 z-50 flex items-center p-4 rounded-xl shadow-lg border transition-all transform translate-y-0"
+      :class="{
+        'bg-rose-100 border-rose-200 text-rose-800 dark:bg-rose-950/80 dark:border-rose-900/40 dark:text-rose-200': notification.type === 'error',
+        'bg-sky-100 border-sky-200 text-sky-800 dark:bg-sky-950/80 dark:border-sky-900/40 dark:text-sky-200': notification.type === 'info',
+        'bg-emerald-100 border-emerald-200 text-emerald-800 dark:bg-emerald-950/80 dark:border-emerald-900/40 dark:text-emerald-200': notification.type === 'success'
+      }"
+    >
+      <span class="font-semibold text-sm" x-text="notification.message"></span>
+    </div>
+  </template>
+
+  <!-- --- 헤더 타이틀 바 --- -->
+  <header class="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-10">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+      <div class="flex items-center gap-3">
+        <div class="p-2.5 bg-indigo-600 text-white rounded-xl shadow-md shadow-indigo-200 dark:shadow-none">
+          <!-- CoinsIcon -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-xl font-extrabold tracking-tight">렌탈 비즈니스 시뮬레이터</h1>
+          <p class="text-xs text-slate-500 dark:text-slate-400">수입 원가 분석 및 주기별 렌탈 수익 예측 모델링</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <!-- 화폐 선택기 (KRW / USD) -->
+        <div class="bg-slate-100 dark:bg-slate-800 p-1 rounded-lg flex gap-1">
+          <button 
+            @click="currency = 'KRW'"
+            class="px-3 py-1 text-xs font-bold rounded-md transition-all"
+            :class="currency === 'KRW' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white'"
+          >
+            원화 (₩)
+          </button>
+          <button 
+            @click="currency = 'USD'"
+            class="px-3 py-1 text-xs font-bold rounded-md transition-all"
+            :class="currency === 'USD' ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white'"
+          >
+            달러 ($)
+          </button>
+        </div>
+
+        <!-- 다크모드 토글 버튼 -->
+        <button 
+          @click="toggleTheme()"
+          class="p-2 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-850 rounded-lg transition-colors"
+          title="테마 변경"
+        >
+          <span x-show="!darkMode">
+            <!-- MoonIcon -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+          </span>
+          <span x-show="darkMode">
+            <!-- SunIcon -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-11.314l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+            </svg>
+          </span>
+        </button>
+
+        <button 
+          @click="handleReset()"
+          class="p-2 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+          title="설정 초기화"
+        >
+          <!-- RefreshIcon -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 15H19" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-8">
+    
+    <!-- --- 저장된 프리셋 시뮬레이션 목록 --- -->
+    <section class="mb-8">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="text-sm font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">저장된 시뮬레이션 비교 및 불러오기</h2>
+        <button 
+          @click="restoreDefaults()"
+          class="text-xs text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 font-semibold transition-colors flex items-center gap-1"
+          type="button"
+        >
+          <!-- UndoIcon -->
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+          </svg>
+          샘플 프리셋 복구
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        
+        <!-- 프리셋 순회 카드 -->
+        <template x-for="sim in savedSims" :key="sim.id">
+          <div 
+            @click="handlePresetSelect(sim)"
+            class="group relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-500 dark:hover:border-indigo-400 p-4 rounded-xl cursor-pointer shadow-sm transition-all flex flex-col justify-between"
+          >
+            <div>
+              <div class="flex justify-between items-start mb-2">
+                <h3 class="font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 text-sm truncate pr-6" x-text="sim.name"></h3>
+                <button 
+                  @click.stop="handleDeleteSimulation(sim.id)"
+                  class="text-slate-300 dark:text-slate-600 hover:text-rose-500 p-1 rounded-md transition-colors"
+                  title="시뮬레이션 삭제"
+                >
+                  <!-- TrashIcon -->
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              </div>
+              <div class="grid grid-cols-2 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                <div>투자원가: <span class="font-semibold text-slate-700 dark:text-slate-300" x-text="formatValue((parseFloat(sim.importPrice.replace(/,/g, '')) || 0) * (parseFloat(sim.importQty) || 0))"></span></div>
+                <div>렌탈주기: <span class="font-semibold text-slate-700 dark:text-slate-300" x-text="sim.rentalCount + '회'"></span></div>
+                <div>회당단가: <span class="font-semibold text-slate-700 dark:text-slate-300" x-text="formatValue(parseFloat(sim.rentalPrice.replace(/,/g, '')) || 0)"></span></div>
+                <div>동시가동: <span class="font-semibold text-slate-700 dark:text-slate-300" x-text="sim.rentalQty + '대'"></span></div>
+              </div>
+            </div>
+            <div class="mt-3 pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-[11px] font-semibold text-indigo-500 dark:text-indigo-400">
+              <span>자세히 보기 &rarr;</span>
+            </div>
+          </div>
+        </template>
+
+        <!-- 저장 폼 카드 -->
+        <form @submit.prevent="handleSaveSimulation" class="bg-slate-100 dark:bg-slate-900/40 border border-dashed border-slate-300 dark:border-slate-800 p-4 rounded-xl flex flex-col justify-between">
+          <div>
+            <h3 class="font-bold text-sm text-slate-700 dark:text-slate-300 mb-1">현재 세팅 저장하기</h3>
+            <input 
+              type="text" 
+              x-model="simName"
+              placeholder="예: 최신 드론 대여 플랜"
+              class="w-full bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-slate-100"
+            />
+          </div>
+          <button 
+            type="submit"
+            class="mt-3 w-full bg-slate-800 hover:bg-slate-950 dark:bg-indigo-600 dark:hover:bg-indigo-700 text-white py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+          >
+            <!-- SaveIcon -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+            </svg>
+            시뮬레이션 목록에 추가
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+      
+      <!-- --- 왼쪽 레이아웃: 데이터 입력 패널 --- -->
+      <div class="lg:col-span-5 space-y-6">
+        
+        <!-- @Page/Setup section -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+          <div class="flex items-center gap-2 mb-4">
+            <span class="p-1.5 bg-amber-500/10 text-amber-500 rounded-lg">
+              <!-- CoinsIcon -->
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </span>
+            <h3 class="font-bold text-base text-slate-800 dark:text-white">1. 자산 매입 원가 입력</h3>
+          </div>
+
+          <div class="space-y-4">
+            <!-- 수입 단가 -->
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                  수입 단가 (직접 입력)
+                  <button 
+                    @mouseenter="showTooltip = 'importPrice'"
+                    @mouseleave="showTooltip = null"
+                    class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                    type="button"
+                  >
+                    <!-- HelpIcon -->
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                </label>
+                <span class="text-xs font-bold text-slate-400">
+                  실시간 단위: <strong class="text-indigo-600 dark:text-indigo-400" x-text="formatKoreanReadable(importPrice)"></strong>
+                </span>
+              </div>
+              
+              <div x-show="showTooltip === 'importPrice'" class="text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950 p-2 rounded-lg border dark:border-slate-850 mb-2" x-transition>
+                대여에 사용할 물품 1대(단위)당 구입 금액을 입력하세요.
+              </div>
+
+              <!-- 3자리 콤마 실시간 적용 지원 -->
+              <div class="relative">
+                <input 
+                  type="text" 
+                  inputmode="numeric"
+                  x-model="importPrice"
+                  @input="importPrice = formatInputWithCommas(importPrice)"
+                  placeholder="단가를 입력해 주세요"
+                  class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-lg font-black tracking-wide text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-950/40 transition-all text-right"
+                />
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 font-bold" x-text="currency === 'KRW' ? '원 (₩)' : '달러 ($)'"></span>
+              </div>
+            </div>
+
+            <!-- 매입 수량 -->
+            <div>
+              <div class="flex justify-between items-center mb-1.5">
+                <label class="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  매입 수량 (대)
+                </label>
+                <span class="text-sm font-extrabold text-slate-800 dark:text-slate-200" x-text="(importQty || 0) + ' 대'"></span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button 
+                  type="button"
+                  @click="importQty = Math.max(1, (parseInt(importQty) || 0) - 1).toString()"
+                  class="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg font-bold text-sm"
+                >
+                  -
+                </button>
+                <input 
+                  type="text" 
+                  pattern="[0-9]*"
+                  inputmode="numeric"
+                  x-model="importQty"
+                  @input="importQty = importQty.replace(/[^0-9]/g, '')"
+                  class="flex-1 text-center bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 rounded-xl py-2 text-sm font-bold text-slate-800 dark:text-white"
+                />
+                <button 
+                  type="button"
+                  @click="importQty = ((parseInt(importQty) || 0) + 1).toString()"
+                  class="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg font-bold text-sm"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+            <div class="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs text-slate-500 dark:text-slate-400">
+              <span>총 투자원가 (Capex):</span>
+              <span class="font-extrabold text-slate-800 dark:text-white text-sm" x-text="formatValue(calculations.totalCost)"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 1대당 적정 렌탈 권장가격 분석 모델 -->
+        <div class="bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/20 dark:to-slate-900 border-2 border-indigo-200 dark:border-indigo-900/50 rounded-2xl p-6 shadow-md">
+          <div class="flex items-center gap-2 mb-4">
+            <span class="p-1.5 bg-indigo-600 text-white rounded-lg">
+              <!-- CalculatorIcon -->
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 11h.01M12 7h.01M9 11h.01M12 14h.01M15 11h.01M15 7h.01M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z" />
+              </svg>
+            </span>
+            <h3 class="font-bold text-base text-slate-800 dark:text-white">2. [추천] 1대당 적정 렌탈단가 가이드</h3>
+          </div>
+
+          <div class="space-y-4">
+            <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+              기기 원가와 목표 기간, 그리고 기대 수익성 비율을 반영하여 리스크(가동률)를 고려한 단위당 합리적인 렌탈 단가를 계산합니다.
+            </p>
+
+            <!-- 목표 원금회수 기간 -->
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <label class="text-xs font-bold text-slate-600 dark:text-slate-300">목표 원금회수 기간</label>
+                <span class="text-xs font-extrabold text-indigo-600 dark:text-indigo-400" x-text="targetPaybackCount + ' 회 (개월)'"></span>
+              </div>
+              <input 
+                type="range" 
+                min="1" 
+                max="60" 
+                x-model="targetPaybackCount" 
+                class="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+              />
+            </div>
+
+            <!-- 목표 마진 비율 (ROI) -->
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <label class="text-xs font-bold text-slate-600 dark:text-slate-300">목표 수익성 마진 (ROI)</label>
+                <span class="text-xs font-extrabold text-indigo-600 dark:text-indigo-400" x-text="'+' + targetRoi + '%'"></span>
+              </div>
+              <input 
+                type="range" 
+                min="0" 
+                max="200" 
+                step="5"
+                x-model="targetRoi" 
+                class="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+              />
+            </div>
+
+            <!-- 예상 자산 가동률 -->
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <label class="text-xs font-bold text-slate-600 dark:text-slate-300">예상 평균 가동률</label>
+                <span class="text-xs font-extrabold text-indigo-600 dark:text-indigo-400" x-text="estimatedUtilRate + '% 가동'"></span>
+              </div>
+              <input 
+                type="range" 
+                min="10" 
+                max="100" 
+                step="5"
+                x-model="estimatedUtilRate" 
+                class="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+              />
+            </div>
+
+            <!-- 권장 계산 결과 카드 -->
+            <div class="bg-indigo-600 text-white rounded-xl p-4 mt-3 shadow-md">
+              <div class="text-xs font-semibold opacity-85">추천 1대당 적정 렌탈 단가</div>
+              <div class="text-2xl font-black mt-1 flex justify-between items-baseline">
+                <span x-text="formatValue(recommendedRentalPrice)"></span>
+                <span class="text-xs font-normal opacity-75">/ 회당 (월)</span>
+              </div>
+              <div class="text-[10px] opacity-75 mt-2 leading-relaxed">
+                * <span x-text="formatKoreanReadable(importPrice)"></span> 자산을 가동률 <span x-text="estimatedUtilRate + '%'"></span> 상황에서 <span x-text="targetPaybackCount + '개월'"></span> 내에 원금과 <span x-text="targetRoi + '%'"></span>의 마진을 안전하게 회수하기 위한 조건입니다.
+              </div>
+            </div>
+
+            <button 
+              type="button"
+              @click="handleApplyRecommendedPrice()"
+              class="w-full py-2.5 bg-indigo-900 dark:bg-indigo-800 hover:bg-black dark:hover:bg-slate-950 text-white font-bold rounded-xl text-xs transition-all shadow-sm flex items-center justify-center gap-1.5"
+            >
+              위 추천 단가를 대시보드에 적용하기 &darr;
+            </button>
+          </div>
+        </div>
+
+        <!-- 실 운영 모델 상세 조건 설정 -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+          <div class="flex items-center gap-2 mb-4">
+            <span class="p-1.5 bg-indigo-50/10 text-indigo-500 rounded-lg">
+              <!-- TrendingUpIcon -->
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            </span>
+            <h3 class="font-bold text-base text-slate-800 dark:text-white">3. 렌탈 운영 단가 및 조건</h3>
+          </div>
+
+          <div class="space-y-4">
+            <!-- 렌탈 판매 단가 -->
+            <div>
+              <div class="flex justify-between items-center mb-1">
+                <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                  렌탈 단가 (직접 입력 / 회당 또는 월당)
+                  <button 
+                    @mouseenter="showTooltip = 'rentalPrice'"
+                    @mouseleave="showTooltip = null"
+                    class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                    type="button"
+                  >
+                    <!-- HelpIcon -->
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                </label>
+                <span class="text-xs font-bold text-slate-400">
+                  실시간 단위: <strong class="text-indigo-600 dark:text-indigo-400" x-text="formatKoreanReadable(rentalPrice)"></strong>
+                </span>
+              </div>
+
+              <div x-show="showTooltip === 'rentalPrice'" class="text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-950 p-2 rounded-lg border dark:border-slate-850 mb-2" x-transition>
+                소비자에게 한번 혹은 1개월 빌려줄 때 청구하는 대여료를 의미합니다.
+              </div>
+
+              <!-- 3자리 콤마 실시간 서식 적용 인풋 -->
+              <div class="relative">
+                <input 
+                  type="text" 
+                  inputmode="numeric"
+                  x-model="rentalPrice"
+                  @input="rentalPrice = formatInputWithCommas(rentalPrice)"
+                  placeholder="단가를 입력해 주세요"
+                  class="w-full bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3 text-lg font-black tracking-wide text-slate-800 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:focus:ring-indigo-950/40 transition-all text-right"
+                />
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400 font-bold" x-text="currency === 'KRW' ? '원 (₩)' : '달러 ($)'"></span>
+              </div>
+            </div>
+
+            <!-- 동시 가동 대수 -->
+            <div>
+              <div class="flex justify-between items-center mb-1.5">
+                <label class="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  실제 동시 가동 대수 <span class="text-[10px] text-indigo-500 font-bold">(평균 대여량)</span>
+                </label>
+                <span class="text-xs font-semibold text-slate-400 dark:text-slate-450">
+                  평균 가동률: <span x-text="numeric.importQty > 0 ? Math.round((numeric.rentalQty / numeric.importQty) * 100) : 0"></span>%
+                </span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button 
+                  type="button"
+                  @click="rentalQty = Math.max(1, (parseInt(rentalQty) || 0) - 1).toString()"
+                  class="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg font-bold text-sm"
+                >
+                  -
+                </button>
+                <input 
+                  type="text" 
+                  pattern="[0-9]*"
+                  inputmode="numeric"
+                  x-model="rentalQty"
+                  @input="rentalQty = rentalQty.replace(/[^0-9]/g, '')"
+                  class="flex-1 text-center bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 rounded-xl py-2 text-sm font-bold text-slate-800 dark:text-white"
+                />
+                <button 
+                  type="button"
+                  @click="rentalQty = ((parseInt(rentalQty) || 0) + 1).toString()"
+                  class="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg font-bold text-sm"
+                >
+                  +
+                </button>
+              </div>
+              <p x-show="numeric.rentalQty > numeric.importQty" class="text-[10px] text-amber-500 mt-1 font-medium">
+                ⚠️ 경고: 보유 수량(<span x-text="numeric.importQty"></span>대)보다 대여 가동중인 수량이 많습니다.
+              </p>
+            </div>
+
+            <!-- --- 총 대여 횟수 --- -->
+            <div>
+              <div class="flex justify-between items-center mb-1.5">
+                <label class="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                  목표 대여 횟수 / 기간 <span class="text-[10px] text-slate-400 dark:text-slate-500">(단위: 회 또는 개월)</span>
+                </label>
+                <span class="text-sm font-extrabold text-slate-800 dark:text-slate-200" x-text="(rentalCount || 0) + ' 회'"></span>
+              </div>
+              <div class="flex items-center gap-2">
+                <button 
+                  type="button"
+                  @click="rentalCount = Math.max(1, (parseInt(rentalCount) || 0) - 1).toString()"
+                  class="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg font-bold text-sm"
+                >
+                  -
+                </button>
+                <input 
+                  type="text" 
+                  pattern="[0-9]*"
+                  inputmode="numeric"
+                  x-model="rentalCount"
+                  @input="rentalCount = rentalCount.replace(/[^0-9]/g, '')"
+                  class="flex-1 text-center bg-slate-50 dark:bg-slate-950 border-2 border-slate-200 dark:border-slate-800 rounded-xl py-2 text-sm font-bold text-slate-800 dark:text-white"
+                />
+                <button 
+                  type="button"
+                  @click="rentalCount = ((parseInt(rentalCount) || 0) + 1).toString()"
+                  class="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg font-bold text-sm"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+
+      <!-- --- 오른쪽 레이아웃: 재무 결과 분석 리포팅 보드 --- -->
+      <div class="lg:col-span-7 space-y-6">
+        
+        <!-- 출력보고서 및 PDF 다운로드 유도 카드 영역 -->
+        <div class="bg-gradient-to-r from-indigo-500 to-indigo-700 text-white p-5 rounded-2xl shadow-md flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div>
+            <h4 class="font-bold text-base flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-indigo-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              비즈니스 타당성 분석 보고서
+            </h4>
+            <p class="text-xs text-indigo-100 mt-1">
+              현재 설계한 데이터를 기반으로 인쇄에 최적화된 정밀 보고서를 작성하고 PDF로 보관하세요.
+            </p>
+          </div>
+          <button 
+            @click="showReportModal = true"
+            class="px-4 py-2 bg-white hover:bg-indigo-50 text-indigo-700 font-extrabold text-xs rounded-xl shadow-md transition-all whitespace-nowrap"
+          >
+            보고서 확인 & PDF 다운로드
+          </button>
+        </div>
+
+        <!-- 실시간 요약 재무 카드 그리드 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          
+          <!-- 자산 총 투자비용 요약 -->
+          <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+            <div class="flex justify-between items-start mb-2">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">총 투자 금액</span>
+              <span class="p-1 bg-rose-50 dark:bg-rose-950/50 text-rose-500 rounded text-xs font-semibold">비용 (CAPEX)</span>
+            </div>
+            <div class="text-xl font-extrabold text-slate-900 dark:text-white" x-text="formatValue(calculations.totalCost)"></div>
+            <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
+              <span x-text="numeric.importPrice.toLocaleString()"></span>원 × <span x-text="numeric.importQty"></span>대 합계
+            </div>
+          </div>
+
+          <!-- 예상 매출액 요약 -->
+          <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+            <div class="flex justify-between items-start mb-2">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">총 임대 수익 (예상)</span>
+              <span class="p-1 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-500 rounded text-xs font-semibold">매출 (Revenue)</span>
+            </div>
+            <div class="text-xl font-extrabold text-emerald-600 dark:text-emerald-400" x-text="formatValue(calculations.totalRevenue)"></div>
+            <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-2">
+              회당 <span x-text="formatValue(calculations.revenuePerCycle)"></span> (동시 <span x-text="numeric.rentalQty"></span>대 가동) × <span x-text="numeric.rentalCount"></span>회
+            </div>
+          </div>
+
+          <!-- 순익 모델링 정보 -->
+          <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm md:col-span-2 relative overflow-hidden">
+            <div class="absolute right-0 top-0 bottom-0 w-32 bg-indigo-500/5 -skew-x-12 transform origin-top-right"></div>
+            <div class="flex justify-between items-start mb-1">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">최종 순익 모델링</span>
+              <span 
+                class="px-2 py-0.5 rounded text-xs font-semibold"
+                :class="calculations.netProfit >= 0 ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300' : 'bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300'"
+                x-text="calculations.netProfit >= 0 ? '수익 흑자' : '투자금 미회수 상태'"
+              ></span>
+            </div>
+            <div 
+              class="text-2xl font-black"
+              :class="calculations.netProfit >= 0 ? 'text-indigo-600 dark:text-indigo-400' : 'text-rose-600 dark:text-rose-400'"
+              x-text="formatValue(calculations.netProfit)"
+            ></div>
+            <div class="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 text-xs">
+              <div>
+                <span class="text-slate-400 dark:text-slate-500 block">투자 수익률 (ROI)</span>
+                <span 
+                  class="font-bold text-sm"
+                  :class="calculations.netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'"
+                  x-text="calculations.roi.toFixed(1) + '%'"
+                ></span>
+              </div>
+              <div>
+                <span class="text-slate-400 dark:text-slate-500 block">원금 회수 지수 (배수)</span>
+                <span class="font-bold text-sm text-slate-700 dark:text-slate-300" x-text="calculations.recoveryRate.toFixed(2) + '배 회수'"></span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 투자 원금 회수 타임라인 (BEP) -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+          <h3 class="font-bold text-sm text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+            <!-- ScaleIcon -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+            </svg>
+            투자금 회수 타임라인 (BEP 분석)
+          </h3>
+
+          <div class="border p-4 rounded-xl mb-5 text-xs font-medium" :class="bepStatus.class">
+            💡 <span class="font-bold" x-text="bepStatus.text"></span>
+          </div>
+
+          <!-- 투자금 회수 시각적 타임라인 바 -->
+          <div class="space-y-2">
+            <div class="flex justify-between text-xs font-semibold text-slate-400 dark:text-slate-500">
+              <span x-text="'PROJ-CYCLE (' + numeric.rentalCount + '회차)'"></span>
+              <span>손익분기 지점: <strong class="text-indigo-600 dark:text-indigo-400" x-text="calculations.breakevenCycles.toFixed(1) + '회'"></strong></span>
+            </div>
+
+            <div class="relative h-6 bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden">
+              <!-- BEP 목표선 마커 배치 -->
+              <div 
+                x-show="calculations.breakevenCycles > 0 && calculations.breakevenCycles <= numeric.rentalCount"
+                class="absolute top-0 bottom-0 w-0.5 bg-rose-500 z-10"
+                :style="'left: ' + (numeric.rentalCount > 0 ? ((calculations.breakevenCycles / numeric.rentalCount) * 100) : 0) + '%'"
+                :title="'원금회수지점 (' + calculations.breakevenCycles.toFixed(1) + '회차)'"
+              >
+                <span class="absolute -top-1 left-1 bg-rose-500 text-white font-extrabold text-[8px] px-1 py-0.5 rounded shadow">
+                  BEP
+                </span>
+              </div>
+
+              <!-- 누적 매출 도달율 비율 채우기 -->
+              <div 
+                class="h-full opacity-85 transition-all duration-500"
+                :class="bepStatus.barColor"
+                :style="'width: ' + Math.min(100, (numeric.rentalCount / Math.max(1, calculations.breakevenCycles)) * 100) + '%'"
+              ></div>
+            </div>
+
+            <div class="flex justify-between text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+              <span>0회 (시작)</span>
+              <span>원금 도달율: <strong class="text-slate-800 dark:text-slate-200" x-text="Math.round(Math.min(100, (numeric.rentalCount / Math.max(1, calculations.breakevenCycles)) * 100)) + '%'"></strong></span>
+              <span x-text="numeric.rentalCount + '회차 목표'"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 동적 실시간 재무 시뮬레이션 SVG 차트 -->
+        <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 shadow-sm">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="font-bold text-sm text-slate-800 dark:text-white">주기별 누적 재무 추이 시뮬레이션</h3>
+            <span class="text-[11px] text-slate-400 dark:text-slate-500 font-semibold flex items-center gap-1">
+              <span class="inline-block w-2.5 h-2.5 bg-rose-500 rounded-full"></span> 누적 비용
+              <span class="inline-block w-2.5 h-2.5 bg-indigo-500 rounded-full ml-2"></span> 누적 매출
+            </span>
+          </div>
+
+          <!-- 가벼운 반응형 자체 그리기 벡터 차트 -->
+          <div class="w-full h-64 bg-slate-50 dark:bg-slate-950 rounded-xl p-2 relative">
+            <div x-show="calculations.totalCost === 0 && calculations.totalRevenue === 0" class="absolute inset-0 flex items-center justify-center text-xs text-slate-400">
+              원가와 렌탈 단가를 입력하여 추이를 확인하세요.
+            </div>
+            
+            <div x-show="calculations.totalCost > 0 || calculations.totalRevenue > 0" class="w-full h-full">
+              <svg class="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                <!-- 수평 배경 안내선 -->
+                <line x1="0" y1="25" x2="100" y2="25" class="stroke-slate-200 dark:stroke-slate-800" stroke-dasharray="2,2" />
+                <line x1="0" y1="50" x2="100" y2="50" class="stroke-slate-200 dark:stroke-slate-800" stroke-dasharray="2,2" />
+                <line x1="0" y1="75" x2="100" y2="75" class="stroke-slate-200 dark:stroke-slate-800" stroke-dasharray="2,2" />
+
+                <!-- 누적 비용선 (Flat CAPEX Line - 점선으로 시각화) -->
+                <line 
+                  :x1="chart.startX" 
+                  :y1="chart.costY" 
+                  :x2="chart.endX" 
+                  :y2="chart.costY" 
+                  stroke="#f43f5e" 
+                  stroke-width="2.5" 
+                  stroke-dasharray="2,2"
+                  vector-effect="non-scaling-stroke"
+                />
+                
+                <!-- 누적 매출 성장 곡선 -->
+                <line 
+                  :x1="chart.startX" 
+                  y1="90" 
+                  :x2="chart.endX" 
+                  :y2="chart.endY" 
+                  stroke="#6366f1" 
+                  stroke-width="3.5" 
+                  vector-effect="non-scaling-stroke"
+                />
+
+                <!-- 마지막 목표 시점 하이라이팅 마크 -->
+                <circle :cx="chart.endX" :cy="chart.endY" r="4" class="fill-indigo-600 stroke-white" stroke-width="2" />
+
+                <!-- 교차하는 손익분기점(BEP) 위치 표시 -->
+                <g x-show="chart.isBepWithin && calculations.breakevenCycles > 0">
+                  <circle :cx="chart.bepX" :cy="chart.costY" r="5" class="fill-emerald-500 stroke-white" stroke-width="2" />
+                  <text :x="chart.bepX" :y="chart.costY - 8" text-anchor="middle" class="text-[7px] font-black fill-emerald-600 dark:fill-emerald-400">BEP</text>
+                </g>
+              </svg>
+            </div>
+
+            <!-- 범례 축 안내 텍스트 -->
+            <div class="absolute bottom-2 left-4 right-4 flex justify-between text-[10px] text-slate-400 dark:text-slate-500 font-bold">
+              <span>시작 단계 (0회)</span>
+              <span x-text="'계획 달성 완료 (' + numeric.rentalCount + '회차)'"></span>
+            </div>
+          </div>
+          <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-3 text-center">
+            * 누적 매출선(Indigo)이 원가선(Rose)의 위로 올라가는 교차점이 손익분기점(BEP)입니다.
+          </p>
+        </div>
+
+      </div>
+
+    </div>
+  </main>
+
+  <!-- ---출력용 보고서 및 모달 영역 --- -->
+  <div 
+    x-show="showReportModal" 
+    class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 print-modal-backdrop"
+    style="display: none;"
+    x-transition
+  >
+    <div 
+      class="bg-white dark:bg-slate-900 rounded-2xl max-w-4xl w-full shadow-2xl flex flex-col my-8 overflow-hidden border border-slate-200 dark:border-slate-800 print-modal-card"
+      @click.outside="showReportModal = false"
+    >
+      <!-- 모달 상단 컨트롤 패널 -->
+      <div class="bg-slate-50 dark:bg-slate-950 px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap justify-between items-center gap-3 no-print">
+        <div class="flex items-center gap-2 text-slate-800 dark:text-slate-200">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <span class="font-extrabold text-sm text-slate-700 dark:text-slate-300">비즈니스 분석 리포트 미리보기</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <!-- PDF 다운로드 -->
+          <button 
+            @click="downloadPDF()"
+            class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            PDF 다운로드
+          </button>
+          <!-- 직접인쇄 -->
+          <button 
+            @click="printReport()"
+            class="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4" />
+            </svg>
+            인쇄하기 (Print)
+          </button>
+          <button 
+            @click="showReportModal = false"
+            class="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded-lg"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- 보고서 실물 영역 (인쇄 및 PDF 변환용 - 흰색 페이퍼 가상 캔버스) -->
+      <div class="p-8 overflow-y-auto max-h-[70vh] bg-white text-slate-900 border border-slate-100 shadow-inner rounded-xl" id="report-content">
+        <div class="max-w-3xl mx-auto font-sans leading-normal">
+          
+          <!-- 헤더 타이틀 -->
+          <div class="border-b-4 border-indigo-600 pb-4 flex justify-between items-end">
+            <div>
+              <span class="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600">RENTAL METRICS SUITE</span>
+              <h1 class="text-2xl font-black mt-1 text-slate-900 tracking-tight">렌탈 비즈니스 타당성 보고서</h1>
+              <p class="text-[11px] text-slate-500 mt-1">본 분석서는 기기 취득원가 및 운용 시나리오에 입각한 손익 수지 예측 리포트입니다.</p>
+            </div>
+            <div class="text-right">
+              <div class="text-[10px] text-slate-400">발행일자</div>
+              <div class="text-xs font-bold text-slate-800" x-text="new Date().toLocaleDateString('ko-KR', {year: 'numeric', month: 'long', day: 'numeric'})"></div>
+            </div>
+          </div>
+
+          <!-- 주요 지표 핵심 그리드 -->
+          <div class="grid grid-cols-4 gap-3 my-4">
+            <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl text-center">
+              <div class="text-[9px] font-bold text-slate-400 uppercase">총 소요 원가</div>
+              <div class="text-sm font-extrabold text-slate-900 mt-1" x-text="formatValue(calculations.totalCost)"></div>
+            </div>
+            <div class="bg-indigo-50/50 border border-indigo-100 p-3 rounded-xl text-center">
+              <div class="text-[9px] font-bold text-indigo-500 uppercase">예상 임대 매출</div>
+              <div class="text-sm font-extrabold text-indigo-600 mt-1" x-text="formatValue(calculations.totalRevenue)"></div>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl text-center">
+              <div class="text-[9px] font-bold text-slate-400 uppercase">기대 최종 순익</div>
+              <div class="text-sm font-extrabold mt-1" :class="calculations.netProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'" x-text="formatValue(calculations.netProfit)"></div>
+            </div>
+            <div class="bg-slate-50 border border-slate-200 p-3 rounded-xl text-center">
+              <div class="text-[9px] font-bold text-slate-400 uppercase">투자 수익률 (ROI)</div>
+              <div class="text-sm font-extrabold text-slate-900 mt-1" x-text="calculations.roi.toFixed(1) + '%'"></div>
+            </div>
+          </div>
+
+          <!-- 투입 가정 현황 테이블 -->
+          <div class="mb-4">
+            <h3 class="text-[10px] font-bold text-indigo-600 uppercase tracking-wider mb-2">1. 세부 투입 및 운영 조건 (Simulation Presets)</h3>
+            <div class="grid grid-cols-2 gap-x-6 gap-y-2 bg-slate-50 p-4 rounded-xl text-[11px] border border-slate-100">
+              <div class="flex justify-between border-b border-slate-200 pb-1">
+                <span class="text-slate-500">도입 자산 단가</span>
+                <span class="font-extrabold text-slate-800" x-text="formatValue(numeric.importPrice)"></span>
+              </div>
+              <div class="flex justify-between border-b border-slate-200 pb-1">
+                <span class="text-slate-500">고객 청구 대여 단가</span>
+                <span class="font-extrabold text-slate-800" x-text="formatValue(numeric.rentalPrice)"></span>
+              </div>
+              <div class="flex justify-between border-b border-slate-200 pb-1">
+                <span class="text-slate-500">도입 자산 수량</span>
+                <span class="font-extrabold text-slate-800" x-text="numeric.importQty + ' 대'"></span>
+              </div>
+              <div class="flex justify-between border-b border-slate-200 pb-1">
+                <span class="text-slate-500">평균 가동량 / 가동률</span>
+                <span class="font-extrabold text-slate-800" x-text="numeric.rentalQty + ' 대 (' + (numeric.importQty > 0 ? Math.round((numeric.rentalQty / numeric.importQty) * 100) : 0) + '%)'"></span>
+              </div>
+              <div class="flex justify-between border-b border-slate-200 pb-1">
+                <span class="text-slate-500">계획 총 가동 주기</span>
+                <span class="font-extrabold text-slate-800" x-text="numeric.rentalCount + ' 회차'"></span>
+              </div>
+              <div class="flex justify-between border-b border-slate-200 pb-1">
+                <span class="text-slate-500">거래 기준 통화</span>
+                <span class="font-extrabold text-indigo-600" x-text="currency"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 타당성 요약 의견 -->
+          <div class="mb-4 border border-slate-200 rounded-xl p-4 bg-indigo-50/20">
+            <h3 class="text-[10px] font-bold text-slate-800 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+              <span class="inline-block w-2.5 h-2.5 bg-indigo-600 rounded-full"></span>
+              비즈니스 수익구조 타당성 요약 의견
+            </h3>
+            <p class="text-[11px] text-slate-600 leading-relaxed">
+              본 투자 모델의 시뮬레이션 결과, 투자 원금 상환 지점(BEP)은 기획 시점 기준 <strong class="text-indigo-600" x-text="calculations.breakevenCycles.toFixed(1) + '회차'"></strong>에 발생합니다. 
+              최종 예상 매출 회수 배수는 <strong class="text-slate-800" x-text="calculations.recoveryRate.toFixed(2) + '배'"></strong>로 수렴하며, 
+              <span class="font-bold" :class="calculations.netProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'" x-text="calculations.netProfit >= 0 ? '수익 흑자를 기록하여 투자성이 충분한 비즈니스 조건으로 확인됩니다.' : '현재 상태로는 초기 원금 충당이 완료되지 못하므로 회차 증가, 평균 가동률 제고 또는 단가 보정이 필수적입니다.'"></span>
+            </p>
+          </div>
+
+          <!-- 회차별 누적 수지 흐름 현황 (A4 1페이지 고정형 초밀도 다단 카드 그리드) -->
+          <div>
+            <h3 class="text-[10px] font-bold text-indigo-600 uppercase tracking-wider mb-2">2. 회차별 누적 수지 흐름 현황 (All Cycles Flow)</h3>
+            
+            <!-- 회차 수에 따라 반응형 다단 레이아웃 처리 (1페이지 완전 수납 안전벨트) -->
+            <div 
+              class="grid gap-1.5 border border-slate-200 rounded-xl p-3 bg-slate-50/30"
+              :class="numeric.rentalCount > 24 ? 'grid-cols-4 text-[9px]' : (numeric.rentalCount > 12 ? 'grid-cols-3 text-[10px]' : 'grid-cols-2 text-[11px]')"
+            >
+              <!-- 0회차 초기 투자 고정 영역 -->
+              <div class="col-span-full border-b border-dashed border-slate-200 pb-1 flex justify-between items-center font-bold">
+                <span class="text-slate-500">0회차 (초기 자산 구입 비용)</span>
+                <span class="text-rose-500" x-text="formatValue(-calculations.totalCost)"></span>
+                <span class="px-1.5 py-0.2 bg-rose-50 text-rose-600 rounded text-[9px] font-black">초기투자</span>
+              </div>
+
+              <!-- 순회 가능한 실제 모든 회차 렌더링 -->
+              <template x-for="step in reportSteps" :key="step">
+                <div 
+                  class="flex flex-col justify-between p-1.5 rounded-lg border border-slate-100 bg-white shadow-sm transition-all"
+                >
+                  <div class="flex justify-between items-center mb-0.5">
+                    <span class="font-black text-slate-800" x-text="step + '회차'"></span>
+                    <span 
+                      class="px-1 py-0.2 rounded text-[8px] font-bold"
+                      :class="(calculations.revenuePerCycle * step) - calculations.totalCost >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'"
+                      x-text="(calculations.revenuePerCycle * step) - calculations.totalCost >= 0 ? '상환완료' : '미회수'"
+                    ></span>
+                  </div>
+                  <div class="flex justify-between text-slate-400 text-[10px]">
+                    <span>누적 매출:</span>
+                    <span class="font-medium text-slate-700" x-text="formatValue(calculations.revenuePerCycle * step)"></span>
+                  </div>
+                  <div class="flex justify-between text-slate-400 text-[10px]">
+                    <span>누적 손익:</span>
+                    <span class="font-black" 
+                          :class="(calculations.revenuePerCycle * step) - calculations.totalCost >= 0 ? 'text-emerald-600' : 'text-rose-600'"
+                          x-text="formatValue((calculations.revenuePerCycle * step) - calculations.totalCost)"></span>
+                  </div>
+                </div>
+              </template>
+            </div>
+            
+            <p class="text-[9px] text-slate-400 mt-2 text-right">
+              * 기재된 수치 흐름은 가동률 조건 및 공제 원금을 기초로 연산된 신뢰할 수 있는 실시간 지표 데이터입니다.
+            </p>
+          </div>
+
+          <!-- 서명 바 -->
+          <div class="mt-8 pt-4 border-t border-slate-200 flex justify-between items-center text-[11px]">
+            <div>
+              <p class="text-slate-400">보고서 관리 ID</p>
+              <p class="font-mono text-slate-600 mt-0.5" x-text="'#RENTAL-' + Math.floor(Date.now() / 100000)"></p>
+            </div>
+            <div class="text-right">
+              <p class="text-slate-400 font-bold">Rental Business Simulator Suite</p>
+              <p class="text-[9px] text-slate-400 mt-0.5">본 분석보고서는 시뮬레이션 공식 엔진을 사용하여 작성되었습니다.</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- 모달 푸터 제어 영역 -->
+      <div class="bg-slate-50 dark:bg-slate-950 px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex justify-end no-print">
+        <button 
+          type="button"
+          @click="showReportModal = false"
+          class="px-4 py-2 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold text-xs rounded-lg transition-colors"
+        >
+          닫기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- --- 하단 푸터 가이드 문서 --- -->
+  <footer class="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 mt-16 py-8">
+    <div class="max-w-7xl mx-auto px-4 text-center">
+      <p class="text-xs text-slate-500 dark:text-slate-400">
+        대여 자산의 효율적인 가동률 관리는 렌탈 사업 성장의 핵심입니다. 가동률이 100% 미만인 상황을 대비하여 가동 대수를 보수적으로 조절하여 시뮬레이션해 보세요.
+      </p>
+      <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-2">
+        &copy; <span x-text="new Date().getFullYear()"></span> Rental Business Hub. All rights reserved.
+      </p>
+    </div>
+  </footer>
+</body>
+</html>

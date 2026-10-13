@@ -37,6 +37,8 @@ const DEFAULTS = {
     message: '',
     note: '',
     accounts: [], // [{ bank, account, holder }]
+    donorsEnabled: true, // 합계·월별 누적·명단 공개
+    donors: [], // [{ name, amount, date: 'YYYY-MM-DD' }]
   },
   analytics: { ga4: '' }, // 예: G-XXXXXXX
   social: { github: '', youtube: '', threads: '' },
@@ -59,6 +61,33 @@ function normalizeAdsClient(value) {
   return raw;
 }
 
+const MAX_DONORS = 500;
+const MAX_AMOUNT = 1000000000; // 10억 원
+
+/** '2026-10-13' 형태만 통과시킵니다 */
+function normalizeDonationDate(value) {
+  const text = String(value ?? '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) return '';
+  const time = Date.parse(`${text}T00:00:00Z`);
+  return Number.isNaN(time) ? '' : text;
+}
+
+/** 후원 내역 한 줄씩 다듬기 (성명·금액 필수, 금액은 원 단위 정수) */
+function normalizeDonors(list) {
+  return (Array.isArray(list) ? list : [])
+    .map((item) => {
+      const raw = item && typeof item === 'object' ? item : {};
+      const amount = Math.round(Number(raw.amount));
+      return {
+        name: String(raw.name ?? '').replace(/[\r\n\t]+/g, ' ').trim().slice(0, 30),
+        amount: Number.isFinite(amount) ? Math.min(Math.max(amount, 0), MAX_AMOUNT) : 0,
+        date: normalizeDonationDate(raw.date),
+      };
+    })
+    .filter((d) => d.name || d.amount > 0)
+    .slice(0, MAX_DONORS);
+}
+
 /** 후원 안내 값을 안전한 형태로 다듬습니다 (계좌 3개까지, 길이 제한) */
 function normalizeSupport(input) {
   const raw = input && typeof input === 'object' ? input : {};
@@ -77,6 +106,8 @@ function normalizeSupport(input) {
     message: String(raw.message ?? '').replace(/\r\n/g, '\n').trim().slice(0, 600),
     note: clip(raw.note, 200),
     accounts,
+    donorsEnabled: raw.donorsEnabled !== false,
+    donors: normalizeDonors(raw.donors),
   };
 }
 
@@ -134,6 +165,7 @@ module.exports = {
   DEFAULTS,
   merge,
   normalizeSupport,
+  normalizeDonors,
   isPlaceholderEmail,
   normalizeAdsClient,
   publicSite,
